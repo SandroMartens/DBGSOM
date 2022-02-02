@@ -1,0 +1,271 @@
+from math import log
+import numpy as np
+import networkx as nx
+import pandas as pd
+from random import random
+
+
+class DBGSOM:
+    """A Directed Batch Growing Self-Organizing Map.
+
+    Parameters
+    ----------
+    sf : float (default = 0.8)
+        Spreading factor to calculate the treshold for neuron insertion.
+
+    n_epochs : int
+        Number of training epochs.
+
+    sigma : float (Default = 1)
+        Neighborhood bandwidth.
+    """
+    def __init__(
+        self,
+        n_epochs: int,
+        sf: float = 0.8,
+        sigma: float = 1
+    ) -> None:
+        self.SF = sf
+        self.n_epochs = n_epochs
+        self.current_epoch = 0
+        self.sigma = sigma
+
+    def train(self, data):
+        """Train SOM on training data."""
+        self.initialization(data)
+        self.grow(data)
+
+    def initialization(self, data):
+        """First training phase.
+        
+        Initialize neurons in a square topology with random weights.
+        Calculate growing threshold.
+        Specify number of training epochs.
+        """
+        D = data.shape[1]
+        self.growing_treshold = -D * log(self.SF)
+        rng = np.random.default_rng()
+        #  Use four random points as initialization
+        init_vectors = rng.choice(a=data, size=4)
+        self.som = self.create_som(init_vectors)
+        #  Get array with neurons as index and values as columns
+        self.weights = np.array(
+            list(dict(self.som.nodes.data("weight")).values())
+            )
+            #  List of node indices
+        self.neurons = list(self.som.nodes)
+
+    def grow(self, data):
+        """Second training phase"""
+        for i in range(self.n_epochs):
+            #  Get array with neurons as index and values as columns
+            self.weights = np.array(
+                list(dict(self.som.nodes.data("weight")).values())
+            )
+            #  List of node indices
+            self.neurons = list(self.som.nodes)
+            winners = self.get_winning_neurons(data)
+            self.pt_distances = self.prototype_distances()
+            self.weights = self.update_weights(winners, data)
+            self.calculate_accumulative_error(winners, data)
+            self.distribute_errors()
+            self.add_new_neurons()
+            self.allocate_new_weights()
+            self.current_epoch = i
+
+    def create_som(self, init_vectors : np.ndarray) -> nx.Graph:
+        """Create a graph containing the first four neurons."""
+        neurons = [
+            ((0, 0), {"weight": init_vectors[0]}),
+            ((0, 1), {"weight": init_vectors[1]}),
+            ((1, 0), {"weight": init_vectors[2]}),
+            ((1, 1), {"weight": init_vectors[3]})
+        ]
+
+        #  Build a square
+        edges = [
+            ((0, 0), (0, 1)),
+            ((0, 0), (1, 0)),
+            ((1, 0), (1, 1)),
+            ((0, 1), (1, 1))
+        ]
+
+        som = nx.Graph()
+        som.add_nodes_from(neurons)
+        som.add_edges_from(edges)
+
+        return som
+
+    def get_winning_neurons(self, data) -> np.ndarray:
+        """Calculate distances from each neuron to each sample.
+
+        Return index of winning neuron for each sample.
+        """
+        elementwise_distances = (self.weights[:, np.newaxis, :] - data)
+        euclid_distances = np.sqrt(np.sum(elementwise_distances**2, axis=2))
+        winners = np.argmin(euclid_distances, axis=0)
+        return winners
+
+    def prototype_distances(self) -> pd.DataFrame:
+        """Return distance (shortest path) of
+        two prototypes on the som.
+        """
+        g = self.som
+        nodes = list(g)
+        return pd.DataFrame(
+            nx.floyd_warshall_numpy(g),
+            index=nodes, 
+            columns=nodes
+        )
+        # return dict(nx.shortest_path_length(self.som))
+
+    def update_weights(self, winners, data) -> np.ndarray:
+        """The updated weight vectors of the neurons
+        are calculated by the batch learning principle.
+        """
+        voronoi_set_centers = np.empty_like(self.neurons, dtype="float32")
+        for winner in np.unique(winners):
+            voronoi_set_centers[winner] = data[winners == winner].mean(axis=0)
+
+        neuron_counts = np.zeros(shape=len(self.neurons))
+        winners, winner_counts = np.unique(winners, return_counts=True)
+        for winner, count in zip(winners, winner_counts):
+            neuron_counts[winner] = count
+
+        gaussian_kernel = self.gaussian_neighborhood()
+        new_weights = np.empty_like(self.weights)
+        for i in range(len(new_weights)):
+            new_weights[i] = (
+                ((gaussian_kernel.iloc[i].to_numpy() * neuron_counts * voronoi_set_centers.T) / 
+                (gaussian_kernel.iloc[i].to_numpy() * neuron_counts).sum()).sum(axis=1)
+            )
+
+        new_weights_dict = {neuron: weight for neuron, weight in zip(self.neurons, new_weights)}
+        nx.set_node_attributes(
+            G=self.som,
+            values=new_weights_dict,
+            name="weight")
+
+        return new_weights
+
+    def gaussian_neighborhood(self) -> pd.DataFrame:
+        """Return gaussian kernel of two prototypes."""
+        sigma = self.reduce_sigma()
+        h = np.exp(-(self.pt_distances**2 / (2*sigma**2)))
+        return h
+
+    def calculate_accumulative_error(self, winners, data) -> None:
+        """Get the quantization error for each neuron 
+        and save it to the graph.
+        """
+        # errors = np.empty(shape=4)
+        for winner in range(len(self.neurons)):
+            samples = data[winners==winner]
+            dist = self.euclid_dist(self.weights[winner], samples)
+            error = dist.sum()
+            # errors[winner] = error
+            self.som.nodes[self.neurons[winner]]["error"] = error
+        # return errors
+
+    def distribute_errors(self):
+        pass
+
+    def euclid_dist(self, neuron, data) -> np.ndarray:
+        # dist = np.sqrt(np.sum((neuron-data)**2, axis=1))
+        dist = np.linalg.norm(neuron-data, axis=1)
+        return dist
+
+    def add_new_neurons(self) -> None:
+        """Add new neurons to places where the error is above 
+        the growing threshold.
+        """
+        for node in self.neurons:
+            if nx.degree(self.som, node) == 1:
+                if self.som.nodes[node]["error"] > self.growing_treshold:
+                    self.insert_neuron_1p(node)
+                    # self.set_weight_1p(node)
+            elif nx.degree(self.som, node) == 2:
+                if self.som.nodes[node]["error"] > self.growing_treshold:
+                    self.insert_neuron_2p(node)
+            elif nx.degree(self.som, node) == 3:
+                if self.som.nodes[node]["error"] > self.growing_treshold:
+                    self.insert_neuron_3p(node)
+
+    def insert_neuron_1p(self, node: tuple) -> None:
+        """If only one position is free, add new neuron to that position."""
+        node_x, node_y = node
+        nbrs = self.som.adj[node]
+        for nbr in [
+                    (node_x, node_y+1),
+                    (node_x, node_y-1),
+                    (node_x-1, node_y),
+                    (node_x+1, node_y)]:
+            if nbr not in nbrs:
+                self.som.add_node(nbr)
+                self.som.nodes[nbr]["weight"] = 2*self.som.nodes[node]["weight"] + 1
+                self.som.nodes[nbr]["error"] = 0
+                self.add_new_connections(nbr)
+
+    def insert_neuron_2p(self, node: tuple) -> None:
+        """Add new neuron to the side with greater error."""
+        nbr1, nbr2 = self.som.adj[node]
+        (nbr1_x, nbr1_y), (nbr2_x, nbr2_y) = nbr1, nbr2
+        n_x, n_y = node
+        #  Case c: Two opposite neighbors
+        if (nbr1_x == nbr2_x or nbr1_y == nbr2_y):
+            if nbr1_x == nbr2_x:
+                new_node = (n_x, n_y+1)
+                new_weight = 2 * self.som.nodes[node]["weight"] - self.som.nodes[nbr2]["weight"]
+            else:
+                new_node = (n_x+1, n_y)
+                new_weight = 2 * self.som.nodes[node]["weight"] - self.som.nodes[nbr2]["weight"]
+        #  Case b: Two neurons with no adjacent neurons
+        else:
+            nbr1_err = self.som.nodes[(nbr1_x, nbr1_y)]["error"]
+            nbr2_err = self.som.nodes[(nbr2_x, nbr2_y)]["error"]
+            if nbr1_err > nbr2_err:
+                new_node = (n_x + (n_x-nbr2_x), n_y + (n_y-nbr2_y))
+                new_weight = 2 * self.som.nodes[node]["weight"] - self.som.nodes[nbr2]["weight"]
+            else:
+                new_node = (n_x + (n_x-nbr1_x), n_y + (n_y-nbr1_y))
+                new_weight = 2 * self.som.nodes[node]["weight"] - self.som.nodes[nbr1]["weight"]
+        self.som.add_node(new_node)
+        self.som.nodes[new_node]["weight"] = new_weight
+        self.som.nodes[new_node]["error"] = 0
+        self.add_new_connections(new_node)
+
+    def insert_neuron_3p(self, node: tuple):
+        pass
+        # self.insert_neuron_2p(node)
+
+    def add_new_connections(self, node : tuple) -> None:
+        """Add edges from new neuron to existing neighbors."""
+        node_x, node_y = node
+        for nbr in [
+                    (node_x, node_y+1),
+                    (node_x, node_y-1),
+                    (node_x-1, node_y),
+                    (node_x+1, node_y)]:
+            if nbr in self.neurons:
+                self.som.add_edge(node, nbr)
+
+    def allocate_new_weights(self):
+        pass
+
+    def reduce_sigma(self) -> float:
+        """Decay bandwidth in each epoch"""
+        epoch = self.current_epoch
+        neurons = len(self.neurons)
+        denom = 1 + epoch/(self.n_epochs)
+        sigma = self.sigma/denom
+        # sigma = 0.2 * np.sqrt(neurons) * self.sigma / denom**2
+
+        # print(round(sigma, 2))
+        print(f"denom {denom}")
+        print(f"n_neurons/denom**3: {round(np.sqrt(neurons)/denom**3, 2)}")
+        # print(round(sigma, 2))
+        return sigma
+        # return 1
+
+    def quantization_error(self, data):
+        pass
