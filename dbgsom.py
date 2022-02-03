@@ -37,7 +37,7 @@ class DBGSOM:
 
     def initialization(self, data):
         """First training phase.
-        
+
         Initialize neurons in a square topology with random weights.
         Calculate growing threshold.
         Specify number of training epochs.
@@ -52,7 +52,7 @@ class DBGSOM:
         self.weights = np.array(
             list(dict(self.som.nodes.data("weight")).values())
             )
-            #  List of node indices
+        #  List of node indices
         self.neurons = list(self.som.nodes)
 
     def grow(self, data):
@@ -73,7 +73,14 @@ class DBGSOM:
             self.allocate_new_weights()
             self.current_epoch = i
 
-    def create_som(self, init_vectors : np.ndarray) -> nx.Graph:
+        #  Save the final weights
+        self.weights = self.update_weights(winners, data)
+        self.weights = np.array(
+            list(dict(self.som.nodes.data("weight")).values())
+            )
+        self.neurons = list(self.som.nodes)
+
+    def create_som(self, init_vectors: np.ndarray) -> nx.Graph:
         """Create a graph containing the first four neurons."""
         neurons = [
             ((0, 0), {"weight": init_vectors[0]}),
@@ -158,14 +165,12 @@ class DBGSOM:
         """Get the quantization error for each neuron 
         and save it to the graph.
         """
-        # errors = np.empty(shape=4)
         for winner in range(len(self.neurons)):
-            samples = data[winners==winner]
-            dist = self.euclid_dist(self.weights[winner], samples)
+            samples = data[winners == winner]
+            dist = self.norm(self.weights[winner] - samples)
             error = dist.sum()
             # errors[winner] = error
             self.som.nodes[self.neurons[winner]]["error"] = error
-        # return errors
 
     def distribute_errors(self):
         pass
@@ -238,7 +243,7 @@ class DBGSOM:
         pass
         # self.insert_neuron_2p(node)
 
-    def add_new_connections(self, node : tuple) -> None:
+    def add_new_connections(self, node: tuple) -> None:
         """Add edges from new neuron to existing neighbors."""
         node_x, node_y = node
         for nbr in [
@@ -255,17 +260,13 @@ class DBGSOM:
     def reduce_sigma(self) -> float:
         """Decay bandwidth in each epoch"""
         epoch = self.current_epoch
-        neurons = len(self.neurons)
-        denom = 1 + epoch/(self.n_epochs)
-        sigma = self.sigma/denom
-        # sigma = 0.2 * np.sqrt(neurons) * self.sigma / denom**2
-
-        # print(round(sigma, 2))
-        print(f"denom {denom}")
-        print(f"n_neurons/denom**3: {round(np.sqrt(neurons)/denom**3, 2)}")
-        # print(round(sigma, 2))
+        sigma = self.sigma * np.exp(-epoch/self.n_epochs)
         return sigma
-        # return 1
 
     def quantization_error(self, data):
-        pass
+        winners = self.get_winning_neurons(data)
+        error_sum = 0
+        for sample, winner in zip(data, winners):
+            error = np.linalg.norm(self.weights[winner] - sample)
+            error_sum += error
+        return error_sum/len(data)
