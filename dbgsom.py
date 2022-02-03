@@ -69,7 +69,7 @@ class DBGSOM:
             )
             #  List of node indices
             self.neurons = list(self.som.nodes)
-            winners = self.get_winning_neurons(data)
+            winners = self.get_winning_neurons(data, n_bmu=1)
             self.pt_distances = self.prototype_distances()
             self.weights = self.update_weights(winners, data)
             self.calculate_accumulative_error(winners, data)
@@ -83,6 +83,7 @@ class DBGSOM:
             list(dict(self.som.nodes.data("weight")).values())
             )
         self.neurons = list(self.som.nodes)
+        self.pt_distances = self.prototype_distances()
 
     def create_som(self, init_vectors: np.ndarray) -> nx.Graph:
         """Create a graph containing the first four neurons."""
@@ -107,13 +108,17 @@ class DBGSOM:
 
         return som
 
-    def get_winning_neurons(self, data) -> np.ndarray:
+    def get_winning_neurons(self, data, n_bmu:int) -> np.ndarray:
         """Calculate distances from each neuron to each sample.
 
-        Return index of winning neuron for each sample.
+        Return index of winning neuron or best matching units(s) for each sample.
         """
         distances = np.linalg.norm(self.weights[:, np.newaxis, :] - data, axis=2)
-        winners = np.argmin(distances, axis=0)
+        if n_bmu == 1:
+            winners = np.argmin(distances, axis=0)
+        else: 
+            winners = np.argsort(distances, axis=0)[:n_bmu]
+
         return winners
 
     def prototype_distances(self) -> pd.DataFrame:
@@ -159,7 +164,7 @@ class DBGSOM:
     def gaussian_neighborhood(self) -> pd.DataFrame:
         """Return gaussian kernel of two prototypes."""
         sigma = self.reduce_sigma()
-        h = np.exp(-(self.pt_distances**2 / (2*sigma**2)) + 0.001)
+        h = np.exp(-(self.pt_distances**2 / (2*sigma**2)))
         return h
 
     def calculate_accumulative_error(self, winners, data) -> None:
@@ -257,15 +262,24 @@ class DBGSOM:
         """Decay bandwidth in each epoch"""
         epoch = self.current_epoch
 
-        if epoch%5 != 0:
+        if epoch%2 != 0:
             sigma = 0.1
+            # sigma = self.sigma * np.exp(-epoch/self.n_epochs)
         else:
             sigma = self.sigma * np.exp(-epoch/self.n_epochs)
 
         return sigma
 
     def quantization_error(self, data):
-        winners = self.get_winning_neurons(data)
+        """Get the average distance from each sample to the nearest prototype.
+        
+        Parameters
+        ----------
+        
+        data : ndarray
+            data to cluster
+            """
+        winners = self.get_winning_neurons(data, n_bmu=1)
         error_sum = 0
         for sample, winner in zip(data, winners):
             error = np.linalg.norm(self.weights[winner] - sample)
@@ -274,5 +288,29 @@ class DBGSOM:
         return error_sum/len(data)
 
     def topographic_error(self, data):
+        """The topographic error is a measure for the topology preservation of the map.
+        
+        For each sample we get the two best matching units. If the BMU are connected on the grid,
+        there is no error. If the distance is larger an error occured. The total error is the number
+        of single errors divided yb the number of samples.
 
-        pass
+        Parameters
+        ----------
+        data : ndarray
+            Data to show the SOM.
+        """
+        sample_bmus = self.get_winning_neurons(data, n_bmu=2)
+        errors = 0
+        for sample in sample_bmus.T:
+            x = self.neurons[sample[0]]
+            y = self.neurons[sample[1]]
+            dist = self.pt_distances[x][y]
+            if dist > 1:
+                errors += 1
+
+        # for sample in sample_bmus.T:
+        #     dist = self.pt_distances.iloc[sample[0], sample[1]]
+        #     if dist > 1:
+        #         errors += 1
+
+        return errors/data.shape[0]
