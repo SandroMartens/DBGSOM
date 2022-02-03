@@ -18,17 +18,21 @@ class DBGSOM:
 
     sigma : float (Default = 1)
         Neighborhood bandwidth.
+
+    random_state: any
+        Random state for weight initialization.
     """
     def __init__(
         self,
         n_epochs: int,
         sf: float = 0.8,
-        sigma: float = 1
+        sigma: float = 1,
+        random_state = None
     ) -> None:
         self.SF = sf
         self.n_epochs = n_epochs
-        self.current_epoch = 0
         self.sigma = sigma
+        self.random_state = random_state
 
     def train(self, data):
         """Train SOM on training data."""
@@ -44,7 +48,7 @@ class DBGSOM:
         """
         D = data.shape[1]
         self.growing_treshold = -D * log(self.SF)
-        rng = np.random.default_rng()
+        rng = np.random.default_rng(seed=self.random_state)
         #  Use four random points as initialization
         init_vectors = rng.choice(a=data, size=4)
         self.som = self.create_som(init_vectors)
@@ -58,6 +62,7 @@ class DBGSOM:
     def grow(self, data):
         """Second training phase"""
         for i in range(self.n_epochs):
+            self.current_epoch = i
             #  Get array with neurons as index and values as columns
             self.weights = np.array(
                 list(dict(self.som.nodes.data("weight")).values())
@@ -71,7 +76,6 @@ class DBGSOM:
             self.distribute_errors()
             self.add_new_neurons()
             self.allocate_new_weights()
-            self.current_epoch = i
 
         #  Save the final weights
         self.weights = self.update_weights(winners, data)
@@ -108,9 +112,8 @@ class DBGSOM:
 
         Return index of winning neuron for each sample.
         """
-        elementwise_distances = (self.weights[:, np.newaxis, :] - data)
-        euclid_distances = np.sqrt(np.sum(elementwise_distances**2, axis=2))
-        winners = np.argmin(euclid_distances, axis=0)
+        distances = np.linalg.norm(self.weights[:, np.newaxis, :] - data, axis=2)
+        winners = np.argmin(distances, axis=0)
         return winners
 
     def prototype_distances(self) -> pd.DataFrame:
@@ -124,7 +127,6 @@ class DBGSOM:
             index=nodes, 
             columns=nodes
         )
-        # return dict(nx.shortest_path_length(self.som))
 
     def update_weights(self, winners, data) -> np.ndarray:
         """The updated weight vectors of the neurons
@@ -142,10 +144,9 @@ class DBGSOM:
         gaussian_kernel = self.gaussian_neighborhood()
         new_weights = np.empty_like(self.weights)
         for i in range(len(new_weights)):
-            new_weights[i] = (
-                ((gaussian_kernel.iloc[i].to_numpy() * neuron_counts * voronoi_set_centers.T) / 
-                (gaussian_kernel.iloc[i].to_numpy() * neuron_counts).sum()).sum(axis=1)
-            )
+            numerator = gaussian_kernel.iloc[i].to_numpy() * neuron_counts * voronoi_set_centers.T
+            denumerator = (gaussian_kernel.iloc[i].to_numpy() * neuron_counts).sum()
+            new_weights[i] = (numerator.sum(axis=1) / denumerator)
 
         new_weights_dict = {neuron: weight for neuron, weight in zip(self.neurons, new_weights)}
         nx.set_node_attributes(
@@ -158,7 +159,7 @@ class DBGSOM:
     def gaussian_neighborhood(self) -> pd.DataFrame:
         """Return gaussian kernel of two prototypes."""
         sigma = self.reduce_sigma()
-        h = np.exp(-(self.pt_distances**2 / (2*sigma**2)))
+        h = np.exp(-(self.pt_distances**2 / (2*sigma**2)) + 0.001)
         return h
 
     def calculate_accumulative_error(self, winners, data) -> None:
@@ -167,18 +168,13 @@ class DBGSOM:
         """
         for winner in range(len(self.neurons)):
             samples = data[winners == winner]
-            dist = self.norm(self.weights[winner] - samples)
+            dist = np.linalg.norm(self.weights[winner] - samples, axis=1)
             error = dist.sum()
             # errors[winner] = error
             self.som.nodes[self.neurons[winner]]["error"] = error
 
     def distribute_errors(self):
         pass
-
-    def euclid_dist(self, neuron, data) -> np.ndarray:
-        # dist = np.sqrt(np.sum((neuron-data)**2, axis=1))
-        dist = np.linalg.norm(neuron-data, axis=1)
-        return dist
 
     def add_new_neurons(self) -> None:
         """Add new neurons to places where the error is above 
@@ -260,7 +256,12 @@ class DBGSOM:
     def reduce_sigma(self) -> float:
         """Decay bandwidth in each epoch"""
         epoch = self.current_epoch
-        sigma = self.sigma * np.exp(-epoch/self.n_epochs)
+
+        if epoch%5 != 0:
+            sigma = 0.1
+        else:
+            sigma = self.sigma * np.exp(-epoch/self.n_epochs)
+
         return sigma
 
     def quantization_error(self, data):
@@ -269,4 +270,9 @@ class DBGSOM:
         for sample, winner in zip(data, winners):
             error = np.linalg.norm(self.weights[winner] - sample)
             error_sum += error
+
         return error_sum/len(data)
+
+    def topographic_error(self, data):
+
+        pass
