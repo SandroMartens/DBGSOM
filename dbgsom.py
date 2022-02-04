@@ -75,7 +75,6 @@ class DBGSOM:
             self.calculate_accumulative_error(winners, data)
             self.distribute_errors()
             self.add_new_neurons()
-            self.allocate_new_weights()
 
         #  Save the final weights
         self.weights = self.update_weights(winners, data)
@@ -150,7 +149,10 @@ class DBGSOM:
         new_weights = np.empty_like(self.weights)
         for i in range(len(new_weights)):
             numerator = gaussian_kernel.iloc[i].to_numpy() * neuron_counts * voronoi_set_centers.T
+            # print(np.isnan(numerator).sum())
             denumerator = (gaussian_kernel.iloc[i].to_numpy() * neuron_counts).sum()
+            # if denumerator == 0:
+            #     denumerator = 0.01
             new_weights[i] = (numerator.sum(axis=1) / denumerator)
 
         new_weights_dict = {neuron: weight for neuron, weight in zip(self.neurons, new_weights)}
@@ -175,7 +177,6 @@ class DBGSOM:
             samples = data[winners == winner]
             dist = np.linalg.norm(self.weights[winner] - samples, axis=1)
             error = dist.sum()
-            # errors[winner] = error
             self.som.nodes[self.neurons[winner]]["error"] = error
 
     def distribute_errors(self):
@@ -189,7 +190,6 @@ class DBGSOM:
             if nx.degree(self.som, node) == 1:
                 if self.som.nodes[node]["error"] > self.growing_treshold:
                     self.insert_neuron_1p(node)
-                    # self.set_weight_1p(node)
             elif nx.degree(self.som, node) == 2:
                 if self.som.nodes[node]["error"] > self.growing_treshold:
                     self.insert_neuron_2p(node)
@@ -241,6 +241,7 @@ class DBGSOM:
         self.add_new_connections(new_node)
 
     def insert_neuron_3p(self, node: tuple):
+
         pass
         # self.insert_neuron_2p(node)
 
@@ -248,29 +249,27 @@ class DBGSOM:
         """Add edges from new neuron to existing neighbors."""
         node_x, node_y = node
         for nbr in [
-                    (node_x, node_y+1),
-                    (node_x, node_y-1),
-                    (node_x-1, node_y),
-                    (node_x+1, node_y)]:
-            if nbr in self.neurons:
+            (node_x, node_y+1),
+            (node_x, node_y-1),
+            (node_x-1, node_y),
+            (node_x+1, node_y)
+            ]:
+            if nbr in self.som.nodes:
                 self.som.add_edge(node, nbr)
-
-    def allocate_new_weights(self):
-        pass
 
     def reduce_sigma(self) -> float:
         """Decay bandwidth in each epoch"""
         epoch = self.current_epoch
 
-        if epoch%2 != 0:
-            sigma = 0.1
-            # sigma = self.sigma * np.exp(-epoch/self.n_epochs)
+        if (epoch+1) % 10 != 0:
+            # sigma = 0.1
+            sigma = self.sigma * np.exp(-epoch/self.n_epochs)
         else:
             sigma = self.sigma * np.exp(-epoch/self.n_epochs)
 
         return sigma
 
-    def quantization_error(self, data):
+    def quantization_error(self, data) -> float:
         """Get the average distance from each sample to the nearest prototype.
         
         Parameters
@@ -278,7 +277,7 @@ class DBGSOM:
         
         data : ndarray
             data to cluster
-            """
+        """
         winners = self.get_winning_neurons(data, n_bmu=1)
         error_sum = 0
         for sample, winner in zip(data, winners):
@@ -287,11 +286,11 @@ class DBGSOM:
 
         return error_sum/len(data)
 
-    def topographic_error(self, data):
+    def topographic_error(self, data) -> float:
         """The topographic error is a measure for the topology preservation of the map.
         
         For each sample we get the two best matching units. If the BMU are connected on the grid,
-        there is no error. If the distance is larger an error occured. The total error is the number
+        there is no error. If the distance is larger an error occurred. The total error is the number
         of single errors divided yb the number of samples.
 
         Parameters
@@ -305,12 +304,7 @@ class DBGSOM:
             x = self.neurons[sample[0]]
             y = self.neurons[sample[1]]
             dist = self.pt_distances[x][y]
-            if dist > 1:
+            if dist > 5:
                 errors += 1
-
-        # for sample in sample_bmus.T:
-        #     dist = self.pt_distances.iloc[sample[0], sample[1]]
-        #     if dist > 1:
-        #         errors += 1
 
         return errors/data.shape[0]
