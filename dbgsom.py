@@ -74,15 +74,17 @@ class DBGSOM:
             self.weights = self.update_weights(winners, data)
             self.calculate_accumulative_error(winners, data)
             self.distribute_errors()
+            # if i % 5 == 0:
             self.add_new_neurons()
 
         #  Save the final weights
+        self.pt_distances = self.prototype_distances()
+        winners = self.get_winning_neurons(data, n_bmu=1)
         self.weights = self.update_weights(winners, data)
         self.weights = np.array(
             list(dict(self.som.nodes.data("weight")).values())
             )
         self.neurons = list(self.som.nodes)
-        self.pt_distances = self.prototype_distances()
 
     def create_som(self, init_vectors: np.ndarray) -> nx.Graph:
         """Create a graph containing the first four neurons."""
@@ -149,10 +151,9 @@ class DBGSOM:
         new_weights = np.empty_like(self.weights)
         for i in range(len(new_weights)):
             numerator = gaussian_kernel.iloc[i].to_numpy() * neuron_counts * voronoi_set_centers.T
-            # print(np.isnan(numerator).sum())
+            # if np.isnan(numerator).sum() > 0:
+                # print("error")
             denumerator = (gaussian_kernel.iloc[i].to_numpy() * neuron_counts).sum()
-            # if denumerator == 0:
-            #     denumerator = 0.01
             new_weights[i] = (numerator.sum(axis=1) / denumerator)
 
         new_weights_dict = {neuron: weight for neuron, weight in zip(self.neurons, new_weights)}
@@ -258,14 +259,18 @@ class DBGSOM:
                 self.som.add_edge(node, nbr)
 
     def reduce_sigma(self) -> float:
-        """Decay bandwidth in each epoch"""
+        """Decay bandwidth in each epoch."""
         epoch = self.current_epoch
-
-        if (epoch+1) % 10 != 0:
-            # sigma = 0.1
-            sigma = self.sigma * np.exp(-epoch/self.n_epochs)
+        if self.sigma is None:
+            sigma_zero = 0.3 * np.sqrt(self.som.number_of_nodes())
         else:
-            sigma = self.sigma * np.exp(-epoch/self.n_epochs)
+            sigma_zero = self.sigma
+
+        if (epoch) % 10 != 0:
+            # sigma = 0.1
+            sigma = sigma_zero * (1-(epoch/self.n_epochs)) + 0.5 * (epoch/self.n_epochs)
+        else:
+            sigma = sigma_zero * (1-(epoch/self.n_epochs)) + 0.5 * (epoch/self.n_epochs)
 
         return sigma
 
@@ -297,6 +302,11 @@ class DBGSOM:
         ----------
         data : ndarray
             Data to show the SOM.
+
+        Returns
+        -------
+        topographic error: float
+            Fraction of samples with topographic errors of all samples.
         """
         sample_bmus = self.get_winning_neurons(data, n_bmu=2)
         errors = 0
@@ -304,7 +314,7 @@ class DBGSOM:
             x = self.neurons[sample[0]]
             y = self.neurons[sample[1]]
             dist = self.pt_distances[x][y]
-            if dist > 5:
+            if dist > 2:
                 errors += 1
 
         return errors/data.shape[0]
