@@ -1,9 +1,6 @@
 from math import log
 import numpy as np
 import networkx as nx
-import pandas as pd
-from random import random
-
 
 class DBGSOM:
     """A Directed Batch Growing Self-Organizing Map.
@@ -32,7 +29,7 @@ class DBGSOM:
         self.SF = sf
         self.N_EPOCHS = n_epochs
         self.SIGMA = sigma
-        self.random_state = random_state
+        self.RANDOM_STATE = random_state
 
     def train(self, data):
         """Train SOM on training data."""
@@ -48,7 +45,7 @@ class DBGSOM:
         """
         data_dimensionality = data.shape[1]
         self.GROWING_TRESHOLD = -data_dimensionality * log(self.SF)
-        self.rng = np.random.default_rng(seed=self.random_state)
+        self.rng = np.random.default_rng(seed=self.RANDOM_STATE)
         #  Use four random points as initialization
         init_vectors = self.rng.choice(a=data, size=4, replace=False)
         self.som = self.create_som(init_vectors)
@@ -122,17 +119,12 @@ class DBGSOM:
 
         return winners
 
-    def prototype_distances(self) -> pd.DataFrame:
+    def prototype_distances(self) -> np.ndarray:
         """Return distance (shortest path) of
         two prototypes on the som.
         """
         g = self.som
-        nodes = list(g)
-        return pd.DataFrame(
-            nx.floyd_warshall_numpy(g),
-            index=nodes, 
-            columns=nodes
-        )
+        return nx.floyd_warshall_numpy(g)
 
     def update_weights(self, winners, data) -> np.ndarray:
         """The updated weight vectors of the neurons
@@ -151,12 +143,12 @@ class DBGSOM:
         new_weights = np.empty_like(self.weights)
         for i in range(len(new_weights)):
             numerator = (
-                gaussian_kernel.iloc[i].to_numpy() * 
+                gaussian_kernel[i] * 
                 neuron_counts * 
                 voronoi_set_centers.T
             ).sum(axis=1)
             denumerator = (
-                gaussian_kernel.iloc[i].to_numpy() * 
+                gaussian_kernel[i] * 
                 neuron_counts
             ).sum()
             new_weights[i] = (numerator / denumerator)
@@ -169,7 +161,7 @@ class DBGSOM:
 
         return new_weights
 
-    def gaussian_neighborhood(self) -> pd.DataFrame:
+    def gaussian_neighborhood(self) -> np.ndarray:
         """Return gaussian kernel of distances of two prototypes."""
         sigma = self.reduce_sigma()
         h = np.exp(-(self.pt_distances**2 / (2*sigma**2)))
@@ -338,7 +330,7 @@ class DBGSOM:
         for sample in sample_bmus.T:
             x = self.neurons[sample[0]]
             y = self.neurons[sample[1]]
-            dist = self.pt_distances[x][y]
+            dist = self.pt_distances[sample[0], sample[1]]
             if dist > 1:
                 errors += 1
 
