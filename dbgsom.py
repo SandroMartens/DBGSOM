@@ -30,8 +30,8 @@ class DBGSOM:
         random_state = None
     ) -> None:
         self.SF = sf
-        self.n_epochs = n_epochs
-        self.sigma = sigma
+        self.N_EPOCHS = n_epochs
+        self.SIGMA = sigma
         self.random_state = random_state
 
     def train(self, data):
@@ -39,18 +39,18 @@ class DBGSOM:
         self.initialization(data)
         self.grow(data)
 
-    def initialization(self, data):
+    def initialization(self, data) -> None:
         """First training phase.
 
         Initialize neurons in a square topology with random weights.
         Calculate growing threshold.
         Specify number of training epochs.
         """
-        D = data.shape[1]
-        self.growing_treshold = -D * log(self.SF)
-        rng = np.random.default_rng(seed=self.random_state)
+        data_dimensionality = data.shape[1]
+        self.GROWING_TRESHOLD = -data_dimensionality * log(self.SF)
+        self.rng = np.random.default_rng(seed=self.random_state)
         #  Use four random points as initialization
-        init_vectors = rng.choice(a=data, size=4)
+        init_vectors = self.rng.choice(a=data, size=4, replace=False)
         self.som = self.create_som(init_vectors)
         #  Get array with neurons as index and values as columns
         self.weights = np.array(
@@ -61,7 +61,7 @@ class DBGSOM:
 
     def grow(self, data):
         """Second training phase"""
-        for i in range(self.n_epochs):
+        for i in range(self.N_EPOCHS):
             self.current_epoch = i + 1
             #  Get array with neurons as index and values as columns
             self.weights = np.array(
@@ -75,7 +75,7 @@ class DBGSOM:
             self.calculate_accumulative_error(winners, data)
             self.distribute_errors()
             # if i % 5 == 0:
-            self.add_new_neurons()
+            self.add_new_neurons(data)
 
         #  Save the final weights
         self.pt_distances = self.prototype_distances()
@@ -154,11 +154,12 @@ class DBGSOM:
                 gaussian_kernel.iloc[i].to_numpy() * 
                 neuron_counts * 
                 voronoi_set_centers.T
-            )
-            # if np.isnan(numerator).sum() > 0:
-                # print("error")
-            denumerator = (gaussian_kernel.iloc[i].to_numpy() * neuron_counts).sum()
-            new_weights[i] = (numerator.sum(axis=1) / denumerator)
+            ).sum(axis=1)
+            denumerator = (
+                gaussian_kernel.iloc[i].to_numpy() * 
+                neuron_counts
+            ).sum()
+            new_weights[i] = (numerator / denumerator)
 
         new_weights_dict = {neuron: weight for neuron, weight in zip(self.neurons, new_weights)}
         nx.set_node_attributes(
@@ -169,10 +170,11 @@ class DBGSOM:
         return new_weights
 
     def gaussian_neighborhood(self) -> pd.DataFrame:
-        """Return gaussian kernel of two prototypes."""
+        """Return gaussian kernel of distances of two prototypes."""
         sigma = self.reduce_sigma()
         h = np.exp(-(self.pt_distances**2 / (2*sigma**2)))
-        # if self.current_epoch % 10 == 0:
+        # h = pd.DataFrame(np.identity(self.pt_distances.shape[0]))
+        # if self.current_epoch % 2 == 0:
         #     h = np.exp(-(self.pt_distances**2 / (2*sigma**2)))
         # else:
         #     h = pd.DataFrame(np.identity(self.pt_distances.shape[0]))
@@ -212,37 +214,37 @@ class DBGSOM:
                             0.5*node_error / n_boundary_neighbors
                         )
 
-    def add_new_neurons(self) -> None:
+    def add_new_neurons(self, data) -> None:
         """Add new neurons to places where the error is above 
         the growing threshold.
         """
         for node in self.neurons:
             if nx.degree(self.som, node) == 1:
-                if self.som.nodes[node]["error"] > self.growing_treshold:
-                    self.insert_neuron_1p(node)
-            elif nx.degree(self.som, node) == 2:
-                if self.som.nodes[node]["error"] > self.growing_treshold:
-                    self.insert_neuron_2p(node)
-            elif nx.degree(self.som, node) == 3:
-                if self.som.nodes[node]["error"] > self.growing_treshold:
+                if self.som.nodes[node]["error"] > self.GROWING_TRESHOLD:
                     self.insert_neuron_3p(node)
+            elif nx.degree(self.som, node) == 2:
+                if self.som.nodes[node]["error"] > self.GROWING_TRESHOLD:
+                    self.insert_neuron_2p(node, data)
+            elif nx.degree(self.som, node) == 3:
+                if self.som.nodes[node]["error"] > self.GROWING_TRESHOLD:
+                    self.insert_neuron_1p(node, data)
 
-    def insert_neuron_1p(self, node: tuple) -> None:
+    def insert_neuron_1p(self, node: tuple, data) -> None:
         """If only one position is free, add new neuron to that position."""
         node_x, node_y = node
         nbrs = self.som.adj[node]
         for nbr in [
                     (node_x, node_y+1),
                     (node_x, node_y-1),
-                    (node_x-1, node_y),
-                    (node_x+1, node_y)]:
+                    (node_x+1, node_y),
+                    (node_x-1, node_y)]:
             if nbr not in nbrs:
                 self.som.add_node(nbr)
-                self.som.nodes[nbr]["weight"] = 2*self.som.nodes[node]["weight"] + 1
+                self.som.nodes[nbr]["weight"] = 1.1 * self.som.nodes[node]["weight"] 
                 self.som.nodes[nbr]["error"] = 0
                 self.add_new_connections(nbr)
 
-    def insert_neuron_2p(self, node: tuple) -> None:
+    def insert_neuron_2p(self, node: tuple, data) -> None:
         """Add new neuron to the side with greater error."""
         nbr1, nbr2 = self.som.adj[node]
         (nbr1_x, nbr1_y), (nbr2_x, nbr2_y) = nbr1, nbr2
@@ -290,12 +292,12 @@ class DBGSOM:
     def reduce_sigma(self) -> float:
         """Decay bandwidth in each epoch."""
         epoch = self.current_epoch
-        if self.sigma is None:
+        if self.SIGMA is None:
             sigma_zero = 0.5 * np.sqrt(self.som.number_of_nodes())
         else:
-            sigma_zero = self.sigma
+            sigma_zero = self.SIGMA
 
-        sigma = sigma_zero * (1-(epoch/self.n_epochs)) + 0.5 * (epoch/self.n_epochs)
+        sigma = sigma_zero * (1-(epoch/self.N_EPOCHS)) + 0.5 * (epoch/self.N_EPOCHS)
         return sigma
 
     def quantization_error(self, data) -> float:
@@ -308,12 +310,11 @@ class DBGSOM:
             data to cluster
         """
         winners = self.get_winning_neurons(data, n_bmu=1)
-        error_sum = 0
+        error = 0
         for sample, winner in zip(data, winners):
-            error = np.linalg.norm(self.weights[winner] - sample)
-            error_sum += error
+            error += np.linalg.norm(self.weights[winner] - sample)
 
-        return error_sum/len(data)
+        return error/len(data)
 
     def topographic_error(self, data) -> float:
         """The topographic error is a measure for the topology preservation of the map.
