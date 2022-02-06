@@ -122,7 +122,7 @@ class DBGSOM:
         """The updated weight vectors of the neurons
         are calculated by the batch learning principle.
         """
-        voronoi_set_centers = np.empty_like(self.weights, dtype="float32")
+        voronoi_set_centers = np.zeros_like(self.weights, dtype="float32")
         for winner in np.unique(winners):
             voronoi_set_centers[winner] = data[winners == winner].mean(axis=0)
 
@@ -132,7 +132,7 @@ class DBGSOM:
             neuron_counts[winner] = count
 
         gaussian_kernel = self.gaussian_neighborhood()
-        new_weights = np.empty_like(self.weights)
+        new_weights = np.zeros_like(self.weights)
         for i in range(len(new_weights)):
             numerator = (
                 gaussian_kernel[i] * 
