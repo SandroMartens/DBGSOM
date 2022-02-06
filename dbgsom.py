@@ -79,12 +79,12 @@ class DBGSOM:
 
         #  Save the final weights
         self.pt_distances = self.prototype_distances()
+        self.neurons = list(self.som.nodes)
         winners = self.get_winning_neurons(data, n_bmu=1)
         self.weights = self.update_weights(winners, data)
         self.weights = np.array(
             list(dict(self.som.nodes.data("weight")).values())
             )
-        self.neurons = list(self.som.nodes)
 
     def create_som(self, init_vectors: np.ndarray) -> nx.Graph:
         """Create a graph containing the first four neurons."""
@@ -190,7 +190,7 @@ class DBGSOM:
 
     def distribute_errors(self):
         """For each neuron i which is not a boundary neuron and E_i > GT, 
-        a half value of Ei is equally distributed to the neighboring 
+        a half value of E_i is equally distributed to the neighboring 
         boundary neurons if exist.
         """
         for node, neighbors in self.som.adj.items():
@@ -209,7 +209,7 @@ class DBGSOM:
                 for neighbor in neighbors.keys():
                     if len(self.som.adj[neighbor].items()) < 4:
                         self.som.nodes[neighbor]["error"] += (
-                            node_error / n_boundary_neighbors
+                            0.5*node_error / n_boundary_neighbors
                         )
 
     def add_new_neurons(self) -> None:
@@ -296,15 +296,14 @@ class DBGSOM:
             sigma_zero = self.sigma
 
         sigma = sigma_zero * (1-(epoch/self.n_epochs)) + 0.5 * (epoch/self.n_epochs)
-        print(epoch/self.n_epochs)
         return sigma
 
     def quantization_error(self, data) -> float:
         """Get the average distance from each sample to the nearest prototype.
-        
+
         Parameters
         ----------
-        
+
         data : ndarray
             data to cluster
         """
