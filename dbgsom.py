@@ -58,6 +58,7 @@ class DBGSOM:
 
     def grow(self, data):
         """Second training phase"""
+        max_epoch = self.N_EPOCHS
         for i in range(self.N_EPOCHS):
             self.current_epoch = i + 1
             #  Get array with neurons as index and values as columns
@@ -70,18 +71,9 @@ class DBGSOM:
             self.pt_distances = self.prototype_distances()
             self.weights = self.update_weights(winners, data)
             self.calculate_accumulative_error(winners, data)
-            self.distribute_errors()
-            # if i % 5 == 0:
-            self.add_new_neurons(data)
-
-        #  Save the final weights
-        self.pt_distances = self.prototype_distances()
-        self.neurons = list(self.som.nodes)
-        winners = self.get_winning_neurons(data, n_bmu=1)
-        self.weights = self.update_weights(winners, data)
-        self.weights = np.array(
-            list(dict(self.som.nodes.data("weight")).values())
-            )
+            if self.current_epoch != max_epoch:
+                self.distribute_errors()
+                self.add_new_neurons(data)
 
     def create_som(self, init_vectors: np.ndarray) -> nx.Graph:
         """Create a graph containing the first four neurons."""
@@ -130,7 +122,7 @@ class DBGSOM:
         """The updated weight vectors of the neurons
         are calculated by the batch learning principle.
         """
-        voronoi_set_centers = np.empty_like(self.neurons, dtype="float32")
+        voronoi_set_centers = np.empty_like(self.weights, dtype="float32")
         for winner in np.unique(winners):
             voronoi_set_centers[winner] = data[winners == winner].mean(axis=0)
 
@@ -165,11 +157,11 @@ class DBGSOM:
         """Return gaussian kernel of distances of two prototypes."""
         sigma = self.reduce_sigma()
         h = np.exp(-(self.pt_distances**2 / (2*sigma**2)))
-        # h = pd.DataFrame(np.identity(self.pt_distances.shape[0]))
+        # h = np.identity(self.pt_distances.shape[0])
         # if self.current_epoch % 2 == 0:
         #     h = np.exp(-(self.pt_distances**2 / (2*sigma**2)))
         # else:
-        #     h = pd.DataFrame(np.identity(self.pt_distances.shape[0]))
+        #     h = np.identity(self.pt_distances.shape[0])
         return h
 
     def calculate_accumulative_error(self, winners, data) -> None:
