@@ -62,7 +62,7 @@ class DBGSOM:
     def grow(self, data):
         """Second training phase"""
         for i in range(self.n_epochs):
-            self.current_epoch = i
+            self.current_epoch = i + 1
             #  Get array with neurons as index and values as columns
             self.weights = np.array(
                 list(dict(self.som.nodes.data("weight")).values())
@@ -150,7 +150,11 @@ class DBGSOM:
         gaussian_kernel = self.gaussian_neighborhood()
         new_weights = np.empty_like(self.weights)
         for i in range(len(new_weights)):
-            numerator = gaussian_kernel.iloc[i].to_numpy() * neuron_counts * voronoi_set_centers.T
+            numerator = (
+                gaussian_kernel.iloc[i].to_numpy() * 
+                neuron_counts * 
+                voronoi_set_centers.T
+            )
             # if np.isnan(numerator).sum() > 0:
                 # print("error")
             denumerator = (gaussian_kernel.iloc[i].to_numpy() * neuron_counts).sum()
@@ -168,6 +172,10 @@ class DBGSOM:
         """Return gaussian kernel of two prototypes."""
         sigma = self.reduce_sigma()
         h = np.exp(-(self.pt_distances**2 / (2*sigma**2)))
+        # if self.current_epoch % 10 == 0:
+        #     h = np.exp(-(self.pt_distances**2 / (2*sigma**2)))
+        # else:
+        #     h = pd.DataFrame(np.identity(self.pt_distances.shape[0]))
         return h
 
     def calculate_accumulative_error(self, winners, data) -> None:
@@ -181,7 +189,28 @@ class DBGSOM:
             self.som.nodes[self.neurons[winner]]["error"] = error
 
     def distribute_errors(self):
-        pass
+        """For each neuron i which is not a boundary neuron and E_i > GT, 
+        a half value of Ei is equally distributed to the neighboring 
+        boundary neurons if exist.
+        """
+        for node, neighbors in self.som.adj.items():
+            if len(neighbors.items()) == 4:
+                is_boundary = False
+            else:
+                is_boundary = True
+
+            if not is_boundary:
+                node_error = self.som.nodes[node]["error"]
+                n_boundary_neighbors = 0
+                for neighbor in neighbors.keys():
+                    if len(self.som.adj[neighbor].items()) < 4:
+                        n_boundary_neighbors += 1
+
+                for neighbor in neighbors.keys():
+                    if len(self.som.adj[neighbor].items()) < 4:
+                        self.som.nodes[neighbor]["error"] += (
+                            node_error / n_boundary_neighbors
+                        )
 
     def add_new_neurons(self) -> None:
         """Add new neurons to places where the error is above 
@@ -254,7 +283,7 @@ class DBGSOM:
             (node_x, node_y-1),
             (node_x-1, node_y),
             (node_x+1, node_y)
-            ]:
+        ]:
             if nbr in self.som.nodes:
                 self.som.add_edge(node, nbr)
 
@@ -262,16 +291,12 @@ class DBGSOM:
         """Decay bandwidth in each epoch."""
         epoch = self.current_epoch
         if self.sigma is None:
-            sigma_zero = 0.3 * np.sqrt(self.som.number_of_nodes())
+            sigma_zero = 0.5 * np.sqrt(self.som.number_of_nodes())
         else:
             sigma_zero = self.sigma
 
-        if (epoch) % 10 != 0:
-            # sigma = 0.1
-            sigma = sigma_zero * (1-(epoch/self.n_epochs)) + 0.5 * (epoch/self.n_epochs)
-        else:
-            sigma = sigma_zero * (1-(epoch/self.n_epochs)) + 0.5 * (epoch/self.n_epochs)
-
+        sigma = sigma_zero * (1-(epoch/self.n_epochs)) + 0.5 * (epoch/self.n_epochs)
+        print(epoch/self.n_epochs)
         return sigma
 
     def quantization_error(self, data) -> float:
@@ -314,7 +339,7 @@ class DBGSOM:
             x = self.neurons[sample[0]]
             y = self.neurons[sample[1]]
             dist = self.pt_distances[x][y]
-            if dist > 2:
+            if dist > 1:
                 errors += 1
 
         return errors/data.shape[0]
