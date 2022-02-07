@@ -71,7 +71,7 @@ class DBGSOM:
             self.pt_distances = self.prototype_distances()
             self.weights = self.update_weights(winners, data)
             self.calculate_accumulative_error(winners, data)
-            if self.current_epoch != max_epoch:
+            if self.current_epoch < 0.5 * max_epoch:
                 self.distribute_errors()
                 self.add_new_neurons(data)
 
@@ -104,6 +104,7 @@ class DBGSOM:
         Return index of winning neuron or best matching units(s) for each sample.
         """
         distances = np.linalg.norm(self.weights[:, np.newaxis, :] - data, axis=2)
+        #  Argmin is 10x faster than argsort
         if n_bmu == 1:
             winners = np.argmin(distances, axis=0)
         else: 
@@ -122,7 +123,7 @@ class DBGSOM:
         """The updated weight vectors of the neurons
         are calculated by the batch learning principle.
         """
-        voronoi_set_centers = np.zeros_like(self.weights, dtype="float32")
+        voronoi_set_centers = self.weights
         for winner in np.unique(winners):
             voronoi_set_centers[winner] = data[winners == winner].mean(axis=0)
 
@@ -132,18 +133,19 @@ class DBGSOM:
             neuron_counts[winner] = count
 
         gaussian_kernel = self.gaussian_neighborhood()
-        new_weights = np.zeros_like(self.weights)
-        for i in range(len(new_weights)):
-            numerator = (
-                gaussian_kernel[i] * 
-                neuron_counts * 
-                voronoi_set_centers.T
-            ).sum(axis=1)
-            denumerator = (
-                gaussian_kernel[i] * 
-                neuron_counts
-            ).sum()
-            new_weights[i] = (numerator / denumerator)
+        new_weights = self.weights
+        numerator = np.sum(
+            voronoi_set_centers * 
+            neuron_counts[:, np.newaxis] * 
+            gaussian_kernel[:,:,np.newaxis],
+            axis=1
+        )
+        denominator = np.sum(
+            gaussian_kernel[:,:,np.newaxis] * 
+            neuron_counts[:,np.newaxis],
+            axis=1
+        )
+        new_weights = (numerator / denominator)
 
         new_weights_dict = {neuron: weight for neuron, weight in zip(self.neurons, new_weights)}
         nx.set_node_attributes(
@@ -158,10 +160,11 @@ class DBGSOM:
         sigma = self.reduce_sigma()
         h = np.exp(-(self.pt_distances**2 / (2*sigma**2)))
         # h = np.identity(self.pt_distances.shape[0])
-        # if self.current_epoch % 2 == 0:
+        # if self.current_epoch+1 % 10 == 0:
         #     h = np.exp(-(self.pt_distances**2 / (2*sigma**2)))
         # else:
         #     h = np.identity(self.pt_distances.shape[0])
+
         return h
 
     def calculate_accumulative_error(self, winners, data) -> None:
@@ -274,14 +277,18 @@ class DBGSOM:
                 self.som.add_edge(node, nbr)
 
     def reduce_sigma(self) -> float:
-        """Decay bandwidth in each epoch."""
+        """Return the neighborhood bandwidth for each epoch."""
         epoch = self.current_epoch
         if self.SIGMA is None:
             sigma_zero = 0.5 * np.sqrt(self.som.number_of_nodes())
         else:
             sigma_zero = self.SIGMA
-
         sigma = sigma_zero * (1-(epoch/self.N_EPOCHS)) + 0.5 * (epoch/self.N_EPOCHS)
+        # if epoch < 0.5 * self.N_EPOCHS:
+        #     sigma = sigma_zero * (1-(2*epoch/self.N_EPOCHS)) + 0.5 * (2*epoch/self.N_EPOCHS)
+        # else:
+        #     sigma = 0.5
+        # print(sigma)
         return sigma
 
     def quantization_error(self, data) -> float:
