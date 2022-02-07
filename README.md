@@ -3,11 +3,10 @@ A directed batch growing approach to enhance the topology preservation of self-o
 This project was inspired by the great [MiniSom](https://github.com/JustGlowing/minisom).
 
 ## How it works
-In a growing SOM we start with a small map and extend the grid according to some growing criterion. In case of the DBGSOM algorithm, we add neurons the edge of the map where the quantization error of the boundary neuron is above a given growing threshold.
+In a growing SOM we start with a small map and extend the grid according to some growing criterion. In case of the DBGSOM algorithm, we add neurons the edge of the map where the quantization error of the boundary neurons is above a given growing threshold.
 
 ## Dependencies
 - Numpy
-- Pandas
 - NetworkX
 
 ## References
