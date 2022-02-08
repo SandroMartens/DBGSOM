@@ -10,18 +10,18 @@ class DBGSOM:
     sf : float (default = 0.8)
         Spreading factor to calculate the treshold for neuron insertion.
 
-    n_epochs : int
+    n_epochs : int (default = 30)
         Number of training epochs.
 
-    sigma : float (Default = 1)
+    sigma : float (optional)
         Neighborhood bandwidth.
 
-    random_state: any
+    random_state: any (optional)
         Random state for weight initialization.
     """
     def __init__(
         self,
-        n_epochs: int,
+        n_epochs: int = 30,
         sf: float = 0.8,
         sigma: float = 1,
         random_state = None
@@ -40,15 +40,14 @@ class DBGSOM:
         """First training phase.
 
         Initialize neurons in a square topology with random weights.
-        Calculate growing threshold.
-        Specify number of training epochs.
+        Calculate growing threshold as gt = -data_dimensions * log(spreading_factor).
+        Create a graph containing the first four neurons in a square with init vectors.
         """
         data_dimensionality = data.shape[1]
         self.GROWING_TRESHOLD = -data_dimensionality * log(self.SF)
         self.rng = np.random.default_rng(seed=self.RANDOM_STATE)
         #  Use four random points as initialization
-        init_vectors = self.rng.choice(a=data, size=4, replace=False)
-        self.som = self.create_som(init_vectors)
+        self.som = self.create_som(data)
         self.distance_matrix = nx.floyd_warshall_numpy(self.som)
         #  Get array with neurons as index and values as columns
         self.weights = np.array(
@@ -70,7 +69,7 @@ class DBGSOM:
             if (len(self.som.nodes) > len(self.neurons) 
                 or self.current_epoch == 1):
                 self.neurons = list(self.som.nodes)
-                self.distance_matrix = self.get_distance_matrix()
+                self.update_distance_matrix()
 
             winners = self.get_winning_neurons(data, n_bmu=1)
             self.weights = self.update_weights(winners, data)
@@ -80,8 +79,11 @@ class DBGSOM:
                 self.distribute_errors()
                 self.add_new_neurons(data)
 
-    def create_som(self, init_vectors: np.ndarray) -> nx.Graph:
-        """Create a graph containing the first four neurons in a square. Each neuron has a weight vector randomly chosen from the training data."""
+    def create_som(self, data) -> nx.Graph:
+        """Create a graph containing the first four neurons in a square. 
+        Each neuron has a weight vector randomly chosen from the training samples.
+        """
+        init_vectors = self.rng.choice(a=data, size=4, replace=False)
         neurons = [
             ((0, 0), {"weight": init_vectors[0]}),
             ((0, 1), {"weight": init_vectors[1]}),
@@ -118,14 +120,7 @@ class DBGSOM:
 
         return winners
 
-    def get_distance_matrix(self) -> np.ndarray:
-        """Return distance (shortest path) of
-        two prototypes on the som.
-        """
-        new_distances = self.extend_distance_matrix()
-        return new_distances
-
-    def extend_distance_matrix(self):
+    def update_distance_matrix(self):
         """Extend the distance matrix by adding the distances of the new neurons to the existing matrix.
 
         Then apply n_new - n_old iterations of the Floyd-Warshall algorithm to update all paths lengths.
@@ -153,12 +148,17 @@ class DBGSOM:
                 new_distances, 
                 new_distances[np.newaxis, i, :] + new_distances[:, i, np.newaxis]
             )
-        return new_distances
+        
+        self.distance_matrix = new_distances
 
 
     def update_weights(self, winners, data) -> np.ndarray:
-        """The updated weight vectors of the neurons
-        are calculated by the batch learning principle.
+        """Update the weight vectors according to the batch learning rule.
+
+        Step 1: Calculate the center of the voronoi set of the winning neurons.
+        Step 2: Count the number of samples in each voronoi set.
+        Step 3: Calculate the kernel function for all neurons.
+        Step 4: New weight vector = sum(kernel * n_samples * centers) / sum(kernel * n_samples)
         """
         voronoi_set_centers = self.weights
         for winner in np.unique(winners):
@@ -207,7 +207,7 @@ class DBGSOM:
 
     def calculate_accumulative_error(self, winners, data) -> None:
         """Get the quantization error for each neuron 
-        and save it to the graph.
+        and save it as "error" to the graph.
         """
         for winner in range(len(self.neurons)):
             samples = data[winners == winner]
@@ -255,14 +255,20 @@ class DBGSOM:
                     self.insert_neuron_1p(node, data)
 
     def insert_neuron_1p(self, node: tuple, data) -> None:
-        """If only one position is free, add new neuron to that position."""
+        """Add neuron to the only free position.
+        The available positions are:
+        x_i, y_i + 1
+        x_i, y_i - 1
+        x_i + 1, y_i
+        x_i - 1, y_i
+        """
         node_x, node_y = node
         nbrs = self.som.adj[node]
         for nbr in [
-                    (node_x, node_y+1),
-                    (node_x, node_y-1),
-                    (node_x+1, node_y),
-                    (node_x-1, node_y)]:
+            (node_x, node_y+1),
+            (node_x, node_y-1),
+            (node_x+1, node_y),
+            (node_x-1, node_y)]:
             if nbr not in nbrs:
                 self.som.add_node(nbr)
                 self.som.nodes[nbr]["weight"] = 1.1 * self.som.nodes[node]["weight"] 
@@ -316,7 +322,10 @@ class DBGSOM:
                 self.som.add_edge(node, nbr)
 
     def reduce_sigma(self) -> float:
-        """Return the neighborhood bandwidth for each epoch."""
+        """Return the neighborhood bandwidth for each epoch.
+        If no sigma is given, the starting bandwidth is set to 0.5 * the root of the number of neurons in each epoch.
+        The ending bandwidth is set to 0.5.
+        """
         epoch = self.current_epoch
         if self.SIGMA is None:
             sigma_zero = 0.5 * np.sqrt(self.som.number_of_nodes())
@@ -339,6 +348,7 @@ class DBGSOM:
         data : ndarray
             data to cluster
         """
+
         winners = self.get_winning_neurons(data, n_bmu=1)
         error = 0
         for sample, winner in zip(data, winners):
