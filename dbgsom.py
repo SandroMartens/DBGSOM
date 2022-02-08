@@ -49,6 +49,7 @@ class DBGSOM:
         #  Use four random points as initialization
         init_vectors = self.rng.choice(a=data, size=4, replace=False)
         self.som = self.create_som(init_vectors)
+        self.distance_matrix = nx.floyd_warshall_numpy(self.som)
         #  Get array with neurons as index and values as columns
         self.weights = np.array(
             list(dict(self.som.nodes.data("weight")).values())
@@ -66,17 +67,21 @@ class DBGSOM:
                 list(dict(self.som.nodes.data("weight")).values())
             )
             #  List of node indices
-            self.neurons = list(self.som.nodes)
+            if (len(self.som.nodes) > len(self.neurons) 
+                or self.current_epoch == 1):
+                self.neurons = list(self.som.nodes)
+                self.distance_matrix = self.get_distance_matrix()
+
             winners = self.get_winning_neurons(data, n_bmu=1)
-            self.pt_distances = self.prototype_distances()
             self.weights = self.update_weights(winners, data)
             self.calculate_accumulative_error(winners, data)
+
             if self.current_epoch < 0.5 * max_epoch:
                 self.distribute_errors()
                 self.add_new_neurons(data)
 
     def create_som(self, init_vectors: np.ndarray) -> nx.Graph:
-        """Create a graph containing the first four neurons."""
+        """Create a graph containing the first four neurons in a square. Each neuron has a weight vector randomly chosen from the training data."""
         neurons = [
             ((0, 0), {"weight": init_vectors[0]}),
             ((0, 1), {"weight": init_vectors[1]}),
@@ -104,6 +109,7 @@ class DBGSOM:
         Return index of winning neuron or best matching units(s) for each sample.
         """
         distances = np.linalg.norm(self.weights[:, np.newaxis, :] - data, axis=2)
+        # distances = (self.weights / np.linalg.norm(self.weights, axis=1)[:,np.newaxis]) @ data.T
         #  Argmin is 10x faster than argsort
         if n_bmu == 1:
             winners = np.argmin(distances, axis=0)
@@ -112,12 +118,43 @@ class DBGSOM:
 
         return winners
 
-    def prototype_distances(self) -> np.ndarray:
+    def get_distance_matrix(self) -> np.ndarray:
         """Return distance (shortest path) of
         two prototypes on the som.
         """
-        g = self.som
-        return nx.floyd_warshall_numpy(g)
+        new_distances = self.extend_distance_matrix()
+        return new_distances
+
+    def extend_distance_matrix(self):
+        """Extend the distance matrix by adding the distances of the new neurons to the existing matrix.
+
+        Then apply n_new - n_old iterations of the Floyd-Warshall algorithm to update all paths lengths.
+        """
+        graph = self.som
+        distances = self.distance_matrix
+
+        n_new_nodes = len(graph.nodes) - distances.shape[0]
+        # Create a new distance matrix
+        new_distances = np.zeros((distances.shape[0] + n_new_nodes, distances.shape[1] + n_new_nodes))
+        # Fill the new distance matrix with the old distances
+        new_distances[:distances.shape[0], :distances.shape[1]] = distances
+        # Fill the new distance matrix with the distances between the new nodes and the existing nodes
+        for i in range(new_distances.shape[0]):
+            for j in range(distances.shape[1], new_distances.shape[1]):
+                node_i = self.neurons[i]
+                node_j = self.neurons[j]
+                dist_i_j = nx.dijkstra_path_length(graph, node_i, node_j)
+                new_distances[i, j] = dist_i_j
+                new_distances[j, i] = dist_i_j
+
+        for i in range(distances.shape[1], new_distances.shape[1]):
+            # The second term has the same shape as A due to broadcasting
+            new_distances = np.minimum(
+                new_distances, 
+                new_distances[np.newaxis, i, :] + new_distances[:, i, np.newaxis]
+            )
+        return new_distances
+
 
     def update_weights(self, winners, data) -> np.ndarray:
         """The updated weight vectors of the neurons
@@ -127,13 +164,13 @@ class DBGSOM:
         for winner in np.unique(winners):
             voronoi_set_centers[winner] = data[winners == winner].mean(axis=0)
 
-        neuron_counts = np.zeros(shape=len(self.neurons))
+        neuron_counts = np.ones(shape=len(self.neurons))/len(self.neurons)
         winners, winner_counts = np.unique(winners, return_counts=True)
         for winner, count in zip(winners, winner_counts):
             neuron_counts[winner] = count
 
         gaussian_kernel = self.gaussian_neighborhood()
-        new_weights = self.weights
+        # new_weights = self.weights
         numerator = np.sum(
             voronoi_set_centers * 
             neuron_counts[:, np.newaxis] * 
@@ -158,9 +195,10 @@ class DBGSOM:
     def gaussian_neighborhood(self) -> np.ndarray:
         """Return gaussian kernel of distances of two prototypes."""
         sigma = self.reduce_sigma()
-        h = np.exp(-(self.pt_distances**2 / (2*sigma**2)))
+        h = np.exp(-(self.distance_matrix**2 / (2*sigma**2)))
         # h = np.identity(self.pt_distances.shape[0])
-        # if self.current_epoch+1 % 10 == 0:
+        # if (self.current_epoch % 10 == 0 
+        #     and self.current_epoch > 0.5 * self.N_EPOCHS):
         #     h = np.exp(-(self.pt_distances**2 / (2*sigma**2)))
         # else:
         #     h = np.identity(self.pt_distances.shape[0])
@@ -243,7 +281,7 @@ class DBGSOM:
                 new_weight = 2 * self.som.nodes[node]["weight"] - self.som.nodes[nbr2]["weight"]
             else:
                 new_node = (n_x+1, n_y)
-                new_weight = 2 * self.som.nodes[node]["weight"] - self.som.nodes[nbr2]["weight"]
+                new_weight = 2 * self.som.nodes[node]["weight"] - self.som.nodes[nbr1]["weight"]
         #  Case b: Two neurons with no adjacent neurons
         else:
             nbr1_err = self.som.nodes[(nbr1_x, nbr1_y)]["error"]
@@ -254,6 +292,7 @@ class DBGSOM:
             else:
                 new_node = (n_x + (n_x-nbr1_x), n_y + (n_y-nbr1_y))
                 new_weight = 2 * self.som.nodes[node]["weight"] - self.som.nodes[nbr1]["weight"]
+
         self.som.add_node(new_node)
         self.som.nodes[new_node]["weight"] = new_weight
         self.som.nodes[new_node]["error"] = 0
@@ -322,14 +361,12 @@ class DBGSOM:
         Returns
         -------
         topographic error: float
-            Fraction of samples with topographic errors of all samples.
+            Fraction of samples with topographic errors over all samples.
         """
         sample_bmus = self.get_winning_neurons(data, n_bmu=2)
         errors = 0
         for sample in sample_bmus.T:
-            x = self.neurons[sample[0]]
-            y = self.neurons[sample[1]]
-            dist = self.pt_distances[sample[0], sample[1]]
+            dist = self.distance_matrix[sample[0], sample[1]]
             if dist > 1:
                 errors += 1
 
