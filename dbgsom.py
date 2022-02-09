@@ -46,7 +46,6 @@ class DBGSOM:
         data_dimensionality = data.shape[1]
         self.GROWING_TRESHOLD = -data_dimensionality * log(self.SF)
         self.rng = np.random.default_rng(seed=self.RANDOM_STATE)
-        #  Use four random points as initialization
         self.som = self.create_som(data)
         self.distance_matrix = nx.floyd_warshall_numpy(self.som)
         #  Get array with neurons as index and values as columns
@@ -121,43 +120,29 @@ class DBGSOM:
         return winners
 
     def update_distance_matrix(self):
-        """Extend the distance matrix by adding the distances of the new neurons to the existing matrix.
-
-        Then apply n_new - n_old iterations of the Floyd-Warshall algorithm to update all paths lengths.
+        """Update distance matrix between neurons. 
+        Only paths of length =< 2 * sigma are considered for performance reasons.
         """
-        graph = self.som
-        distances = self.distance_matrix
+        som = self.som
+        sigma = self.reduce_sigma()
+        n = len(self.neurons)
+        m = np.zeros((n, n))
+        m.fill(np.inf)
+        dist_dict = dict(nx.all_pairs_shortest_path_length(som, cutoff=2*sigma))
+        for i1, neuron1 in enumerate(self.neurons):
+            for i2, neuron2 in enumerate(self.neurons):
+                if neuron1 in dist_dict.keys():
+                    if neuron2 in dist_dict[neuron1].keys():
+                        m[i1, i2] = dist_dict[neuron1][neuron2]
 
-        n_new_nodes = len(graph.nodes) - distances.shape[0]
-        # Create a new distance matrix
-        new_distances = np.zeros((distances.shape[0] + n_new_nodes, distances.shape[1] + n_new_nodes))
-        # Fill the new distance matrix with the old distances
-        new_distances[:distances.shape[0], :distances.shape[1]] = distances
-        # Fill the new distance matrix with the distances between the new nodes and the existing nodes
-        for i in range(new_distances.shape[0]):
-            for j in range(distances.shape[1], new_distances.shape[1]):
-                node_i = self.neurons[i]
-                node_j = self.neurons[j]
-                dist_i_j = nx.dijkstra_path_length(graph, node_i, node_j)
-                new_distances[i, j] = dist_i_j
-                new_distances[j, i] = dist_i_j
-
-        for i in range(distances.shape[1], new_distances.shape[1]):
-            # The second term has the same shape as A due to broadcasting
-            new_distances = np.minimum(
-                new_distances, 
-                new_distances[np.newaxis, i, :] + new_distances[:, i, np.newaxis]
-            )
-        
-        self.distance_matrix = new_distances
-
+        self.distance_matrix = m
 
     def update_weights(self, winners, data) -> np.ndarray:
         """Update the weight vectors according to the batch learning rule.
 
-        Step 1: Calculate the center of the voronoi set of the winning neurons.
+        Step 1: Calculate the center of the voronoi set of the neurons.
         Step 2: Count the number of samples in each voronoi set.
-        Step 3: Calculate the kernel function for all neurons.
+        Step 3: Calculate the kernel function for all neuron pairs.
         Step 4: New weight vector = sum(kernel * n_samples * centers) / sum(kernel * n_samples)
         """
         voronoi_set_centers = self.weights
@@ -257,10 +242,10 @@ class DBGSOM:
     def insert_neuron_1p(self, node: tuple, data) -> None:
         """Add neuron to the only free position.
         The available positions are:
-        x_i, y_i + 1
-        x_i, y_i - 1
-        x_i + 1, y_i
-        x_i - 1, y_i
+        - x_i, y_i + 1
+        - x_i, y_i - 1
+        - x_i + 1, y_i
+        - x_i - 1, y_i
         """
         node_x, node_y = node
         nbrs = self.som.adj[node]
@@ -323,7 +308,8 @@ class DBGSOM:
 
     def reduce_sigma(self) -> float:
         """Return the neighborhood bandwidth for each epoch.
-        If no sigma is given, the starting bandwidth is set to 0.5 * the root of the number of neurons in each epoch.
+        If no sigma is given, the starting bandwidth is set to 
+        0.5 * the squareroot of the number of neurons in each epoch.
         The ending bandwidth is set to 0.5.
         """
         epoch = self.current_epoch
@@ -344,9 +330,13 @@ class DBGSOM:
 
         Parameters
         ----------
-
         data : ndarray
             data to cluster
+
+        Returns
+        -------
+        error: float
+            average distance from each sample to the nearest prototype
         """
 
         winners = self.get_winning_neurons(data, n_bmu=1)
