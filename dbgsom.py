@@ -287,9 +287,17 @@ class DBGSOM:
         self.add_new_connections(new_node)
 
     def insert_neuron_3p(self, node: tuple):
+        """When the neuron has three free available positions, add the new neuron to the opposite
+        side of the eixsting neighbor.
+        """
+        neighbor = list(self.som.neighbors(node))[0]
+        new_node = (2 * node[0] - neighbor[0], 2 * node[1] - neighbor[1])
+        new_weight = 2 * self.som.nodes[node]["weight"] - self.som.nodes[neighbor]["weight"]
 
-        pass
-        # self.insert_neuron_2p(node)
+        self.som.add_node(new_node)
+        self.som.nodes[new_node]["weight"] = new_weight
+        self.som.nodes[new_node]["error"] = 0
+        self.add_new_connections(new_node)
 
     def add_new_connections(self, node: tuple) -> None:
         """Add edges from new neuron to existing neighbors."""
