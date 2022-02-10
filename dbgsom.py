@@ -43,6 +43,7 @@ class DBGSOM:
         Calculate growing threshold as gt = -data_dimensions * log(spreading_factor).
         Create a graph containing the first four neurons in a square with init vectors.
         """
+        data = data.astype(np.float32)
         data_dimensionality = data.shape[1]
         self.GROWING_TRESHOLD = -data_dimensionality * log(self.SF)
         self.rng = np.random.default_rng(seed=self.RANDOM_STATE)
@@ -73,8 +74,11 @@ class DBGSOM:
             winners = self.get_winning_neurons(data, n_bmu=1)
             self.weights = self.update_weights(winners, data)
             self.calculate_accumulative_error(winners, data)
-
-            if self.current_epoch < 0.5 * max_epoch:
+            #  Only add new neurons in each 5th epoch. This leads to a lower topographic error.
+            if (
+                self.current_epoch < 0.5 * max_epoch and
+                self.current_epoch % 5 == 0
+            ):
                 self.distribute_errors()
                 self.add_new_neurons(data)
 
@@ -148,7 +152,7 @@ class DBGSOM:
         for winner in np.unique(winners):
             voronoi_set_centers[winner] = data[winners == winner].mean(axis=0)
 
-        neuron_counts = np.ones(shape=len(self.neurons))/len(self.neurons)
+        neuron_counts = np.ones(shape=len(self.neurons), dtype=np.float32)
         winners, winner_counts = np.unique(winners, return_counts=True)
         for winner, count in zip(winners, winner_counts):
             neuron_counts[winner] = count
@@ -176,11 +180,10 @@ class DBGSOM:
         return new_weights
 
     def gaussian_neighborhood(self) -> np.ndarray:
-        """Calculate the gaussian neighborhood function for all neuron pairs.
-        """
+        """Calculate the gaussian neighborhood function for all neuron pairs."""
         sigma = self.reduce_sigma()
-        h = np.exp(-(self.distance_matrix**2 / (2*sigma**2)))
-        # if self.current_epoch % 2 == 0:
+        h = np.exp(-(self.distance_matrix**2 / (2*sigma**2))).astype(np.float32)
+        # if self.current_epoch % 5 == 0:
         #     h = np.exp(-(self.distance_matrix**2 / (2*sigma**2)))
         # else:
         #     h = np.identity(self.distance_matrix.shape[0])
@@ -286,9 +289,9 @@ class DBGSOM:
         self.som.nodes[new_node]["error"] = 0
         self.add_new_connections(new_node)
 
-    def insert_neuron_3p(self, node: tuple):
+    def insert_neuron_3p(self, node: tuple) -> None:
         """When the neuron has three free available positions, add the new neuron to the opposite
-        side of the eixsting neighbor.
+        side of the existing neighbor.
         """
         neighbor = list(self.som.neighbors(node))[0]
         new_node = (2 * node[0] - neighbor[0], 2 * node[1] - neighbor[1])
@@ -316,18 +319,27 @@ class DBGSOM:
         If no sigma is given, the starting bandwidth is set to 
         0.5 * the squareroot of the number of neurons in each epoch.
         The ending bandwidth is set to 0.5.
+
+        We have two phases: In the first half, we have a decreasing sigma from sigma_max to 0.5.
+        In the second half, sigma stays constant at 0.5.
+
+        Returns:
+            float: The neighborhood bandwidth for each epoch.
         """
         epoch = self.current_epoch
         if self.SIGMA is None:
             sigma_zero = 0.5 * np.sqrt(self.som.number_of_nodes())
         else:
             sigma_zero = self.SIGMA
-        sigma = sigma_zero * (1-(epoch/self.N_EPOCHS)) + 0.5 * (epoch/self.N_EPOCHS)
+
+        sigma = sigma_zero * (1 - epoch / self.N_EPOCHS) + 1 * (epoch / self.N_EPOCHS)
         # if epoch < 0.5 * self.N_EPOCHS:
-        #     sigma = sigma_zero * (1-(2*epoch/self.N_EPOCHS)) + 0.5 * (2*epoch/self.N_EPOCHS)
+        #     sigma = sigma_zero * (1-(2*epoch/self.N_EPOCHS)) + 0.6 * (2*epoch/self.N_EPOCHS)
         # else:
-        #     sigma = 0.5
+        #     sigma = 0.6
         # print(sigma)
+        # print(0.5 * np.sqrt(self.som.number_of_nodes()))
+
         return sigma
 
     def quantization_error(self, data) -> float:
