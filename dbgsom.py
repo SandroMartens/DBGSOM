@@ -1,6 +1,7 @@
 from math import log
 import numpy as np
 import networkx as nx
+from scipy.spatial.distance import cdist
 
 class DBGSOM:
     """A Directed Batch Growing Self-Organizing Map.
@@ -39,7 +40,6 @@ class DBGSOM:
     def initialization(self, data) -> None:
         """First training phase.
 
-        Initialize neurons in a square topology with random weights.
         Calculate growing threshold as gt = -data_dimensions * log(spreading_factor).
         Create a graph containing the first four neurons in a square with init vectors.
         """
@@ -109,8 +109,7 @@ class DBGSOM:
 
         Return index of winning neuron or best matching units(s) for each sample.
         """
-        distances = np.linalg.norm(self.weights[:, np.newaxis, :] - data, axis=2)
-        # distances = (self.weights / np.linalg.norm(self.weights, axis=1)[:,np.newaxis]) @ data.T
+        distances = cdist(self.weights, data)
         #  Argmin is 10x faster than argsort
         if n_bmu == 1:
             winners = np.argmin(distances, axis=0)
@@ -128,7 +127,7 @@ class DBGSOM:
         n = len(self.neurons)
         m = np.zeros((n, n))
         m.fill(np.inf)
-        dist_dict = dict(nx.all_pairs_shortest_path_length(som, cutoff=2*sigma))
+        dist_dict = dict(nx.all_pairs_shortest_path_length(som, cutoff=3*sigma))
         for i1, neuron1 in enumerate(self.neurons):
             for i2, neuron2 in enumerate(self.neurons):
                 if neuron1 in dist_dict.keys():
@@ -155,7 +154,6 @@ class DBGSOM:
             neuron_counts[winner] = count
 
         gaussian_kernel = self.gaussian_neighborhood()
-        # new_weights = self.weights
         numerator = np.sum(
             voronoi_set_centers * 
             neuron_counts[:, np.newaxis] * 
@@ -178,15 +176,14 @@ class DBGSOM:
         return new_weights
 
     def gaussian_neighborhood(self) -> np.ndarray:
-        """Return gaussian kernel of distances of two prototypes."""
+        """Calculate the gaussian neighborhood function for all neuron pairs.
+        """
         sigma = self.reduce_sigma()
         h = np.exp(-(self.distance_matrix**2 / (2*sigma**2)))
-        # h = np.identity(self.pt_distances.shape[0])
-        # if (self.current_epoch % 10 == 0 
-        #     and self.current_epoch > 0.5 * self.N_EPOCHS):
-        #     h = np.exp(-(self.pt_distances**2 / (2*sigma**2)))
+        # if self.current_epoch % 2 == 0:
+        #     h = np.exp(-(self.distance_matrix**2 / (2*sigma**2)))
         # else:
-        #     h = np.identity(self.pt_distances.shape[0])
+        #     h = np.identity(self.distance_matrix.shape[0])
 
         return h
 
@@ -338,7 +335,6 @@ class DBGSOM:
         error: float
             average distance from each sample to the nearest prototype
         """
-
         winners = self.get_winning_neurons(data, n_bmu=1)
         error = 0
         for sample, winner in zip(data, winners):
