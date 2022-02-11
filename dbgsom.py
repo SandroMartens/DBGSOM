@@ -34,10 +34,10 @@ class DBGSOM:
 
     def train(self, data):
         """Train SOM on training data."""
-        self.initialization(data)
-        self.grow(data)
+        self._initialization(data)
+        self._grow(data)
 
-    def initialization(self, data) -> None:
+    def _initialization(self, data) -> None:
         """First training phase.
 
         Calculate growing threshold as gt = -data_dimensions * log(spreading_factor).
@@ -47,7 +47,7 @@ class DBGSOM:
         data_dimensionality = data.shape[1]
         self.GROWING_TRESHOLD = -data_dimensionality * log(self.SF)
         self.rng = np.random.default_rng(seed=self.RANDOM_STATE)
-        self.som = self.create_som(data)
+        self.som = self._create_som(data)
         self.distance_matrix = nx.floyd_warshall_numpy(self.som)
         #  Get array with neurons as index and values as columns
         self.weights = np.array(
@@ -56,7 +56,7 @@ class DBGSOM:
         #  List of node indices
         self.neurons = list(self.som.nodes)
 
-    def grow(self, data):
+    def _grow(self, data):
         """Second training phase"""
         max_epoch = self.N_EPOCHS
         for i in range(self.N_EPOCHS):
@@ -69,20 +69,20 @@ class DBGSOM:
             if (len(self.som.nodes) > len(self.neurons) 
                 or self.current_epoch == 1):
                 self.neurons = list(self.som.nodes)
-                self.update_distance_matrix()
+                self._update_distance_matrix()
 
-            winners = self.get_winning_neurons(data, n_bmu=1)
-            self.weights = self.update_weights(winners, data)
-            self.calculate_accumulative_error(winners, data)
+            winners = self._get_winning_neurons(data, n_bmu=1)
+            self.weights = self._update_weights(winners, data)
+            self._calculate_accumulative_error(winners, data)
             #  Only add new neurons in each 5th epoch. This leads to a lower topographic error.
             if (
                 self.current_epoch < 0.5 * max_epoch and
                 self.current_epoch % 3 == 0
             ):
-                self.distribute_errors()
-                self.add_new_neurons(data)
+                self._distribute_errors()
+                self._add_new_neurons(data)
 
-    def create_som(self, data) -> nx.Graph:
+    def _create_som(self, data) -> nx.Graph:
         """Create a graph containing the first four neurons in a square. 
         Each neuron has a weight vector randomly chosen from the training samples.
         """
@@ -108,7 +108,7 @@ class DBGSOM:
 
         return som
 
-    def get_winning_neurons(self, data, n_bmu:int) -> np.ndarray:
+    def _get_winning_neurons(self, data, n_bmu:int) -> np.ndarray:
         """Calculate distances from each neuron to each sample.
 
         Return index of winning neuron or best matching units(s) for each sample.
@@ -122,12 +122,12 @@ class DBGSOM:
 
         return winners
 
-    def update_distance_matrix(self):
+    def _update_distance_matrix(self):
         """Update distance matrix between neurons. 
         Only paths of length =< 3 * sigma are considered for performance reasons.
         """
         som = self.som
-        sigma = self.reduce_sigma()
+        sigma = self._reduce_sigma()
         n = len(self.neurons)
         m = np.zeros((n, n))
         m.fill(np.inf)
@@ -140,7 +140,7 @@ class DBGSOM:
 
         self.distance_matrix = m
 
-    def update_weights(self, winners, data) -> np.ndarray:
+    def _update_weights(self, winners, data) -> np.ndarray:
         """Update the weight vectors according to the batch learning rule.
 
         Step 1: Calculate the center of the voronoi set of the neurons.
@@ -157,7 +157,7 @@ class DBGSOM:
         for winner, count in zip(winners, winner_counts):
             neuron_counts[winner] = count
 
-        gaussian_kernel = self.gaussian_neighborhood()
+        gaussian_kernel = self._gaussian_neighborhood()
         numerator = np.sum(
             voronoi_set_centers * 
             neuron_counts[:, np.newaxis] * 
@@ -179,9 +179,9 @@ class DBGSOM:
 
         return new_weights
 
-    def gaussian_neighborhood(self) -> np.ndarray:
+    def _gaussian_neighborhood(self) -> np.ndarray:
         """Calculate the gaussian neighborhood function for all neuron pairs."""
-        sigma = self.reduce_sigma()
+        sigma = self._reduce_sigma()
         h = np.exp(-(self.distance_matrix**2 / (2*sigma**2))).astype(np.float32)
         # if self.current_epoch % 5 == 0:
         #     h = np.exp(-(self.distance_matrix**2 / (2*sigma**2)))
@@ -190,7 +190,7 @@ class DBGSOM:
 
         return h
 
-    def calculate_accumulative_error(self, winners, data) -> None:
+    def _calculate_accumulative_error(self, winners, data) -> None:
         """Get the quantization error for each neuron 
         and save it as "error" to the graph.
         """
@@ -200,7 +200,7 @@ class DBGSOM:
             error = dist.sum()
             self.som.nodes[self.neurons[winner]]["error"] = error
 
-    def distribute_errors(self):
+    def _distribute_errors(self):
         """For each neuron i which is not a boundary neuron and E_i > GT, 
         a half value of E_i is equally distributed to the neighboring 
         boundary neurons if exist.
@@ -224,22 +224,22 @@ class DBGSOM:
                             0.5*node_error / n_boundary_neighbors
                         )
 
-    def add_new_neurons(self, data) -> None:
+    def _add_new_neurons(self, data) -> None:
         """Add new neurons to places where the error is above 
         the growing threshold.
         """
         for node in self.neurons:
             if nx.degree(self.som, node) == 1:
                 if self.som.nodes[node]["error"] > self.GROWING_TRESHOLD:
-                    self.insert_neuron_3p(node)
+                    self._insert_neuron_3p(node)
             elif nx.degree(self.som, node) == 2:
                 if self.som.nodes[node]["error"] > self.GROWING_TRESHOLD:
-                    self.insert_neuron_2p(node, data)
+                    self._insert_neuron_2p(node, data)
             elif nx.degree(self.som, node) == 3:
                 if self.som.nodes[node]["error"] > self.GROWING_TRESHOLD:
-                    self.insert_neuron_1p(node, data)
+                    self._insert_neuron_1p(node, data)
 
-    def insert_neuron_1p(self, node: tuple, data) -> None:
+    def _insert_neuron_1p(self, node: tuple, data) -> None:
         """Add neuron to the only free position.
         The available positions are:
         - x_i, y_i + 1
@@ -258,9 +258,9 @@ class DBGSOM:
                 self.som.add_node(nbr)
                 self.som.nodes[nbr]["weight"] = 1.1 * self.som.nodes[node]["weight"] 
                 self.som.nodes[nbr]["error"] = 0
-                self.add_new_connections(nbr)
+                self._add_new_connections(nbr)
 
-    def insert_neuron_2p(self, node: tuple, data) -> None:
+    def _insert_neuron_2p(self, node: tuple, data) -> None:
         """Add new neuron to the side with greater error."""
         nbr1, nbr2 = self.som.adj[node]
         (nbr1_x, nbr1_y), (nbr2_x, nbr2_y) = nbr1, nbr2
@@ -287,9 +287,9 @@ class DBGSOM:
         self.som.add_node(new_node)
         self.som.nodes[new_node]["weight"] = new_weight
         self.som.nodes[new_node]["error"] = 0
-        self.add_new_connections(new_node)
+        self._add_new_connections(new_node)
 
-    def insert_neuron_3p(self, node: tuple) -> None:
+    def _insert_neuron_3p(self, node: tuple) -> None:
         """When the neuron has three free available positions, add the new neuron to the opposite
         side of the existing neighbor.
         """
@@ -300,9 +300,9 @@ class DBGSOM:
         self.som.add_node(new_node)
         self.som.nodes[new_node]["weight"] = new_weight
         self.som.nodes[new_node]["error"] = 0
-        self.add_new_connections(new_node)
+        self._add_new_connections(new_node)
 
-    def add_new_connections(self, node: tuple) -> None:
+    def _add_new_connections(self, node: tuple) -> None:
         """Add edges from new neuron to existing neighbors."""
         node_x, node_y = node
         for nbr in [
@@ -314,7 +314,7 @@ class DBGSOM:
             if nbr in self.som.nodes:
                 self.som.add_edge(node, nbr)
 
-    def reduce_sigma(self) -> float:
+    def _reduce_sigma(self) -> float:
         """Return the neighborhood bandwidth for each epoch.
         If no sigma is given, the starting bandwidth is set to 
         0.5 * the squareroot of the number of neurons in each epoch.
@@ -355,7 +355,7 @@ class DBGSOM:
         error: float
             average distance from each sample to the nearest prototype
         """
-        winners = self.get_winning_neurons(data, n_bmu=1)
+        winners = self._get_winning_neurons(data, n_bmu=1)
         error = 0
         for sample, winner in zip(data, winners):
             error += np.linalg.norm(self.weights[winner] - sample)
@@ -379,7 +379,7 @@ class DBGSOM:
         topographic error: float
             Fraction of samples with topographic errors over all samples.
         """
-        sample_bmus = self.get_winning_neurons(data, n_bmu=2)
+        sample_bmus = self._get_winning_neurons(data, n_bmu=2)
         errors = 0
         for sample in sample_bmus.T:
             dist = self.distance_matrix[sample[0], sample[1]]
