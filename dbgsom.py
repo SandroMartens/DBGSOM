@@ -8,7 +8,7 @@ class DBGSOM:
 
     Parameters
     ----------
-    sf : float (default = 0.8)
+    sf : float (default = 0.4)
         Spreading factor to calculate the treshold for neuron insertion.
 
     n_epochs : int (default = 30)
@@ -23,7 +23,7 @@ class DBGSOM:
     def __init__(
         self,
         n_epochs: int = 30,
-        sf: float = 0.8,
+        sf: float = 0.4,
         sigma: float = 1,
         random_state = None
     ) -> None:
@@ -77,7 +77,7 @@ class DBGSOM:
             #  Only add new neurons in each 5th epoch. This leads to a lower topographic error.
             if (
                 self.current_epoch < 0.5 * max_epoch and
-                self.current_epoch % 5 == 0
+                self.current_epoch % 3 == 0
             ):
                 self.distribute_errors()
                 self.add_new_neurons(data)
@@ -124,14 +124,14 @@ class DBGSOM:
 
     def update_distance_matrix(self):
         """Update distance matrix between neurons. 
-        Only paths of length =< 2 * sigma are considered for performance reasons.
+        Only paths of length =< 3 * sigma are considered for performance reasons.
         """
         som = self.som
         sigma = self.reduce_sigma()
         n = len(self.neurons)
         m = np.zeros((n, n))
         m.fill(np.inf)
-        dist_dict = dict(nx.all_pairs_shortest_path_length(som, cutoff=3*sigma))
+        dist_dict = dict(nx.all_pairs_shortest_path_length(som, cutoff=2*sigma + 1))
         for i1, neuron1 in enumerate(self.neurons):
             for i2, neuron2 in enumerate(self.neurons):
                 if neuron1 in dist_dict.keys():
@@ -332,11 +332,11 @@ class DBGSOM:
         else:
             sigma_zero = self.SIGMA
 
-        sigma = sigma_zero * (1 - epoch / self.N_EPOCHS) + 1 * (epoch / self.N_EPOCHS)
-        # if epoch < 0.5 * self.N_EPOCHS:
-        #     sigma = sigma_zero * (1-(2*epoch/self.N_EPOCHS)) + 0.6 * (2*epoch/self.N_EPOCHS)
-        # else:
-        #     sigma = 0.6
+        sigma = sigma_zero * (1 - epoch / self.N_EPOCHS) +0.6 * (epoch / self.N_EPOCHS)
+        if epoch < 0.5 * self.N_EPOCHS:
+            sigma = sigma_zero * (1-(2*epoch/self.N_EPOCHS)) + 0.6 * (2*epoch/self.N_EPOCHS)
+        else:
+            sigma = 0.6
         # print(sigma)
         # print(0.5 * np.sqrt(self.som.number_of_nodes()))
 
