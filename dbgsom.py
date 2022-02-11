@@ -32,7 +32,7 @@ class DBGSOM:
         self.SIGMA = sigma
         self.RANDOM_STATE = random_state
 
-    def train(self, data):
+    def train(self, data) -> None:
         """Train SOM on training data."""
         self._initialization(data)
         self._grow(data)
@@ -54,9 +54,9 @@ class DBGSOM:
             list(dict(self.som.nodes.data("weight")).values())
             )
         #  List of node indices
-        self.neurons = list(self.som.nodes)
+        self.neurons:list[tuple[int, int]] = list(self.som.nodes)
 
-    def _grow(self, data):
+    def _grow(self, data) -> None:
         """Second training phase"""
         max_epoch = self.N_EPOCHS
         for i in range(self.N_EPOCHS):
@@ -108,7 +108,7 @@ class DBGSOM:
 
         return som
 
-    def _get_winning_neurons(self, data, n_bmu:int) -> np.ndarray:
+    def _get_winning_neurons(self, data, n_bmu:int) -> np.ndarray[np.float32]:
         """Calculate distances from each neuron to each sample.
 
         Return index of winning neuron or best matching units(s) for each sample.
@@ -122,7 +122,7 @@ class DBGSOM:
 
         return winners
 
-    def _update_distance_matrix(self):
+    def _update_distance_matrix(self) -> None:
         """Update distance matrix between neurons. 
         Only paths of length =< 3 * sigma are considered for performance reasons.
         """
@@ -140,7 +140,7 @@ class DBGSOM:
 
         self.distance_matrix = m
 
-    def _update_weights(self, winners, data) -> np.ndarray:
+    def _update_weights(self, winners:np.ndarray, data) -> np.ndarray:
         """Update the weight vectors according to the batch learning rule.
 
         Step 1: Calculate the center of the voronoi set of the neurons.
@@ -190,7 +190,7 @@ class DBGSOM:
 
         return h
 
-    def _calculate_accumulative_error(self, winners, data) -> None:
+    def _calculate_accumulative_error(self, winners:np.ndarray, data) -> None:
         """Get the quantization error for each neuron 
         and save it as "error" to the graph.
         """
@@ -200,7 +200,7 @@ class DBGSOM:
             error = dist.sum()
             self.som.nodes[self.neurons[winner]]["error"] = error
 
-    def _distribute_errors(self):
+    def _distribute_errors(self) -> None:
         """For each neuron i which is not a boundary neuron and E_i > GT, 
         a half value of E_i is equally distributed to the neighboring 
         boundary neurons if exist.
@@ -234,12 +234,12 @@ class DBGSOM:
                     self._insert_neuron_3p(node)
             elif nx.degree(self.som, node) == 2:
                 if self.som.nodes[node]["error"] > self.GROWING_TRESHOLD:
-                    self._insert_neuron_2p(node, data)
+                    self._insert_neuron_2p(node)
             elif nx.degree(self.som, node) == 3:
                 if self.som.nodes[node]["error"] > self.GROWING_TRESHOLD:
-                    self._insert_neuron_1p(node, data)
+                    self._insert_neuron_1p(node)
 
-    def _insert_neuron_1p(self, node: tuple, data) -> None:
+    def _insert_neuron_1p(self, node: tuple[int, int]) -> None:
         """Add neuron to the only free position.
         The available positions are:
         - x_i, y_i + 1
@@ -260,7 +260,7 @@ class DBGSOM:
                 self.som.nodes[nbr]["error"] = 0
                 self._add_new_connections(nbr)
 
-    def _insert_neuron_2p(self, node: tuple, data) -> None:
+    def _insert_neuron_2p(self, node: tuple[int, int]) -> None:
         """Add new neuron to the side with greater error."""
         nbr1, nbr2 = self.som.adj[node]
         (nbr1_x, nbr1_y), (nbr2_x, nbr2_y) = nbr1, nbr2
@@ -289,7 +289,7 @@ class DBGSOM:
         self.som.nodes[new_node]["error"] = 0
         self._add_new_connections(new_node)
 
-    def _insert_neuron_3p(self, node: tuple) -> None:
+    def _insert_neuron_3p(self, node: tuple[int, int]) -> None:
         """When the neuron has three free available positions, add the new neuron to the opposite
         side of the existing neighbor.
         """
@@ -302,7 +302,7 @@ class DBGSOM:
         self.som.nodes[new_node]["error"] = 0
         self._add_new_connections(new_node)
 
-    def _add_new_connections(self, node: tuple) -> None:
+    def _add_new_connections(self, node: tuple[int, int]) -> None:
         """Add edges from new neuron to existing neighbors."""
         node_x, node_y = node
         for nbr in [
@@ -337,8 +337,6 @@ class DBGSOM:
             sigma = sigma_zero * (1-(2*epoch/self.N_EPOCHS)) + 0.6 * (2*epoch/self.N_EPOCHS)
         else:
             sigma = 0.6
-        # print(sigma)
-        # print(0.5 * np.sqrt(self.som.number_of_nodes()))
 
         return sigma
 
