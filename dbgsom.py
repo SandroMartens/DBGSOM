@@ -38,7 +38,7 @@ class DBGSOM:
         self._initialization(data)
         self._grow(data)
 
-    def _initialization(self, data) -> None:
+    def _initialization(self, data: npt.NDArray) -> None:
         """First training phase.
 
         Calculate growing threshold as gt = -data_dimensions * log(spreading_factor).
@@ -57,7 +57,7 @@ class DBGSOM:
         #  List of node indices
         self.neurons:list[tuple[int, int]] = list(self.som.nodes)
 
-    def _grow(self, data) -> None:
+    def _grow(self, data:npt.NDArray) -> None:
         """Second training phase"""
         max_epoch = self.N_EPOCHS
         for i in range(self.N_EPOCHS):
@@ -77,13 +77,13 @@ class DBGSOM:
             self._calculate_accumulative_error(winners, data)
             #  Only add new neurons in each 5th epoch. This leads to a lower topographic error.
             if (
-                self.current_epoch < 0.5 * max_epoch and
-                self.current_epoch % 3 == 0
+                self.current_epoch < 0.25 * max_epoch 
+                # and self.current_epoch % 3 == 0
             ):
                 self._distribute_errors()
                 self._add_new_neurons(data)
 
-    def _create_som(self, data) -> nx.Graph:
+    def _create_som(self, data:npt.NDArray) -> nx.Graph:
         """Create a graph containing the first four neurons in a square. 
         Each neuron has a weight vector randomly chosen from the training samples.
         """
@@ -109,7 +109,7 @@ class DBGSOM:
 
         return som
 
-    def _get_winning_neurons(self, data, n_bmu:int) -> np.ndarray:
+    def _get_winning_neurons(self, data:npt.NDArray, n_bmu:int) -> np.ndarray:
         """Calculate distances from each neuron to each sample.
 
         Return index of winning neuron or best matching units(s) for each sample.
@@ -141,7 +141,7 @@ class DBGSOM:
 
         self.distance_matrix = m
 
-    def _update_weights(self, winners:np.ndarray, data) -> np.ndarray:
+    def _update_weights(self, winners:np.ndarray, data:npt.NDArray) -> np.ndarray:
         """Update the weight vectors according to the batch learning rule.
 
         Step 1: Calculate the center of the voronoi set of the neurons.
@@ -186,14 +186,18 @@ class DBGSOM:
         The kernel function is a gaussian function with a width of 3 * sigma.
         """
         sigma = self._reduce_sigma()
-        if self.current_epoch % 10 == 0:
-            h = np.exp(-(self.distance_matrix**2 / (2*sigma**2))).astype(np.float32)
-        else:
+        h = np.exp(-(self.distance_matrix**2 / (2*sigma**2))).astype(np.float32)
+        if (
+            self.current_epoch % 10 != 0
+            and self.current_epoch > 0.25 * self.N_EPOCHS
+        ):
             h = np.identity(self.distance_matrix.shape[0])
+        else:
+            h = np.exp(-(self.distance_matrix**2 / (2*sigma**2))).astype(np.float32)
 
         return h
 
-    def _calculate_accumulative_error(self, winners:np.ndarray, data) -> None:
+    def _calculate_accumulative_error(self, winners:np.ndarray, data:npt.NDArray) -> None:
         """Get the quantization error for each neuron 
         and save it as "error" to the graph.
         """
@@ -227,7 +231,7 @@ class DBGSOM:
                             0.5*node_error / n_boundary_neighbors
                         )
 
-    def _add_new_neurons(self, data) -> None:
+    def _add_new_neurons(self) -> None:
         """Add new neurons to places where the error is above 
         the growing threshold.
         """
@@ -339,17 +343,17 @@ class DBGSOM:
             sigma_start = self.SIGMA
             sigma_end = 0.5
 
-        if epoch < 0.5 * self.N_EPOCHS:
+        if epoch < 0.25 * self.N_EPOCHS:
             sigma = (
-                sigma_start * (1-(2*epoch/self.N_EPOCHS)) + 
-                sigma_end * (2*epoch/self.N_EPOCHS) 
+                sigma_start * (1-(4*epoch/self.N_EPOCHS)) + 
+                sigma_end * (4*epoch/self.N_EPOCHS) 
             )
         else:
             sigma = sigma_end
 
         return sigma
 
-    def quantization_error(self, data) -> float:
+    def quantization_error(self, data:npt.NDArray) -> float:
         """Get the average distance from each sample to the nearest prototype.
 
         Parameters
@@ -363,13 +367,10 @@ class DBGSOM:
             average distance from each sample to the nearest prototype
         """
         winners = self._get_winning_neurons(data, n_bmu=1)
-        error = 0
-        for sample, winner in zip(data, winners):
-            error += np.linalg.norm(self.weights[winner] - sample)
+        error = np.mean(np.linalg.norm(self.weights[winners] - data, axis=1))
+        return error
 
-        return error/len(data)
-
-    def topographic_error(self, data) -> float:
+    def topographic_error(self, data:npt.NDArray) -> float:
         """The topographic error is a measure for the topology preservation of the map.
         
         For each sample we get the two best matching units. If the BMU are connected on the grid,
