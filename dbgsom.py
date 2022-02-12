@@ -1,5 +1,6 @@
 from math import log
 import numpy as np
+import numpy.typing as npt
 import networkx as nx
 from scipy.spatial.distance import cdist
 
@@ -108,7 +109,7 @@ class DBGSOM:
 
         return som
 
-    def _get_winning_neurons(self, data, n_bmu:int) -> np.ndarray[np.float32]:
+    def _get_winning_neurons(self, data, n_bmu:int) -> np.ndarray:
         """Calculate distances from each neuron to each sample.
 
         Return index of winning neuron or best matching units(s) for each sample.
@@ -180,13 +181,15 @@ class DBGSOM:
         return new_weights
 
     def _gaussian_neighborhood(self) -> np.ndarray:
-        """Calculate the gaussian neighborhood function for all neuron pairs."""
+        """Calculate the gaussian neighborhood function for all neuron pairs.
+        
+        The kernel function is a gaussian function with a width of 3 * sigma.
+        """
         sigma = self._reduce_sigma()
-        h = np.exp(-(self.distance_matrix**2 / (2*sigma**2))).astype(np.float32)
-        # if self.current_epoch % 5 == 0:
-        #     h = np.exp(-(self.distance_matrix**2 / (2*sigma**2)))
-        # else:
-        #     h = np.identity(self.distance_matrix.shape[0])
+        if self.current_epoch % 10 == 0:
+            h = np.exp(-(self.distance_matrix**2 / (2*sigma**2))).astype(np.float32)
+        else:
+            h = np.identity(self.distance_matrix.shape[0])
 
         return h
 
@@ -318,25 +321,31 @@ class DBGSOM:
         """Return the neighborhood bandwidth for each epoch.
         If no sigma is given, the starting bandwidth is set to 
         0.5 * the squareroot of the number of neurons in each epoch.
-        The ending bandwidth is set to 0.5.
+        The ending bandwidth is set to 0.05 * the squareroot of the 
+        number of neurons in each epoch..
 
-        We have two phases: In the first half, we have a decreasing sigma from sigma_max to 0.5.
-        In the second half, sigma stays constant at 0.5.
+        We have two phases: In the first half, we have a decreasing sigma 
+        from sigma_start to sigma_end.
+        In the second half, sigma stays constant at sigma_end.
 
         Returns:
             float: The neighborhood bandwidth for each epoch.
         """
         epoch = self.current_epoch
         if self.SIGMA is None:
-            sigma_zero = 0.5 * np.sqrt(self.som.number_of_nodes())
+            sigma_start = 0.5 * np.sqrt(self.som.number_of_nodes())
+            sigma_end = 0.05 * np.sqrt(self.som.number_of_nodes())
         else:
-            sigma_zero = self.SIGMA
+            sigma_start = self.SIGMA
+            sigma_end = 0.5
 
-        sigma = sigma_zero * (1 - epoch / self.N_EPOCHS) +0.6 * (epoch / self.N_EPOCHS)
         if epoch < 0.5 * self.N_EPOCHS:
-            sigma = sigma_zero * (1-(2*epoch/self.N_EPOCHS)) + 0.6 * (2*epoch/self.N_EPOCHS)
+            sigma = (
+                sigma_start * (1-(2*epoch/self.N_EPOCHS)) + 
+                sigma_end * (2*epoch/self.N_EPOCHS) 
+            )
         else:
-            sigma = 0.6
+            sigma = sigma_end
 
         return sigma
 
