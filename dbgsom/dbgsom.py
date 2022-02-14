@@ -15,6 +15,9 @@ class DBGSOM:
     n_epochs : int (default = 30)
         Number of training epochs.
 
+    batch_size: int (optional, default = sqrt(n_samples))
+        Number of samples in each batch
+
     sigma : float (optional)
         Neighborhood bandwidth.
 
@@ -45,6 +48,8 @@ class DBGSOM:
         Create a graph containing the first four neurons in a square with init vectors.
         """
         data = data.astype(np.float32)
+        BATCH_SIZE = np.sqrt(len(data))
+        self.N_BATCHES = int(len(data)/BATCH_SIZE)
         data_dimensionality = data.shape[1]
         self.GROWING_TRESHOLD = -data_dimensionality * log(self.SF)
         self.rng = np.random.default_rng(seed=self.RANDOM_STATE)
@@ -62,6 +67,7 @@ class DBGSOM:
         max_epoch = self.N_EPOCHS
         for i in range(self.N_EPOCHS):
             self.current_epoch = i + 1
+            # for j in range(self.N_BATCHES):
             #  Get array with neurons as index and values as columns
             self.weights = np.array(
                 list(dict(self.som.nodes.data("weight")).values())
@@ -81,7 +87,7 @@ class DBGSOM:
                 # and self.current_epoch % 3 == 0
             ):
                 self._distribute_errors()
-                self._add_new_neurons(data)
+                self._add_new_neurons()
 
     def _create_som(self, data:npt.NDArray) -> nx.Graph:
         """Create a graph containing the first four neurons in a square. 
@@ -187,13 +193,13 @@ class DBGSOM:
         """
         sigma = self._reduce_sigma()
         h = np.exp(-(self.distance_matrix**2 / (2*sigma**2))).astype(np.float32)
-        if (
-            self.current_epoch % 10 != 0
-            and self.current_epoch > 0.25 * self.N_EPOCHS
-        ):
-            h = np.identity(self.distance_matrix.shape[0])
-        else:
-            h = np.exp(-(self.distance_matrix**2 / (2*sigma**2))).astype(np.float32)
+        # if (
+        #     self.current_epoch % 10 != 0
+        #     and self.current_epoch > 0.25 * self.N_EPOCHS
+        # ):
+        #     h = np.identity(self.distance_matrix.shape[0])
+        # else:
+        #     h = np.exp(-(self.distance_matrix**2 / (2*sigma**2))).astype(np.float32)
 
         return h
 
@@ -338,7 +344,7 @@ class DBGSOM:
         epoch = self.current_epoch
         if self.SIGMA is None:
             sigma_start = 0.5 * np.sqrt(self.som.number_of_nodes())
-            sigma_end = 0.05 * np.sqrt(self.som.number_of_nodes())
+            sigma_end = min(0.05 * np.sqrt(self.som.number_of_nodes()), 1)
         else:
             sigma_start = self.SIGMA
             sigma_end = 0.5
