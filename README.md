@@ -1,5 +1,5 @@
 # DBGSOM
-A directed batch growing approach to enhance the topology preservation of self-organizing map (SOM).  
+DBGSOM is short for _A directed batch growing approach to enhance the topology preservation of self-organizing map_ (SOM) (after the paper with the same title).  
 This project was inspired by the great [MiniSom](https://github.com/JustGlowing/minisom).
 
 ## How it works

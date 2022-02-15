@@ -3,6 +3,7 @@ import numpy as np
 import numpy.typing as npt
 import networkx as nx
 from scipy.spatial.distance import cdist
+from tqdm import tqdm
 
 class DBGSOM:
     """A Directed Batch Growing Self-Organizing Map.
@@ -65,7 +66,10 @@ class DBGSOM:
     def _grow(self, data:npt.NDArray) -> None:
         """Second training phase"""
         max_epoch = self.N_EPOCHS
-        for i in range(self.N_EPOCHS):
+        for i in tqdm(
+            range(self.N_EPOCHS),
+            unit=" epochs"
+        ):
             self.current_epoch = i + 1
             # for j in range(self.N_BATCHES):
             #  Get array with neurons as index and values as columns
@@ -79,7 +83,7 @@ class DBGSOM:
                 self._update_distance_matrix()
 
             winners = self._get_winning_neurons(data, n_bmu=1)
-            self.weights = self._update_weights(winners, data)
+            self._update_weights(winners, data)
             self._calculate_accumulative_error(winners, data)
             #  Only add new neurons in each 5th epoch. This leads to a lower topographic error.
             if (
@@ -147,7 +151,7 @@ class DBGSOM:
 
         self.distance_matrix = m
 
-    def _update_weights(self, winners:np.ndarray, data:npt.NDArray) -> np.ndarray:
+    def _update_weights(self, winners:np.ndarray, data:npt.NDArray) -> None:
         """Update the weight vectors according to the batch learning rule.
 
         Step 1: Calculate the center of the voronoi set of the neurons.
@@ -159,7 +163,7 @@ class DBGSOM:
         for winner in np.unique(winners):
             voronoi_set_centers[winner] = data[winners == winner].mean(axis=0)
 
-        neuron_counts = np.ones(shape=len(self.neurons), dtype=np.float32)
+        neuron_counts = np.zeros(shape=len(self.neurons), dtype=np.float32)
         winners, winner_counts = np.unique(winners, return_counts=True)
         for winner, count in zip(winners, winner_counts):
             neuron_counts[winner] = count
@@ -184,7 +188,7 @@ class DBGSOM:
             values=new_weights_dict,
             name="weight")
 
-        return new_weights
+        self.weights = new_weights
 
     def _gaussian_neighborhood(self) -> np.ndarray:
         """Calculate the gaussian neighborhood function for all neuron pairs.
@@ -242,14 +246,12 @@ class DBGSOM:
         the growing threshold.
         """
         for node in self.neurons:
-            if nx.degree(self.som, node) == 1:
-                if self.som.nodes[node]["error"] > self.GROWING_TRESHOLD:
+            if self.som.nodes[node]["error"] > self.GROWING_TRESHOLD:
+                if nx.degree(self.som, node) == 1:
                     self._insert_neuron_3p(node)
-            elif nx.degree(self.som, node) == 2:
-                if self.som.nodes[node]["error"] > self.GROWING_TRESHOLD:
+                elif nx.degree(self.som, node) == 2:
                     self._insert_neuron_2p(node)
-            elif nx.degree(self.som, node) == 3:
-                if self.som.nodes[node]["error"] > self.GROWING_TRESHOLD:
+                elif nx.degree(self.som, node) == 3:
                     self._insert_neuron_1p(node)
 
     def _insert_neuron_1p(self, node: tuple[int, int]) -> None:
@@ -349,13 +351,18 @@ class DBGSOM:
             sigma_start = self.SIGMA
             sigma_end = 0.5
 
-        if epoch < 0.25 * self.N_EPOCHS:
-            sigma = (
-                sigma_start * (1-(4*epoch/self.N_EPOCHS)) + 
-                sigma_end * (4*epoch/self.N_EPOCHS) 
-            )
-        else:
-            sigma = sigma_end
+        sigma = (
+            sigma_start * (1-(epoch/self.N_EPOCHS)) + 
+            sigma_end * (epoch/self.N_EPOCHS) 
+        )
+
+        # if epoch < 0.25 * self.N_EPOCHS:
+        #     sigma = (
+        #         sigma_start * (1-(4*epoch/self.N_EPOCHS)) + 
+        #         sigma_end * (4*epoch/self.N_EPOCHS) 
+        #     )
+        # else:
+        #     sigma = sigma_end
 
         return sigma
 
@@ -376,7 +383,7 @@ class DBGSOM:
         error = np.mean(np.linalg.norm(self.weights[winners] - data, axis=1))
         return error
 
-    def topographic_error(self, data:npt.NDArray) -> float:
+    def topographic_error(self, data:npt.NDArray[np.float32]) -> float:
         """The topographic error is a measure for the topology preservation of the map.
         
         For each sample we get the two best matching units. If the BMU are connected on the grid,
