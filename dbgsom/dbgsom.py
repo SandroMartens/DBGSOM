@@ -71,7 +71,6 @@ class DBGSOM:
             unit=" epochs"
         ):
             self.current_epoch = i + 1
-            # for j in range(self.N_BATCHES):
             #  Get array with neurons as index and values as columns
             self.weights = np.array(
                 list(dict(self.som.nodes.data("weight")).values())
@@ -85,13 +84,8 @@ class DBGSOM:
             winners = self._get_winning_neurons(data, n_bmu=1)
             self._update_weights(winners, data)
             self._calculate_accumulative_error(winners, data)
-            #  Only add new neurons in each 5th epoch. This leads to a lower topographic error.
-            if (
-                self.current_epoch < 0.25 * max_epoch 
-                # and self.current_epoch % 3 == 0
-            ):
-                self._distribute_errors()
-                self._add_new_neurons()
+            self._distribute_errors()
+            self._add_new_neurons()
 
     def _create_som(self, data:npt.NDArray) -> nx.Graph:
         """Create a graph containing the first four neurons in a square. 
@@ -138,11 +132,11 @@ class DBGSOM:
         Only paths of length =< 3 * sigma are considered for performance reasons.
         """
         som = self.som
-        sigma = self._reduce_sigma()
+        sigma = self._sigma()
         n = len(self.neurons)
         m = np.zeros((n, n))
         m.fill(np.inf)
-        dist_dict = dict(nx.all_pairs_shortest_path_length(som, cutoff=2*sigma + 1))
+        dist_dict = dict(nx.all_pairs_shortest_path_length(som, cutoff=3*sigma + 1))
         for i1, neuron1 in enumerate(self.neurons):
             for i2, neuron2 in enumerate(self.neurons):
                 if neuron1 in dist_dict.keys():
@@ -192,18 +186,9 @@ class DBGSOM:
 
     def _gaussian_neighborhood(self) -> np.ndarray:
         """Calculate the gaussian neighborhood function for all neuron pairs.
-        
-        The kernel function is a gaussian function with a width of 3 * sigma.
         """
-        sigma = self._reduce_sigma()
+        sigma = self._sigma()
         h = np.exp(-(self.distance_matrix**2 / (2*sigma**2))).astype(np.float32)
-        # if (
-        #     self.current_epoch % 10 != 0
-        #     and self.current_epoch > 0.25 * self.N_EPOCHS
-        # ):
-        #     h = np.identity(self.distance_matrix.shape[0])
-        # else:
-        #     h = np.exp(-(self.distance_matrix**2 / (2*sigma**2))).astype(np.float32)
 
         return h
 
@@ -290,13 +275,13 @@ class DBGSOM:
                 new_weight = 2 * self.som.nodes[node]["weight"] - self.som.nodes[nbr1]["weight"]
         #  Case b: Two neurons with no adjacent neurons
         else:
-            nbr1_err = self.som.nodes[(nbr1_x, nbr1_y)]["error"]
-            nbr2_err = self.som.nodes[(nbr2_x, nbr2_y)]["error"]
+            nbr1_err = self.som.nodes[nbr1]["error"]
+            nbr2_err = self.som.nodes[nbr2]["error"]
             if nbr1_err > nbr2_err:
-                new_node = (n_x + (n_x-nbr2_x), n_y + (n_y-nbr2_y))
+                new_node = (2*n_x - nbr2_x, 2*n_y-nbr2_y)
                 new_weight = 2 * self.som.nodes[node]["weight"] - self.som.nodes[nbr2]["weight"]
             else:
-                new_node = (n_x + (n_x-nbr1_x), n_y + (n_y-nbr1_y))
+                new_node = (2*n_x - nbr1_x, 2*n_y-nbr1_y)
                 new_weight = 2 * self.som.nodes[node]["weight"] - self.som.nodes[nbr1]["weight"]
 
         self.som.add_node(new_node)
@@ -329,7 +314,7 @@ class DBGSOM:
             if nbr in self.som.nodes:
                 self.som.add_edge(node, nbr)
 
-    def _reduce_sigma(self) -> float:
+    def _sigma(self) -> float:
         """Return the neighborhood bandwidth for each epoch.
         If no sigma is given, the starting bandwidth is set to 
         0.5 * the squareroot of the number of neurons in each epoch.
@@ -345,8 +330,8 @@ class DBGSOM:
         """
         epoch = self.current_epoch
         if self.SIGMA is None:
-            sigma_start = 0.5 * np.sqrt(self.som.number_of_nodes())
-            sigma_end = min(0.05 * np.sqrt(self.som.number_of_nodes()), 1)
+            sigma_start = 0.3 * np.sqrt(self.som.number_of_nodes())
+            sigma_end = (0.05 * np.sqrt(self.som.number_of_nodes()) + 1) / 2
         else:
             sigma_start = self.SIGMA
             sigma_end = 0.5
@@ -355,14 +340,6 @@ class DBGSOM:
             sigma_start * (1-(epoch/self.N_EPOCHS)) + 
             sigma_end * (epoch/self.N_EPOCHS) 
         )
-
-        # if epoch < 0.25 * self.N_EPOCHS:
-        #     sigma = (
-        #         sigma_start * (1-(4*epoch/self.N_EPOCHS)) + 
-        #         sigma_end * (4*epoch/self.N_EPOCHS) 
-        #     )
-        # else:
-        #     sigma = sigma_end
 
         return sigma
 
