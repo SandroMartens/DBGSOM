@@ -22,6 +22,9 @@ class DBGSOM:
         If float, it should be the initial sigma, with final sigma = 0.7.  
         If None, both are computed dynamically.
 
+    decay_function : {'linear', 'exponential'} (optional, default = 'exponential')
+        Decay function to use for sigma.
+
     random_state: any (optional)
         Random state for weight initialization.
     """
@@ -46,6 +49,7 @@ class DBGSOM:
         else:
             self.INIT_SIGMA, self.FINAL_SIGMA = None, None
 
+        self.DECAY_FUNCTION = "exponential"
         self.RANDOM_STATE = random_state
 
     def train(self, data) -> None:
@@ -349,14 +353,16 @@ class DBGSOM:
         else:
             sigma_end = self.FINAL_SIGMA
 
-        sigma = (
-            sigma_start * (1-(epoch/self.N_EPOCHS)) + 
-            sigma_end * (epoch/self.N_EPOCHS) 
-        )
+        if self.DECAY_FUNCTION == "linear":
+            sigma = (
+                sigma_start * (1-(epoch/self.N_EPOCHS)) + 
+                sigma_end * (epoch/self.N_EPOCHS) 
+            )
 
-        b = 1/self.N_EPOCHS * (log(sigma_end) - log(sigma_start))
-        sigma = sigma_start * np.exp(b * epoch)
-        # print(sigma)
+        elif self.DECAY_FUNCTION == "exponential":
+            fac = 1/self.N_EPOCHS * (log(sigma_end) - log(sigma_start))
+            sigma = sigma_start * np.exp(fac * epoch)
+
         return sigma
 
     def quantization_error(self, data:npt.NDArray) -> float:
