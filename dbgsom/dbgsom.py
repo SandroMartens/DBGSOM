@@ -29,7 +29,7 @@ class DBGSOM:
         self,
         n_epochs: int = 30,
         sf: float = 0.4,
-        sigma: float = 1,
+        sigma: float = None,
         random_state = None
     ) -> None:
         self.SF = sf
@@ -84,8 +84,9 @@ class DBGSOM:
             winners = self._get_winning_neurons(data, n_bmu=1)
             self._update_weights(winners, data)
             self._calculate_accumulative_error(winners, data)
-            self._distribute_errors()
-            self._add_new_neurons()
+            if (self.current_epoch != max_epoch):
+                self._distribute_errors()
+                self._add_new_neurons()
 
     def _create_som(self, data:npt.NDArray) -> nx.Graph:
         """Create a graph containing the first four neurons in a square. 
@@ -139,9 +140,8 @@ class DBGSOM:
         dist_dict = dict(nx.all_pairs_shortest_path_length(som, cutoff=3*sigma + 1))
         for i1, neuron1 in enumerate(self.neurons):
             for i2, neuron2 in enumerate(self.neurons):
-                if neuron1 in dist_dict.keys():
-                    if neuron2 in dist_dict[neuron1].keys():
-                        m[i1, i2] = dist_dict[neuron1][neuron2]
+                if neuron2 in dist_dict[neuron1].keys():
+                    m[i1, i2] = dist_dict[neuron1][neuron2]
 
         self.distance_matrix = m
 
@@ -258,6 +258,7 @@ class DBGSOM:
                 self.som.add_node(nbr)
                 self.som.nodes[nbr]["weight"] = 1.1 * self.som.nodes[node]["weight"] 
                 self.som.nodes[nbr]["error"] = 0
+                self.som.nodes[nbr]["epoch_created"] = self.current_epoch
                 self._add_new_connections(nbr)
 
     def _insert_neuron_2p(self, node: tuple[int, int]) -> None:
@@ -287,6 +288,7 @@ class DBGSOM:
         self.som.add_node(new_node)
         self.som.nodes[new_node]["weight"] = new_weight
         self.som.nodes[new_node]["error"] = 0
+        self.som.nodes[new_node]["epoch_created"] = self.current_epoch
         self._add_new_connections(new_node)
 
     def _insert_neuron_3p(self, node: tuple[int, int]) -> None:
@@ -300,6 +302,7 @@ class DBGSOM:
         self.som.add_node(new_node)
         self.som.nodes[new_node]["weight"] = new_weight
         self.som.nodes[new_node]["error"] = 0
+        self.som.nodes[new_node]["epoch_created"] = self.current_epoch
         self._add_new_connections(new_node)
 
     def _add_new_connections(self, node: tuple[int, int]) -> None:
@@ -321,26 +324,26 @@ class DBGSOM:
         The ending bandwidth is set to 0.05 * the squareroot of the 
         number of neurons in each epoch..
 
-        We have two phases: In the first half, we have a decreasing sigma 
-        from sigma_start to sigma_end.
-        In the second half, sigma stays constant at sigma_end.
-
         Returns:
             float: The neighborhood bandwidth for each epoch.
         """
         epoch = self.current_epoch
         if self.SIGMA is None:
-            sigma_start = 0.3 * np.sqrt(self.som.number_of_nodes())
-            sigma_end = (0.05 * np.sqrt(self.som.number_of_nodes()) + 1) / 2
+            sigma_start = 0.2 * np.sqrt(self.som.number_of_nodes())
+            # sigma_end = min(0.01 * np.sqrt(self.som.number_of_nodes()), 0.7)
+            sigma_end = (0.05 * np.sqrt(self.som.number_of_nodes()) + 0.7) / 2
         else:
             sigma_start = self.SIGMA
-            sigma_end = 0.5
+            sigma_end = 0.7
 
         sigma = (
             sigma_start * (1-(epoch/self.N_EPOCHS)) + 
             sigma_end * (epoch/self.N_EPOCHS) 
         )
 
+        b = 1/self.N_EPOCHS * (log(sigma_end) - log(sigma_start))
+        sigma = sigma_start * np.exp(b * epoch)
+        # print(sigma)
         return sigma
 
     def quantization_error(self, data:npt.NDArray) -> float:
