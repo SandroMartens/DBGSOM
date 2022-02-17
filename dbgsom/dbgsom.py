@@ -16,11 +16,11 @@ class DBGSOM:
     n_epochs : int (default = 30)
         Number of training epochs.
 
-    batch_size: int (optional, default = sqrt(n_samples))
-        Number of samples in each batch
-
-    sigma : float (optional)
-        Neighborhood bandwidth.
+    sigma : None, float or iterable(float, float) (optional, default = None)
+        Neighborhood bandwidth.  
+        If tuple, it should be (initial_sigma, final_sigma).  
+        If float, it should be the initial sigma, with final sigma = 0.7.  
+        If None, both are computed dynamically.
 
     random_state: any (optional)
         Random state for weight initialization.
@@ -29,12 +29,23 @@ class DBGSOM:
         self,
         n_epochs: int = 30,
         sf: float = 0.4,
-        sigma: float = None,
+        sigma = None,
         random_state = None
     ) -> None:
         self.SF = sf
         self.N_EPOCHS = n_epochs
-        self.SIGMA = sigma
+        #  Is iterable
+        if hasattr(sigma, "__len__"):
+            self.INIT_SIGMA, self.FINAL_SIGMA = sigma
+        #  is a number
+        elif (
+            isinstance(sigma, float) or
+            isinstance(sigma, int)
+        ):
+            self.INIT_SIGMA, self.FINAL_SIGMA = sigma, 0.7
+        else:
+            self.INIT_SIGMA, self.FINAL_SIGMA = None, None
+
         self.RANDOM_STATE = random_state
 
     def train(self, data) -> None:
@@ -322,19 +333,21 @@ class DBGSOM:
         If no sigma is given, the starting bandwidth is set to 
         0.5 * the squareroot of the number of neurons in each epoch.
         The ending bandwidth is set to 0.05 * the squareroot of the 
-        number of neurons in each epoch..
+        number of neurons in each epoch.
 
         Returns:
             float: The neighborhood bandwidth for each epoch.
         """
         epoch = self.current_epoch
-        if self.SIGMA is None:
+        if self.INIT_SIGMA is None:
             sigma_start = 0.2 * np.sqrt(self.som.number_of_nodes())
-            # sigma_end = min(0.01 * np.sqrt(self.som.number_of_nodes()), 0.7)
+        else:
+            sigma_start = self.INIT_SIGMA
+
+        if self.FINAL_SIGMA is None:
             sigma_end = (0.05 * np.sqrt(self.som.number_of_nodes()) + 0.7) / 2
         else:
-            sigma_start = self.SIGMA
-            sigma_end = 0.7
+            sigma_end = self.FINAL_SIGMA
 
         sigma = (
             sigma_start * (1-(epoch/self.N_EPOCHS)) + 
