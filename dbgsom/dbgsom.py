@@ -33,6 +33,7 @@ class DBGSOM:
         n_epochs: int = 30,
         sf: float = 0.4,
         sigma = None,
+        decay_function: str = "exponential",
         random_state = None
     ) -> None:
         self.SF = sf
@@ -49,7 +50,7 @@ class DBGSOM:
         else:
             self.INIT_SIGMA, self.FINAL_SIGMA = None, None
 
-        self.DECAY_FUNCTION = "exponential"
+        self.DECAY_FUNCTION = decay_function
         self.RANDOM_STATE = random_state
 
     def train(self, data) -> None:
