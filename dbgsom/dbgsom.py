@@ -16,40 +16,31 @@ class DBGSOM:
     n_epochs : int (default = 30)
         Number of training epochs.
 
-    sigma : None, float or iterable(float, float) (optional, default = None)
-        Neighborhood bandwidth.  
-        If tuple, it should be (initial_sigma, final_sigma).  
-        If float, it should be the initial sigma, with final sigma = 0.7.  
-        If None, both are computed dynamically.
+    sigma_start: number or None (default = None)
+        Initial value for sigma. If None, sigma is calculated dynamically.
 
-    decay_function : {'linear', 'exponential'} (optional, default = 'exponential')
+    sigma_end: number or None (default = None)
+        Final value for sigma. If None, sigma is calculated dynamically.
+
+    decay_function : {'linear', 'exponential'} (default = 'exponential')
         Decay function to use for sigma.
 
-    random_state: any (optional)
+    random_state: any (optional, default = None)
         Random state for weight initialization.
     """
     def __init__(
         self,
         n_epochs: int = 30,
         sf: float = 0.4,
-        sigma = None,
+        sigma_start: float = None,
+        sigma_end: float = None,
         decay_function: str = "exponential",
         random_state = None
     ) -> None:
         self.SF = sf
         self.N_EPOCHS = n_epochs
-        #  Is iterable
-        if hasattr(sigma, "__len__"):
-            self.INIT_SIGMA, self.FINAL_SIGMA = sigma
-        #  is a number
-        elif (
-            isinstance(sigma, float) or
-            isinstance(sigma, int)
-        ):
-            self.INIT_SIGMA, self.FINAL_SIGMA = sigma, 0.7
-        else:
-            self.INIT_SIGMA, self.FINAL_SIGMA = None, None
-
+        self.SIGMA_START = sigma_start
+        self.SIGMA_END = sigma_end
         self.DECAY_FUNCTION = decay_function
         self.RANDOM_STATE = random_state
 
@@ -322,7 +313,7 @@ class DBGSOM:
         self._add_new_connections(new_node)
 
     def _add_new_connections(self, node: tuple[int, int]) -> None:
-        """Add edges from new neuron to existing neighbors."""
+        """Given a node (x, y), add new connections to the neighbors of the node, if exist."""
         node_x, node_y = node
         for nbr in [
             (node_x, node_y+1),
@@ -336,23 +327,23 @@ class DBGSOM:
     def _sigma(self) -> float:
         """Return the neighborhood bandwidth for each epoch.
         If no sigma is given, the starting bandwidth is set to 
-        0.5 * the squareroot of the number of neurons in each epoch.
+        0.2 * the squareroot of the number of neurons in each epoch.
         The ending bandwidth is set to 0.05 * the squareroot of the 
         number of neurons in each epoch.
 
         Returns:
             float: The neighborhood bandwidth for each epoch.
         """
-        epoch = self.current_epoch
-        if self.INIT_SIGMA is None:
+        epoch = self.current_epoch -1
+        if self.SIGMA_START is None:
             sigma_start = 0.2 * np.sqrt(self.som.number_of_nodes())
         else:
-            sigma_start = self.INIT_SIGMA
+            sigma_start = self.SIGMA_START
 
-        if self.FINAL_SIGMA is None:
+        if self.SIGMA_END is None:
             sigma_end = (0.05 * np.sqrt(self.som.number_of_nodes()) + 0.7) / 2
         else:
-            sigma_end = self.FINAL_SIGMA
+            sigma_end = self.SIGMA_END
 
         if self.DECAY_FUNCTION == "linear":
             sigma = (
