@@ -25,6 +25,12 @@ class DBGSOM:
     decay_function : {'linear', 'exponential'} (default = 'exponential')
         Decay function to use for sigma.
 
+    coarse_training: float (default = 1)
+        Fraction of training epochs to use for coarse training.
+        In coarse training, the neighborhood bandwidth is decreased from 
+        sigma_start to sigma_end. In fine training, the bandwidth is constant at 
+        sigma_end.
+
     random_state: any (optional, default = None)
         Random state for weight initialization.
     """
@@ -35,6 +41,7 @@ class DBGSOM:
         sigma_start: float = None,
         sigma_end: float = None,
         decay_function: str = "exponential",
+        coarse_training: float = 1,
         random_state = None
     ) -> None:
         self.SF = sf
@@ -42,6 +49,7 @@ class DBGSOM:
         self.SIGMA_START = sigma_start
         self.SIGMA_END = sigma_end
         self.DECAY_FUNCTION = decay_function
+        self.COARSE_TRAINING = coarse_training
         self.RANDOM_STATE = random_state
 
     def train(self, data) -> None:
@@ -74,7 +82,7 @@ class DBGSOM:
         """Second training phase"""
         max_epoch = self.N_EPOCHS
         for i in tqdm(
-            range(self.N_EPOCHS),
+            iterable=range(self.N_EPOCHS),
             unit=" epochs"
         ):
             self.current_epoch = i + 1
@@ -91,7 +99,10 @@ class DBGSOM:
             winners = self._get_winning_neurons(data, n_bmu=1)
             self._update_weights(winners, data)
             self._calculate_accumulative_error(winners, data)
-            if (self.current_epoch != max_epoch):
+            if (
+                self.current_epoch != max_epoch and
+                self.current_epoch < self.COARSE_TRAINING * max_epoch
+            ):
                 self._distribute_errors()
                 self._add_new_neurons()
 
@@ -159,6 +170,7 @@ class DBGSOM:
         Step 2: Count the number of samples in each voronoi set.
         Step 3: Calculate the kernel function for all neuron pairs.
         Step 4: New weight vector = sum(kernel * n_samples * centers) / sum(kernel * n_samples)
+        Step 5: Write new weight vector to the graph.
         """
         voronoi_set_centers = self.weights
         for winner in np.unique(winners):
@@ -188,8 +200,6 @@ class DBGSOM:
             G=self.som,
             values=new_weights_dict,
             name="weight")
-
-        self.weights = new_weights
 
     def _gaussian_neighborhood(self) -> np.ndarray:
         """Calculate the gaussian neighborhood function for all neuron pairs.
@@ -345,16 +355,20 @@ class DBGSOM:
         else:
             sigma_end = self.SIGMA_END
 
-        if self.DECAY_FUNCTION == "linear":
-            sigma = (
-                sigma_start * (1-(epoch/self.N_EPOCHS)) + 
-                sigma_end * (epoch/self.N_EPOCHS) 
-            )
+        if epoch < self.N_EPOCHS * self.COARSE_TRAINING:
+            if self.DECAY_FUNCTION == "linear":
+                sigma = (
+                    sigma_start * (1-(1/self.COARSE_TRAINING * epoch/self.N_EPOCHS)) + 
+                    sigma_end * (epoch/self.N_EPOCHS) 
+                )
 
-        elif self.DECAY_FUNCTION == "exponential":
-            fac = 1/self.N_EPOCHS * (log(sigma_end) - log(sigma_start))
-            sigma = sigma_start * np.exp(fac * epoch)
+            elif self.DECAY_FUNCTION == "exponential":
+                fac = 1/self.N_EPOCHS * (log(sigma_end) - log(sigma_start))
+                sigma = sigma_start * np.exp(fac * 1/self.COARSE_TRAINING * epoch)
+        else:
+            sigma = sigma_end
 
+        print(sigma)
         return sigma
 
     def quantization_error(self, data:npt.NDArray) -> float:
