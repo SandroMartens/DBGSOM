@@ -1,4 +1,5 @@
 from math import log
+from typing import Any
 import numpy as np
 import numpy.typing as npt
 import networkx as nx
@@ -16,20 +17,18 @@ class DBGSOM:
     n_epochs : int (default = 30)
         Number of training epochs.
 
-    sigma_start: number or None (default = None)
-        Initial value for sigma. If None, sigma is calculated dynamically.
+    sigma_start, sigma_end : numeric or None (default = None)
+        Start and end values for the neighborhood bandwidth. 
+        If None, it is calculated dynamically in each epoch.
 
-    sigma_end: number or None (default = None)
-        Final value for sigma. If None, sigma is calculated dynamically.
-
-    decay_function : {'linear', 'exponential'} (default = 'exponential')
+    decay_function : {'exponential', 'linear'}
         Decay function to use for sigma.
 
     coarse_training: float (default = 1)
         Fraction of training epochs to use for coarse training.
         In coarse training, the neighborhood bandwidth is decreased from 
         sigma_start to sigma_end. In fine training, the bandwidth is constant at 
-        sigma_end.
+        sigma_end and no new neurons are added.
 
     random_state: any (optional, default = None)
         Random state for weight initialization.
@@ -52,8 +51,14 @@ class DBGSOM:
         self.COARSE_TRAINING = coarse_training
         self.RANDOM_STATE = random_state
 
-    def train(self, data) -> None:
-        """Train SOM on training data."""
+    def fit(self, data) -> None:
+        """Train SOM on training data.
+
+        Parameters
+        ----------
+        data : array_like, shape = [n_samples, n_features]
+            Training data.
+        """
         self._initialization(data)
         self._grow(data)
 
@@ -351,7 +356,7 @@ class DBGSOM:
             sigma_start = self.SIGMA_START
 
         if self.SIGMA_END is None:
-            sigma_end = (0.05 * np.sqrt(self.som.number_of_nodes()) + 0.7) / 2
+            sigma_end = (0.05 * np.sqrt(self.som.number_of_nodes()))
         else:
             sigma_end = self.SIGMA_END
 
@@ -368,21 +373,20 @@ class DBGSOM:
         else:
             sigma = sigma_end
 
-        print(sigma)
         return sigma
 
-    def quantization_error(self, data:npt.NDArray) -> float:
-        """Get the average distance from each sample to the nearest prototype.
+    def quantization_error(self, data:npt.NDArray[np.float32]) -> float:
+        """Return the average distance from each sample to the nearest prototype.
 
         Parameters
         ----------
-        data : ndarray
-            data to cluster
+        data : array_like of shape (n_samples, n_features)
+            Data to quantize.
 
         Returns
         -------
-        error: float
-            average distance from each sample to the nearest prototype
+        error : float
+            Average distance from each sample to the nearest prototype.
         """
         winners = self._get_winning_neurons(data, n_bmu=1)
         error = np.mean(np.linalg.norm(self.weights[winners] - data, axis=1))
@@ -390,19 +394,19 @@ class DBGSOM:
 
     def topographic_error(self, data:npt.NDArray[np.float32]) -> float:
         """The topographic error is a measure for the topology preservation of the map.
-        
+
         For each sample we get the two best matching units. If the BMU are connected on the grid,
         there is no error. If the distance is larger an error occurred. The total error is the number
         of single errors divided yb the number of samples.
 
         Parameters
         ----------
-        data : ndarray
+        data : array_like of shape (n_samples, n_features)
             Data to show the SOM.
 
         Returns
         -------
-        topographic error: float
+        topographic error : float
             Fraction of samples with topographic errors over all samples.
         """
         sample_bmus = self._get_winning_neurons(data, n_bmu=2)
