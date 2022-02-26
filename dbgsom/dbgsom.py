@@ -6,6 +6,7 @@ import networkx as nx
 from scipy.spatial.distance import cdist
 from tqdm import tqdm
 
+
 class DBGSOM:
     """A Directed Batch Growing Self-Organizing Map.
 
@@ -18,7 +19,7 @@ class DBGSOM:
         Number of training epochs.
 
     sigma_start, sigma_end : {None, numeric}
-        Start and end values for the neighborhood bandwidth. 
+        Start and end values for the neighborhood bandwidth.
         If None, it is calculated dynamically in each epoch.
 
     decay_function : {'exponential', 'linear'}
@@ -26,13 +27,14 @@ class DBGSOM:
 
     coarse_training : float (default = 1)
         Fraction of training epochs to use for coarse training.
-        In coarse training, the neighborhood bandwidth is decreased from 
-        sigma_start to sigma_end. In fine training, the bandwidth is constant at 
+        In coarse training, the neighborhood bandwidth is decreased from
+        sigma_start to sigma_end. In fine training, the bandwidth is constant at
         sigma_end and no new neurons are added.
 
     random_state : any (optional, default = None)
         Random state for weight initialization.
     """
+
     def __init__(
         self,
         n_epochs: int = 30,
@@ -41,7 +43,7 @@ class DBGSOM:
         sigma_end: float = None,
         decay_function: str = "exponential",
         coarse_training: float = 1,
-        random_state = None,
+        random_state=None,
     ) -> None:
         self.SF = sf
         self.N_EPOCHS = n_epochs
@@ -70,30 +72,25 @@ class DBGSOM:
         """
         data = data.astype(np.float32)
         BATCH_SIZE = np.sqrt(len(data))
-        self.N_BATCHES = int(len(data)/BATCH_SIZE)
+        self.N_BATCHES = int(len(data) / BATCH_SIZE)
         data_dimensionality = data.shape[1]
         self.GROWING_TRESHOLD = -data_dimensionality * log(self.SF)
         self.rng = np.random.default_rng(seed=self.RANDOM_STATE)
         self.som = self._create_som(data)
         self.distance_matrix = nx.floyd_warshall_numpy(self.som)
-        self.weights = np.array(
-            list(dict(self.som.nodes.data("weight")).values())
-            )
-        self.neurons:list[tuple[int, int]] = list(self.som.nodes)
+        self.weights = np.array(list(dict(self.som.nodes.data("weight")).values()))
+        self.neurons: list[tuple[int, int]] = list(self.som.nodes)
 
-    def _grow(self, data:npt.NDArray) -> None:
+    def _grow(self, data: npt.NDArray) -> None:
         """Second training phase"""
         max_epoch = self.N_EPOCHS
         for i in tqdm(
             iterable=range(self.N_EPOCHS),
-            unit=" epochs"
+            unit=" epochs",
         ):
             self.current_epoch = i + 1
-            self.weights = np.array(
-                list(dict(self.som.nodes.data("weight")).values())
-            )
-            if (len(self.som.nodes) > len(self.neurons) 
-                or self.current_epoch == 1):
+            self.weights = np.array(list(dict(self.som.nodes.data("weight")).values()))
+            if len(self.som.nodes) > len(self.neurons) or self.current_epoch == 1:
                 self.neurons = list(self.som.nodes)
                 self._update_distance_matrix()
 
@@ -101,14 +98,14 @@ class DBGSOM:
             self._update_weights(winners, data)
             self._calculate_accumulative_error(winners, data)
             if (
-                self.current_epoch != max_epoch and
-                self.current_epoch < self.COARSE_TRAINING * max_epoch
+                self.current_epoch != max_epoch
+                and self.current_epoch < self.COARSE_TRAINING * max_epoch
             ):
                 self._distribute_errors()
                 self._add_new_neurons()
 
-    def _create_som(self, data:npt.NDArray) -> nx.Graph:
-        """Create a graph containing the first four neurons in a square. 
+    def _create_som(self, data: npt.NDArray) -> nx.Graph:
+        """Create a graph containing the first four neurons in a square.
         Each neuron has a weight vector randomly chosen from the training samples.
         """
         init_vectors = self.rng.choice(a=data, size=4, replace=False)
@@ -133,7 +130,7 @@ class DBGSOM:
 
         return som
 
-    def _get_winning_neurons(self, data:npt.NDArray, n_bmu:int) -> np.ndarray:
+    def _get_winning_neurons(self, data: npt.NDArray, n_bmu: int) -> np.ndarray:
         """Calculate distances from each neuron to each sample.
 
         Return index of winning neuron or best matching units(s) for each sample.
@@ -142,13 +139,13 @@ class DBGSOM:
         #  Argmin is 10x faster than argsort
         if n_bmu == 1:
             winners = np.argmin(distances, axis=0)
-        else: 
+        else:
             winners = np.argsort(distances, axis=0)[:n_bmu]
 
         return winners
 
     def _update_distance_matrix(self) -> None:
-        """Update distance matrix between neurons. 
+        """Update distance matrix between neurons.
         Only paths of length =< 3 * sigma + 1 are considered for performance reasons.
         """
         som = self.som
@@ -156,7 +153,7 @@ class DBGSOM:
         n = len(self.neurons)
         m = np.zeros((n, n))
         m.fill(np.inf)
-        dist_dict = dict(nx.all_pairs_shortest_path_length(som, cutoff=3*sigma + 1))
+        dist_dict = dict(nx.all_pairs_shortest_path_length(som, cutoff=3 * sigma + 1))
         for i1, neuron1 in enumerate(self.neurons):
             for i2, neuron2 in enumerate(self.neurons):
                 if neuron2 in dist_dict[neuron1].keys():
@@ -164,7 +161,7 @@ class DBGSOM:
 
         self.distance_matrix = m
 
-    def _update_weights(self, winners:np.ndarray, data:npt.NDArray) -> None:
+    def _update_weights(self, winners: np.ndarray, data: npt.NDArray) -> None:
         """Update the weight vectors according to the batch learning rule.
 
         Step 1: Calculate the center of the voronoi set of each neuron.
@@ -185,34 +182,33 @@ class DBGSOM:
 
         gaussian_kernel = self._gaussian_neighborhood()
         numerator = np.sum(
-            voronoi_set_centers * 
-            neuron_counts[:, np.newaxis] * 
-            gaussian_kernel[:,:,np.newaxis],
-            axis=1
+            voronoi_set_centers
+            * neuron_counts[:, np.newaxis]
+            * gaussian_kernel[:, :, np.newaxis],
+            axis=1,
         )
         denominator = np.sum(
-            gaussian_kernel[:,:,np.newaxis] * 
-            neuron_counts[:,np.newaxis],
-            axis=1
+            gaussian_kernel[:, :, np.newaxis] * neuron_counts[:, np.newaxis],
+            axis=1,
         )
-        new_weights = (numerator / denominator)
+        new_weights = numerator / denominator
 
-        new_weights_dict = {neuron: weight for neuron, weight in zip(self.neurons, new_weights)}
-        nx.set_node_attributes(
-            G=self.som,
-            values=new_weights_dict,
-            name="weight")
+        new_weights_dict = {
+            neuron: weight for neuron, weight in zip(self.neurons, new_weights)
+        }
+        nx.set_node_attributes(G=self.som, values=new_weights_dict, name="weight")
 
     def _gaussian_neighborhood(self) -> np.ndarray:
-        """Calculate the gaussian neighborhood function for all neuron pairs.
-        """
+        """Calculate the gaussian neighborhood function for all neuron pairs."""
         sigma = self._sigma()
-        h = np.exp(-(self.distance_matrix**2 / (2*sigma**2))).astype(np.float32)
+        h = np.exp(-(self.distance_matrix**2 / (2 * sigma**2))).astype(np.float32)
 
         return h
 
-    def _calculate_accumulative_error(self, winners:np.ndarray, data:npt.NDArray) -> None:
-        """Get the quantization error for each neuron 
+    def _calculate_accumulative_error(
+        self, winners: np.ndarray, data: npt.NDArray
+    ) -> None:
+        """Get the quantization error for each neuron
         and save it as "error" to the graph.
         """
         for winner in range(len(self.neurons)):
@@ -222,8 +218,8 @@ class DBGSOM:
             self.som.nodes[self.neurons[winner]]["error"] = error
 
     def _distribute_errors(self) -> None:
-        """For each neuron i which is not a boundary neuron and E_i > GT, 
-        a half value of E_i is equally distributed to the neighboring 
+        """For each neuron i which is not a boundary neuron and E_i > GT,
+        a half value of E_i is equally distributed to the neighboring
         boundary neurons if exist.
         """
         for node, neighbors in self.som.adj.items():
@@ -242,11 +238,11 @@ class DBGSOM:
                 for neighbor in neighbors.keys():
                     if len(self.som.adj[neighbor].items()) < 4:
                         self.som.nodes[neighbor]["error"] += (
-                            0.5*node_error / n_boundary_neighbors
+                            0.5 * node_error / n_boundary_neighbors
                         )
 
     def _add_new_neurons(self) -> None:
-        """Add new neurons to places where the error is above 
+        """Add new neurons to places where the error is above
         the growing threshold.
         """
         for node in self.neurons:
@@ -269,13 +265,14 @@ class DBGSOM:
         node_x, node_y = node
         nbrs = self.som.adj[node]
         for nbr in [
-            (node_x, node_y+1),
-            (node_x, node_y-1),
-            (node_x+1, node_y),
-            (node_x-1, node_y),]:
+            (node_x, node_y + 1),
+            (node_x, node_y - 1),
+            (node_x + 1, node_y),
+            (node_x - 1, node_y),
+        ]:
             if nbr not in nbrs:
                 self.som.add_node(nbr)
-                self.som.nodes[nbr]["weight"] = 1.1 * self.som.nodes[node]["weight"] 
+                self.som.nodes[nbr]["weight"] = 1.1 * self.som.nodes[node]["weight"]
                 self.som.nodes[nbr]["error"] = 0
                 self.som.nodes[nbr]["epoch_created"] = self.current_epoch
                 self._add_new_connections(nbr)
@@ -286,23 +283,31 @@ class DBGSOM:
         (nbr1_x, nbr1_y), (nbr2_x, nbr2_y) = nbr1, nbr2
         n_x, n_y = node
         #  Case c: Two opposite neighbors
-        if (nbr1_x == nbr2_x or nbr1_y == nbr2_y):
+        if nbr1_x == nbr2_x or nbr1_y == nbr2_y:
             if nbr1_x == nbr2_x:
-                new_node = (n_x, n_y+1)
-                new_weight = 2 * self.som.nodes[node]["weight"] - self.som.nodes[nbr2]["weight"]
+                new_node = (n_x, n_y + 1)
+                new_weight = (
+                    2 * self.som.nodes[node]["weight"] - self.som.nodes[nbr2]["weight"]
+                )
             else:
-                new_node = (n_x+1, n_y)
-                new_weight = 2 * self.som.nodes[node]["weight"] - self.som.nodes[nbr1]["weight"]
+                new_node = (n_x + 1, n_y)
+                new_weight = (
+                    2 * self.som.nodes[node]["weight"] - self.som.nodes[nbr1]["weight"]
+                )
         #  Case b: Two neurons with no adjacent neurons
         else:
             nbr1_err = self.som.nodes[nbr1]["error"]
             nbr2_err = self.som.nodes[nbr2]["error"]
             if nbr1_err > nbr2_err:
-                new_node = (2*n_x - nbr2_x, 2*n_y-nbr2_y)
-                new_weight = 2 * self.som.nodes[node]["weight"] - self.som.nodes[nbr2]["weight"]
+                new_node = (2 * n_x - nbr2_x, 2 * n_y - nbr2_y)
+                new_weight = (
+                    2 * self.som.nodes[node]["weight"] - self.som.nodes[nbr2]["weight"]
+                )
             else:
-                new_node = (2*n_x - nbr1_x, 2*n_y-nbr1_y)
-                new_weight = 2 * self.som.nodes[node]["weight"] - self.som.nodes[nbr1]["weight"]
+                new_node = (2 * n_x - nbr1_x, 2 * n_y - nbr1_y)
+                new_weight = (
+                    2 * self.som.nodes[node]["weight"] - self.som.nodes[nbr1]["weight"]
+                )
 
         self.som.add_node(new_node)
         self.som.nodes[new_node]["weight"] = new_weight
@@ -316,7 +321,9 @@ class DBGSOM:
         """
         neighbor = list(self.som.neighbors(node))[0]
         new_node = (2 * node[0] - neighbor[0], 2 * node[1] - neighbor[1])
-        new_weight = 2 * self.som.nodes[node]["weight"] - self.som.nodes[neighbor]["weight"]
+        new_weight = (
+            2 * self.som.nodes[node]["weight"] - self.som.nodes[neighbor]["weight"]
+        )
 
         self.som.add_node(new_node)
         self.som.nodes[new_node]["weight"] = new_weight
@@ -328,51 +335,50 @@ class DBGSOM:
         """Given a node (x, y), add new connections to the neighbors of the node, if exist."""
         node_x, node_y = node
         for nbr in [
-            (node_x, node_y+1),
-            (node_x, node_y-1),
-            (node_x-1, node_y),
-            (node_x+1, node_y),
+            (node_x, node_y + 1),
+            (node_x, node_y - 1),
+            (node_x - 1, node_y),
+            (node_x + 1, node_y),
         ]:
             if nbr in self.som.nodes:
                 self.som.add_edge(node, nbr)
 
     def _sigma(self) -> float:
         """Return the neighborhood bandwidth for each epoch.
-        If no sigma is given, the starting bandwidth is set to 
+        If no sigma is given, the starting bandwidth is set to
         0.2 * the squareroot of the number of neurons in each epoch.
-        The ending bandwidth is set to 0.05 * the squareroot of the 
+        The ending bandwidth is set to 0.05 * the squareroot of the
         number of neurons in each epoch.
 
         Returns:
             float: The neighborhood bandwidth for each epoch.
         """
-        epoch = self.current_epoch -1
+        epoch = self.current_epoch - 1
         if self.SIGMA_START is None:
             sigma_start = 0.2 * np.sqrt(self.som.number_of_nodes())
         else:
             sigma_start = self.SIGMA_START
 
         if self.SIGMA_END is None:
-            sigma_end = (0.05 * np.sqrt(self.som.number_of_nodes()))
+            sigma_end = 0.05 * np.sqrt(self.som.number_of_nodes())
         else:
             sigma_end = self.SIGMA_END
 
         if epoch < self.N_EPOCHS * self.COARSE_TRAINING:
             if self.DECAY_FUNCTION == "linear":
-                sigma = (
-                    sigma_start * (1-(1/self.COARSE_TRAINING * epoch/self.N_EPOCHS)) + 
-                    sigma_end * (epoch/self.N_EPOCHS) 
-                )
+                sigma = sigma_start * (
+                    1 - (1 / self.COARSE_TRAINING * epoch / self.N_EPOCHS)
+                ) + sigma_end * (epoch / self.N_EPOCHS)
 
             elif self.DECAY_FUNCTION == "exponential":
-                fac = 1/self.N_EPOCHS * (log(sigma_end) - log(sigma_start))
-                sigma = sigma_start * np.exp(fac * 1/self.COARSE_TRAINING * epoch)
+                fac = 1 / self.N_EPOCHS * (log(sigma_end) - log(sigma_start))
+                sigma = sigma_start * np.exp(fac * 1 / self.COARSE_TRAINING * epoch)
         else:
             sigma = sigma_end
 
         return sigma
 
-    def quantization_error(self, data:npt.NDArray[np.float32]) -> float:
+    def quantization_error(self, data: npt.NDArray[np.float32]) -> float:
         """Return the average distance from each sample to the nearest prototype.
 
         Parameters
@@ -389,7 +395,7 @@ class DBGSOM:
         error = np.mean(np.linalg.norm(self.weights[winners] - data, axis=1))
         return error
 
-    def topographic_error(self, data:npt.NDArray[np.float32]) -> float:
+    def topographic_error(self, data: npt.NDArray[np.float32]) -> float:
         """The topographic error is a measure for the topology preservation of the map.
 
         For each sample we get the two best matching units. If the BMU are connected on the grid,
@@ -413,4 +419,4 @@ class DBGSOM:
             if dist > 1:
                 errors += 1
 
-        return errors/data.shape[0]
+        return errors / data.shape[0]
