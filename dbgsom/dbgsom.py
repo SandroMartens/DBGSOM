@@ -17,20 +17,20 @@ class DBGSOM:
     n_epochs : int (default = 30)
         Number of training epochs.
 
-    sigma_start, sigma_end : numeric or None (default = None)
+    sigma_start, sigma_end : {None, numeric}
         Start and end values for the neighborhood bandwidth. 
         If None, it is calculated dynamically in each epoch.
 
     decay_function : {'exponential', 'linear'}
         Decay function to use for sigma.
 
-    coarse_training: float (default = 1)
+    coarse_training : float (default = 1)
         Fraction of training epochs to use for coarse training.
         In coarse training, the neighborhood bandwidth is decreased from 
         sigma_start to sigma_end. In fine training, the bandwidth is constant at 
         sigma_end and no new neurons are added.
 
-    random_state: any (optional, default = None)
+    random_state : any (optional, default = None)
         Random state for weight initialization.
     """
     def __init__(
@@ -41,7 +41,7 @@ class DBGSOM:
         sigma_end: float = None,
         decay_function: str = "exponential",
         coarse_training: float = 1,
-        random_state = None
+        random_state = None,
     ) -> None:
         self.SF = sf
         self.N_EPOCHS = n_epochs
@@ -76,11 +76,9 @@ class DBGSOM:
         self.rng = np.random.default_rng(seed=self.RANDOM_STATE)
         self.som = self._create_som(data)
         self.distance_matrix = nx.floyd_warshall_numpy(self.som)
-        #  Get array with neurons as index and values as columns
         self.weights = np.array(
             list(dict(self.som.nodes.data("weight")).values())
             )
-        #  List of node indices
         self.neurons:list[tuple[int, int]] = list(self.som.nodes)
 
     def _grow(self, data:npt.NDArray) -> None:
@@ -91,11 +89,9 @@ class DBGSOM:
             unit=" epochs"
         ):
             self.current_epoch = i + 1
-            #  Get array with neurons as index and values as columns
             self.weights = np.array(
                 list(dict(self.som.nodes.data("weight")).values())
             )
-            #  List of node indices
             if (len(self.som.nodes) > len(self.neurons) 
                 or self.current_epoch == 1):
                 self.neurons = list(self.som.nodes)
@@ -120,7 +116,7 @@ class DBGSOM:
             ((0, 0), {"weight": init_vectors[0]}),
             ((0, 1), {"weight": init_vectors[1]}),
             ((1, 0), {"weight": init_vectors[2]}),
-            ((1, 1), {"weight": init_vectors[3]})
+            ((1, 1), {"weight": init_vectors[3]}),
         ]
 
         #  Build a square
@@ -128,7 +124,7 @@ class DBGSOM:
             ((0, 0), (0, 1)),
             ((0, 0), (1, 0)),
             ((1, 0), (1, 1)),
-            ((0, 1), (1, 1))
+            ((0, 1), (1, 1)),
         ]
 
         som = nx.Graph()
@@ -153,7 +149,7 @@ class DBGSOM:
 
     def _update_distance_matrix(self) -> None:
         """Update distance matrix between neurons. 
-        Only paths of length =< 3 * sigma are considered for performance reasons.
+        Only paths of length =< 3 * sigma + 1 are considered for performance reasons.
         """
         som = self.som
         sigma = self._sigma()
@@ -171,11 +167,12 @@ class DBGSOM:
     def _update_weights(self, winners:np.ndarray, data:npt.NDArray) -> None:
         """Update the weight vectors according to the batch learning rule.
 
-        Step 1: Calculate the center of the voronoi set of the neurons.
+        Step 1: Calculate the center of the voronoi set of each neuron.
         Step 2: Count the number of samples in each voronoi set.
         Step 3: Calculate the kernel function for all neuron pairs.
-        Step 4: New weight vector = sum(kernel * n_samples * centers) / sum(kernel * n_samples)
-        Step 5: Write new weight vector to the graph.
+        Step 4: calculate the new weight vectors as
+            New weight vector = sum(kernel * n_samples * centers) / sum(kernel * n_samples)
+        Step 5: Write new weight vectors to the graph.
         """
         voronoi_set_centers = self.weights
         for winner in np.unique(winners):
@@ -275,7 +272,7 @@ class DBGSOM:
             (node_x, node_y+1),
             (node_x, node_y-1),
             (node_x+1, node_y),
-            (node_x-1, node_y)]:
+            (node_x-1, node_y),]:
             if nbr not in nbrs:
                 self.som.add_node(nbr)
                 self.som.nodes[nbr]["weight"] = 1.1 * self.som.nodes[node]["weight"] 
@@ -334,7 +331,7 @@ class DBGSOM:
             (node_x, node_y+1),
             (node_x, node_y-1),
             (node_x-1, node_y),
-            (node_x+1, node_y)
+            (node_x+1, node_y),
         ]:
             if nbr in self.som.nodes:
                 self.som.add_edge(node, nbr)
