@@ -9,6 +9,7 @@ In a growing SOM we start with a small map and extend the grid according to some
 - Numpy
 - NetworkX
 - Scipy
+- tqdm
 
 ## References
 - _A directed batch growing approach to enhance the topology preservation of self-organizing map_, Mahdi Vasighi and Homa Amini, 2017, http://dx.doi.org/10.1016/j.asoc.2017.02.015
