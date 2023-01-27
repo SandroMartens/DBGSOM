@@ -39,11 +39,11 @@ class DBGSOM:
         self,
         n_epochs: int = 30,
         sf: float = 0.4,
-        sigma_start: float = None,
-        sigma_end: float = None,
+        sigma_start: float = 1,
+        sigma_end: float = 0,
         decay_function: str = "exponential",
         coarse_training: float = 1,
-        random_state=None,
+        random_state: Any = None,
     ) -> None:
         self.SF = sf
         self.N_EPOCHS = n_epochs
@@ -52,13 +52,14 @@ class DBGSOM:
         self.DECAY_FUNCTION = decay_function
         self.COARSE_TRAINING = coarse_training
         self.RANDOM_STATE = random_state
+        self.distance_matrix = None
 
     def fit(self, data) -> None:
         """Train SOM on training data.
 
         Parameters
         ----------
-        data : array_like, shape = [n_samples, n_features]
+        data : array_like of shape (n_samples, n_features)
             Training data.
         """
         self._initialization(data)
@@ -146,7 +147,8 @@ class DBGSOM:
 
     def _update_distance_matrix(self) -> None:
         """Update distance matrix between neurons.
-        Only paths of length =< 3 * sigma + 1 are considered for performance reasons.
+        Only paths of length =< 3 * sigma + 1 are considered for performance
+        reasons.
         """
         som = self.som
         sigma = self._sigma()
@@ -211,11 +213,11 @@ class DBGSOM:
         """Get the quantization error for each neuron
         and save it as "error" to the graph.
         """
-        for winner in range(len(self.neurons)):
-            samples = data[winners == winner]
-            dist = np.linalg.norm(self.weights[winner] - samples, axis=1)
+        for winner_index, _ in enumerate(self.neurons):
+            samples = data[winners == winner_index]
+            dist = np.linalg.norm(self.weights[winner_index] - samples, axis=1)
             error = dist.sum()
-            self.som.nodes[self.neurons[winner]]["error"] = error
+            self.som.nodes[self.neurons[winner_index]]["error"] = error
 
     def _distribute_errors(self) -> None:
         """For each neuron i which is not a boundary neuron and E_i > GT,
@@ -227,9 +229,9 @@ class DBGSOM:
                 is_boundary = False
             else:
                 is_boundary = True
+            node_error = self.som.nodes[node]["error"]
 
-            if not is_boundary:
-                node_error = self.som.nodes[node]["error"]
+            if not is_boundary and node_error > self.GROWING_TRESHOLD:
                 n_boundary_neighbors = 0
                 for neighbor in neighbors.keys():
                     if len(self.som.adj[neighbor].items()) < 4:
@@ -240,6 +242,7 @@ class DBGSOM:
                         self.som.nodes[neighbor]["error"] += (
                             0.5 * node_error / n_boundary_neighbors
                         )
+                self.som.nodes[node]["error"] /= 2
 
     def _add_new_neurons(self) -> None:
         """Add new neurons to places where the error is above
@@ -316,8 +319,39 @@ class DBGSOM:
         self._add_new_connections(new_node)
 
     def _insert_neuron_3p(self, node: tuple[int, int]) -> None:
-        """When the neuron has three free available positions, add the new neuron to the opposite
-        side of the existing neighbor.
+        """If the boundary neuron (BO) has three available positions (P1, P2
+        and P3), the accumulative error of surrounding neurons should be
+        considered according to the insertion rule.
+
+        Case 1:
+        nb2  P2
+         |    |
+        -nb1--BO--P1
+         |    |
+        nb3  P3
+
+        P1 should be selected if E(NB1) > E(NB2, NB3), otherwise a decision
+        should be made just between P2 and P3. The preferable position is P2 if
+        E(NB2) > E(NB3), otherwise a new neuron will be added to P3.
+
+        Case 2:
+         nb2  P2
+          |   |
+        -nb1--BO--P1
+              |
+              P3
+        If there is just one neuron adjacent to an available position
+        P1 or P2 can be selected for insertion according to the
+        same rule as before.
+
+        Case 3:
+              P2
+              |
+        -nb1--BO--P1
+              |
+              P3
+        For the case which there is no neuron adjacent to the
+        available positions the position P1 is preferable
         """
         neighbor = list(self.som.neighbors(node))[0]
         new_node = (2 * node[0] - neighbor[0], 2 * node[1] - neighbor[1])
@@ -331,8 +365,12 @@ class DBGSOM:
         self.som.nodes[new_node]["epoch_created"] = self.current_epoch
         self._add_new_connections(new_node)
 
+    def _3p_case1(self):
+        
+
     def _add_new_connections(self, node: tuple[int, int]) -> None:
-        """Given a node (x, y), add new connections to the neighbors of the node, if exist."""
+        """Given a node (x, y), add new connections to the neighbors of the
+        node, if exist."""
         node_x, node_y = node
         for nbr in [
             (node_x, node_y + 1),
@@ -379,7 +417,8 @@ class DBGSOM:
         return sigma
 
     def quantization_error(self, data: npt.NDArray[np.float32]) -> float:
-        """Return the average distance from each sample to the nearest prototype.
+        """Return the average distance from each sample to the nearest
+        prototype.
 
         Parameters
         ----------
@@ -396,9 +435,11 @@ class DBGSOM:
         return error
 
     def topographic_error(self, data: npt.NDArray[np.float32]) -> float:
-        """The topographic error is a measure for the topology preservation of the map.
+        """The topographic error is a measure for the topology preservation of
+        the map.
 
-        For each sample we get the two best matching units. If the BMU are connected on the grid,
+        For each sample we get the two best matching units. If the BMU are
+        connected on the grid,
         there is no error. If the distance is larger an error occurred. The total error is the number
         of single errors divided yb the number of samples.
 
