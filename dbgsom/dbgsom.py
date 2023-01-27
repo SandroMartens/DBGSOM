@@ -353,11 +353,23 @@ class DBGSOM:
         For the case which there is no neuron adjacent to the
         available positions the position P1 is preferable
         """
+
+        # new
         neighbor = list(self.som.neighbors(node))[0]
-        new_node = (2 * node[0] - neighbor[0], 2 * node[1] - neighbor[1])
-        new_weight = (
-            2 * self.som.nodes[node]["weight"] - self.som.nodes[neighbor]["weight"]
-        )
+        nbs = list(self.som.neighbors(neighbor))
+        if len(nbs) == 1:
+            new_node, new_weight = self._3p_case_3(neighbor, node)
+        elif len(nbs) == 2:
+            new_node, new_weight = self._3p_case_2(neighbor, node)
+        else:
+            new_node, new_weight = self._3p_case_1(neighbor, node)
+
+        # old
+        # neighbor = list(self.som.neighbors(node))[0]
+        # new_node = (2 * node[0] - neighbor[0], 2 * node[1] - neighbor[1])
+        # new_weight = (
+        #     2 * self.som.nodes[node]["weight"] - self.som.nodes[neighbor]["weight"]
+        # )
 
         self.som.add_node(new_node)
         self.som.nodes[new_node]["weight"] = new_weight
@@ -365,8 +377,18 @@ class DBGSOM:
         self.som.nodes[new_node]["epoch_created"] = self.current_epoch
         self._add_new_connections(new_node)
 
-    def _3p_case1(self):
-        
+    def _3p_case_1(self, neighbor, node):
+        pass
+
+    def _3p_case_2(self, neighbor, node):
+        pass
+
+    def _3p_case_3(self, neighbor, node):
+        new_node = (2 * node[0] - neighbor[0], 2 * node[1] - neighbor[1])
+        new_weight = (
+            2 * self.som.nodes[node]["weight"] - self.som.nodes[neighbor]["weight"]
+        )
+        return new_node, new_weight
 
     def _add_new_connections(self, node: tuple[int, int]) -> None:
         """Given a node (x, y), add new connections to the neighbors of the
