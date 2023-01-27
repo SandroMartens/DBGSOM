@@ -281,7 +281,31 @@ class DBGSOM:
                 self._add_new_connections(nbr)
 
     def _insert_neuron_2p(self, node: tuple[int, int]) -> None:
-        """Add new neuron to the side with greater error."""
+        """Add new neuron to the side with greater error.
+
+        Case 1:
+        o --nb1--nb4
+         |   |
+        nb2--bo--p1
+         |   |
+        nb3  p2
+        The position P1 is preferable if E(NB4) >
+        (ENB)3, otherwise P2 is the choice.
+
+        o --nb1
+         |   |
+        nb2--bo--p1
+             |
+             p2
+        When there is no neuron adjacent to P1 and P2 (Fig. 3.b), the
+        preferable position is P1 if ENB1 > ENB2,otherwise a new
+        neuron will be added to P2.
+
+
+        For the case that the boundary neuron (BO) is not at the corner
+        of the grid and there is no neuron adjacent to the available
+        positions the preferable position is decided randomly.
+        """
         nbr1, nbr2 = self.som.adj[node]
         (nbr1_x, nbr1_y), (nbr2_x, nbr2_y) = nbr1, nbr2
         n_x, n_y = node
@@ -318,7 +342,7 @@ class DBGSOM:
         self.som.nodes[new_node]["epoch_created"] = self.current_epoch
         self._add_new_connections(new_node)
 
-    def _insert_neuron_3p(self, node: tuple[int, int]) -> None:
+    def _insert_neuron_3p(self, bo: tuple[int, int]) -> None:
         """If the boundary neuron (BO) has three available positions (P1, P2
         and P3), the accumulative error of surrounding neurons should be
         considered according to the insertion rule.
@@ -355,14 +379,14 @@ class DBGSOM:
         """
 
         # new
-        neighbor = list(self.som.neighbors(node))[0]
-        nbs = list(self.som.neighbors(neighbor))
-        if len(nbs) == 1:
-            new_node, new_weight = self._3p_case_3(neighbor, node)
-        elif len(nbs) == 2:
-            new_node, new_weight = self._3p_case_2(neighbor, node)
+        nb_1 = list(self.som.neighbors(bo))[0]
+        n_nb = list(self.som.neighbors(nb_1))
+        if len(n_nb) == 1:
+            new_node, new_weight = self._3p_case_3(nb_1, bo)
+        elif len(n_nb) == 2:
+            new_node, new_weight = self._3p_case_2(nb_1, bo)
         else:
-            new_node, new_weight = self._3p_case_1(neighbor, node)
+            new_node, new_weight = self._3p_case_1(nb_1, bo)
 
         # old
         # neighbor = list(self.som.neighbors(node))[0]
