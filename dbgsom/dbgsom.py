@@ -281,7 +281,7 @@ class DBGSOM:
                 self._add_new_connections(nbr)
 
     def _insert_neuron_2p(self, node: tuple[int, int]) -> None:
-        """Add new neuron to the side with greater error.
+        """Add new neuron to the direction with the larger error.
 
         Case 1:
         o --nb1--nb4
@@ -289,16 +289,17 @@ class DBGSOM:
         nb2--bo--p1
          |   |
         nb3  p2
-        The position P1 is preferable if E(NB4) >
-        (ENB)3, otherwise P2 is the choice.
+        The position P1 is preferable if E(NB4) > (ENB)3,
+        otherwise P2 is the choice.
 
+        Case 2:
         o --nb1
          |   |
         nb2--bo--p1
              |
              p2
         When there is no neuron adjacent to P1 and P2 (Fig. 3.b), the
-        preferable position is P1 if ENB1 > ENB2,otherwise a new
+        preferable position is P1 if E(NB1) > E(NB2),otherwise a new
         neuron will be added to P2.
 
 
@@ -306,9 +307,25 @@ class DBGSOM:
         of the grid and there is no neuron adjacent to the available
         positions the preferable position is decided randomly.
         """
+        # new
         nbr1, nbr2 = self.som.adj[node]
         (nbr1_x, nbr1_y), (nbr2_x, nbr2_y) = nbr1, nbr2
         n_x, n_y = node
+        error_nbr1 = self.som.nodes[nbr1]["error"]
+        error_nbr2 = self.som.nodes[nbr2]["error"]
+
+        # Case b:
+        if error_nbr1 > error_nbr2:
+            new_node = (2 * n_x - nbr2_x, 2 * n_y - nbr2_y)
+            new_weight = (
+                2 * self.som.nodes[node]["weight"] - self.som.nodes[nbr2]["weight"]
+            )
+        else:
+            new_node = (2 * n_x - nbr1_x, 2 * n_y - nbr1_y)
+            new_weight = (
+                2 * self.som.nodes[node]["weight"] - self.som.nodes[nbr1]["weight"]
+            )
+
         #  Case c: Two opposite neighbors
         if nbr1_x == nbr2_x or nbr1_y == nbr2_y:
             if nbr1_x == nbr2_x:
@@ -318,20 +335,6 @@ class DBGSOM:
                 )
             else:
                 new_node = (n_x + 1, n_y)
-                new_weight = (
-                    2 * self.som.nodes[node]["weight"] - self.som.nodes[nbr1]["weight"]
-                )
-        #  Case b: Two neurons with no adjacent neurons
-        else:
-            nbr1_err = self.som.nodes[nbr1]["error"]
-            nbr2_err = self.som.nodes[nbr2]["error"]
-            if nbr1_err > nbr2_err:
-                new_node = (2 * n_x - nbr2_x, 2 * n_y - nbr2_y)
-                new_weight = (
-                    2 * self.som.nodes[node]["weight"] - self.som.nodes[nbr2]["weight"]
-                )
-            else:
-                new_node = (2 * n_x - nbr1_x, 2 * n_y - nbr1_y)
                 new_weight = (
                     2 * self.som.nodes[node]["weight"] - self.som.nodes[nbr1]["weight"]
                 )
@@ -347,7 +350,7 @@ class DBGSOM:
         and P3), the accumulative error of surrounding neurons should be
         considered according to the insertion rule.
 
-        Case 1:
+        Case (a):
         nb2  P2
          |    |
         -nb1--BO--P1
@@ -358,7 +361,7 @@ class DBGSOM:
         should be made just between P2 and P3. The preferable position is P2 if
         E(NB2) > E(NB3), otherwise a new neuron will be added to P3.
 
-        Case 2:
+        Case (b):
          nb2  P2
           |   |
         -nb1--BO--P1
@@ -368,7 +371,7 @@ class DBGSOM:
         P1 or P2 can be selected for insertion according to the
         same rule as before.
 
-        Case 3:
+        Case (c):
               P2
               |
         -nb1--BO--P1
@@ -379,14 +382,27 @@ class DBGSOM:
         """
 
         # new
+        bo_x, bo_y = bo
+        corner_neighbor_positions = {
+            (bo_x + 1, bo_y + 1),
+            (bo_x + 1, bo_y - 1),
+            (bo_x - 1, bo_y + 1),
+            (bo_x - 1, bo_y - 1),
+        }
+
         nb_1 = list(self.som.neighbors(bo))[0]
-        n_nb = list(self.som.neighbors(nb_1))
-        if len(n_nb) == 1:
-            new_node, new_weight = self._3p_case_3(nb_1, bo)
-        elif len(n_nb) == 2:
-            new_node, new_weight = self._3p_case_2(nb_1, bo)
+        # n_nb = list(self.som.neighbors(nb_1))
+        corner_neighbors = corner_neighbor_positions.intersection(
+            set(self.som.neighbors(nb_1))
+        )
+
+        if len(corner_neighbors) == 0:
+            new_node, new_weight = self._3p_case_c(nb_1, bo)
+        elif len(corner_neighbors) == 1:
+            nb_2 = corner_neighbors.pop()
+            new_node, new_weight = self._3p_case_b(nb_1, bo, nb_2)
         else:
-            new_node, new_weight = self._3p_case_1(nb_1, bo)
+            new_node, new_weight = self._3p_case_a(nb_1, bo)
 
         # old
         # neighbor = list(self.som.neighbors(node))[0]
@@ -401,13 +417,16 @@ class DBGSOM:
         self.som.nodes[new_node]["epoch_created"] = self.current_epoch
         self._add_new_connections(new_node)
 
-    def _3p_case_1(self, neighbor, node):
-        pass
+    def _3p_case_a(self, nb1, bo):
+        node_x, node_y = bo
 
-    def _3p_case_2(self, neighbor, node):
-        pass
+        p1 = (2 * bo[0] - nb1[0], 2 * bo[1] - nb1[1])
+        return new_node, new_weight
 
-    def _3p_case_3(self, neighbor, node):
+    def _3p_case_b(self, nb_1, bo, nb_2):
+        
+
+    def _3p_case_c(self, neighbor, node):
         new_node = (2 * node[0] - neighbor[0], 2 * node[1] - neighbor[1])
         new_weight = (
             2 * self.som.nodes[node]["weight"] - self.som.nodes[neighbor]["weight"]
