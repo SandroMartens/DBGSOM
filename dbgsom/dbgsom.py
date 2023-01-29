@@ -52,7 +52,7 @@ class DBGSOM:
         self.SIGMA_START = sigma_start
         self.SIGMA_END = sigma_end
         self.DECAY_FUNCTION = decay_function
-        self.COARSE_TRAINING = coarse_training
+        self.COARSE_TRAINING_FRAC = coarse_training
         self.RANDOM_STATE = random_state
         self.distance_matrix: np.ndarray | None = None
 
@@ -86,7 +86,6 @@ class DBGSOM:
 
     def _grow(self, data: npt.NDArray) -> None:
         """Second training phase"""
-        max_epoch = self.N_EPOCHS
         for i in tqdm(
             iterable=range(self.N_EPOCHS),
             unit=" epochs",
@@ -101,8 +100,8 @@ class DBGSOM:
             self._update_weights(winners, data)
             self._calculate_accumulative_error(winners, data)
             if (
-                self.current_epoch != max_epoch
-                and self.current_epoch < self.COARSE_TRAINING * max_epoch
+                self.current_epoch != self.N_EPOCHS
+                and self.current_epoch < self.COARSE_TRAINING_FRAC * self.N_EPOCHS
             ):
                 self._distribute_errors()
                 self._add_new_neurons()
@@ -250,7 +249,12 @@ class DBGSOM:
         """Add new neurons to places where the error is above
         the growing threshold.
         """
-        for node in self.neurons:
+        # new
+        sorted_indices = np.flip(
+            np.argsort(list(dict(self.som.nodes.data("error")).values()))
+        )
+        for i in sorted_indices:
+            node = list(dict(self.som.nodes))[i]
             if self.som.nodes[node]["error"] > self.GROWING_TRESHOLD:
                 if nx.degree(self.som, node) == 1:
                     self._insert_neuron_3p(node)
@@ -258,6 +262,8 @@ class DBGSOM:
                     self._insert_neuron_2p(node)
                 elif nx.degree(self.som, node) == 3:
                     self._insert_neuron_1p(node)
+            else:
+                break
 
     def _insert_neuron_1p(self, node: tuple[int, int]) -> None:
         """Add neuron to the only free position.
@@ -331,12 +337,16 @@ class DBGSOM:
         #  Case c: Two opposite neighbors
         if nbr1_x == nbr2_x or nbr1_y == nbr2_y:
             if nbr1_x == nbr2_x:
-                new_node = (n_x, n_y + 1)
+                new_node = (n_x + 1, n_y)
+                if new_node in self.som.nodes:
+                    raise ValueError
                 new_weight = (
                     2 * self.som.nodes[node]["weight"] - self.som.nodes[nbr2]["weight"]
                 )
             else:
-                new_node = (n_x + 1, n_y)
+                new_node = (n_x, n_y + 1)
+                if new_node in self.som.nodes:
+                    raise ValueError
                 new_weight = (
                     2 * self.som.nodes[node]["weight"] - self.som.nodes[nbr1]["weight"]
                 )
@@ -476,8 +486,8 @@ class DBGSOM:
     def _sigma(self) -> float:
         """Return the neighborhood bandwidth for each epoch.
         If no sigma is given, the starting bandwidth is set to
-        0.2 * the squareroot of the number of neurons in each epoch.
-        The ending bandwidth is set to 0.05 * the squareroot of the
+        0.2 * the square root of the number of neurons in each epoch.
+        The ending bandwidth is set to 0.05 * the square root of the
         number of neurons in each epoch.
 
         Returns:
@@ -494,15 +504,17 @@ class DBGSOM:
         else:
             sigma_end = self.SIGMA_END
 
-        if epoch < self.N_EPOCHS * self.COARSE_TRAINING:
+        if epoch < self.N_EPOCHS * self.COARSE_TRAINING_FRAC:
             if self.DECAY_FUNCTION == "linear":
                 sigma = sigma_start * (
-                    1 - (1 / self.COARSE_TRAINING * epoch / self.N_EPOCHS)
+                    1 - (1 / self.COARSE_TRAINING_FRAC * epoch / self.N_EPOCHS)
                 ) + sigma_end * (epoch / self.N_EPOCHS)
 
             elif self.DECAY_FUNCTION == "exponential":
                 fac = 1 / self.N_EPOCHS * (log(sigma_end) - log(sigma_start))
-                sigma = sigma_start * np.exp(fac * 1 / self.COARSE_TRAINING * epoch)
+                sigma = sigma_start * np.exp(
+                    fac * 1 / self.COARSE_TRAINING_FRAC * epoch
+                )
         else:
             sigma = sigma_end
 
