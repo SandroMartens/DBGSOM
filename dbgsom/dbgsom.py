@@ -1,8 +1,9 @@
 from math import log
 from typing import Any
+
+import networkx as nx
 import numpy as np
 import numpy.typing as npt
-import networkx as nx
 from scipy.spatial.distance import cdist
 from tqdm import tqdm
 
@@ -23,12 +24,13 @@ class DBGSOM:
         If None, it is calculated dynamically in each epoch.
 
     decay_function : {'exponential', 'linear'}
-        Decay function to use for sigma.
+        Decay function to use for neighborhood bandwith sigma.
 
     coarse_training : float (default = 1)
         Fraction of training epochs to use for coarse training.
         In coarse training, the neighborhood bandwidth is decreased from
-        sigma_start to sigma_end. In fine training, the bandwidth is constant at
+        sigma_start to sigma_end and the network grows according to the
+        growing rules. In fine training, the bandwidth is constant at
         sigma_end and no new neurons are added.
 
     random_state : any (optional, default = None)
@@ -39,8 +41,8 @@ class DBGSOM:
         self,
         n_epochs: int = 30,
         sf: float = 0.4,
-        sigma_start: float = None,
-        sigma_end: float = None,
+        sigma_start: float | None = None,
+        sigma_end: float | None = None,
         decay_function: str = "exponential",
         coarse_training: float = 1,
         random_state: Any = None,
@@ -52,7 +54,7 @@ class DBGSOM:
         self.DECAY_FUNCTION = decay_function
         self.COARSE_TRAINING = coarse_training
         self.RANDOM_STATE = random_state
-        self.distance_matrix = None
+        self.distance_matrix: np.ndarray | None = None
 
     def fit(self, data) -> None:
         """Train SOM on training data.
@@ -134,7 +136,8 @@ class DBGSOM:
     def _get_winning_neurons(self, data: npt.NDArray, n_bmu: int) -> np.ndarray:
         """Calculate distances from each neuron to each sample.
 
-        Return index of winning neuron or best matching units(s) for each sample.
+        Return index of winning neuron or best matching units(s) for each
+        sample.
         """
         distances = cdist(self.weights, data)
         #  Argmin is 10x faster than argsort
@@ -170,7 +173,8 @@ class DBGSOM:
         Step 2: Count the number of samples in each voronoi set.
         Step 3: Calculate the kernel function for all neuron pairs.
         Step 4: calculate the new weight vectors as
-            New weight vector = sum(kernel * n_samples * centers) / sum(kernel * n_samples)
+            New weight vector = sum(kernel * n_samples * centers)
+                / sum(kernel * n_samples)
         Step 5: Write new weight vectors to the graph.
         """
         voronoi_set_centers = self.weights
@@ -195,9 +199,7 @@ class DBGSOM:
         )
         new_weights = numerator / denominator
 
-        new_weights_dict = {
-            neuron: weight for neuron, weight in zip(self.neurons, new_weights)
-        }
+        new_weights_dict = dict(zip(self.neurons, new_weights))
         nx.set_node_attributes(G=self.som, values=new_weights_dict, name="weight")
 
     def _gaussian_neighborhood(self) -> np.ndarray:
@@ -529,8 +531,8 @@ class DBGSOM:
         the map.
 
         For each sample we get the two best matching units. If the BMU are
-        connected on the grid,
-        there is no error. If the distance is larger an error occurred. The total error is the number
+        connected on the grid, there is no error. If the distance is
+        larger an error occurred. The total error is the number
         of single errors divided yb the number of samples.
 
         Parameters
