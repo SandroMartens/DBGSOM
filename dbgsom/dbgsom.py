@@ -392,17 +392,19 @@ class DBGSOM:
 
         nb_1 = list(self.som.neighbors(bo))[0]
         # n_nb = list(self.som.neighbors(nb_1))
-        corner_neighbors = corner_neighbor_positions.intersection(
-            set(self.som.neighbors(nb_1))
+        corner_neighbors = list(
+            corner_neighbor_positions.intersection(set(self.som.neighbors(nb_1)))
         )
 
         if len(corner_neighbors) == 0:
             new_node, new_weight = self._3p_case_c(nb_1, bo)
         elif len(corner_neighbors) == 1:
-            nb_2 = corner_neighbors.pop()
+            nb_2 = corner_neighbors[0]
             new_node, new_weight = self._3p_case_b(nb_1, bo, nb_2)
         else:
-            new_node, new_weight = self._3p_case_a(nb_1, bo)
+            nb_2 = corner_neighbors[0]
+            nb_3 = corner_neighbors[1]
+            new_node, new_weight = self._3p_case_a(nb_1, bo, nb_2, nb_3)
 
         # old
         # neighbor = list(self.som.neighbors(node))[0]
@@ -417,14 +419,38 @@ class DBGSOM:
         self.som.nodes[new_node]["epoch_created"] = self.current_epoch
         self._add_new_connections(new_node)
 
-    def _3p_case_a(self, nb1, bo):
-        node_x, node_y = bo
+    def _3p_case_a(self, nb_1, bo, nb_2, nb_3):
+        if (
+            self.som.nodes[nb_1]["error"] > self.som.nodes[nb_2]["error"]
+            and self.som.nodes[nb_1]["error"] > self.som.nodes[nb_3]["error"]
+        ):
+            new_node, new_weight = self._3p_case_c(nb_1, bo)
+        elif self.som.nodes[nb_2]["error"] > self.som.nodes[nb_3]["error"]:
+            new_node, new_weight = self._3p_case_b(nb_1, bo, nb_2)
+        else:
+            new_node, new_weight = self._3p_case_b(nb_1, bo, nb_2)
 
-        p1 = (2 * bo[0] - nb1[0], 2 * bo[1] - nb1[1])
         return new_node, new_weight
 
-    def _3p_case_b(self, nb_1, bo, nb_2):
-        
+    def _3p_case_b(
+        self, nb_1: tuple[int, int], bo: tuple[int, int], nb_2: tuple[int, int]
+    ):
+        if self.som.nodes[nb_1]["error"] > self.som.nodes[nb_2]["error"]:
+            new_node, new_weight = self._3p_case_c(nb_1, bo)
+        else:
+            new_node = (
+                nb_2[0] - bo[0] + nb_1[0],
+                nb_2[1] - bo[1] + nb_1[1],
+            )
+            # if not isinstance(new_node, int):
+            #     raise ValueError
+
+            new_weight = (
+                (2 * self.som.nodes[bo]["weight"] - self.som.nodes[nb_1]["weight"])
+                + self.som.nodes[nb_2]["weight"]
+            ) / 2
+
+        return new_node, new_weight
 
     def _3p_case_c(self, neighbor, node):
         new_node = (2 * node[0] - neighbor[0], 2 * node[1] - neighbor[1])
