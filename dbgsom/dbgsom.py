@@ -63,11 +63,11 @@ class DBGSOM:
         self.current_epoch = 0
         self.GROWING_TRESHOLD = None
         self.distance_matrix: np.ndarray | None = None
-        self.som: None | nx.Graph = None
+        self.som: nx.Graph = None
         self.weights = None
-        self.neurons: None | list[tuple[int, int]] = None
+        self.neurons: list[tuple[int, int]] = None
 
-    def fit(self, data) -> None:
+    def fit(self, X) -> None:
         """Train SOM on training data.
 
         Parameters
@@ -75,8 +75,15 @@ class DBGSOM:
         data : array_like of shape (n_samples, n_features)
             Training data.
         """
-        self._initialization(data)
-        self._grow(data)
+        self._initialization(X)
+        self._grow(X)
+
+    def predict(self, X) -> np.ndarray:
+        """Predict the closest cluster each sample in X belongs to. In the
+        vector quantization literature, cluster_centers_ is called the
+        code book and each value returned by predict is the index of the
+        closest code in the code book."""
+        return self._get_winning_neurons(X, n_bmu=1)
 
     def _initialization(self, data: npt.NDArray) -> None:
         """First training phase.
@@ -111,7 +118,7 @@ class DBGSOM:
 
             winners = self._get_winning_neurons(data, n_bmu=1)
             self._update_weights(winners, data)
-            self._calculate_accumulative_error(winners, data)
+            self._write_accumulative_error(winners, data)
             if self.current_epoch != self.N_EPOCHS and self.training_phase == "coarse":
                 self._distribute_errors()
                 self._add_new_neurons()
@@ -186,7 +193,7 @@ class DBGSOM:
                 / sum(kernel * n_samples)
         Step 5: Write new weight vectors to the graph.
         """
-        voronoi_set_centers = self.weights
+        voronoi_set_centers = np.zeros_like(self.weights)
         for winner in np.unique(winners):
             voronoi_set_centers[winner] = data[winners == winner].mean(axis=0)
 
@@ -211,16 +218,17 @@ class DBGSOM:
         new_weights_dict = dict(zip(self.neurons, new_weights))
         nx.set_node_attributes(G=self.som, values=new_weights_dict, name="weight")
 
+        # change =
+
     def _gaussian_neighborhood(self) -> np.ndarray:
-        """Calculate the gaussian neighborhood function for all neuron pairs."""
+        """Calculate the gaussian neighborhood function for all neuron
+        pairs."""
         sigma = self._sigma()
         h = np.exp(-(self.distance_matrix**2 / (2 * sigma**2))).astype(np.float32)
 
         return h
 
-    def _calculate_accumulative_error(
-        self, winners: np.ndarray, data: npt.NDArray
-    ) -> None:
+    def _write_accumulative_error(self, winners: np.ndarray, data: npt.NDArray) -> None:
         """Get the quantization error for each neuron
         and save it as "error" to the graph.
         """
@@ -292,11 +300,9 @@ class DBGSOM:
             (node_x - 1, node_y),
         ]:
             if nbr not in nbrs:
-                self.som.add_node(nbr)
-                self.som.nodes[nbr]["weight"] = 1.1 * self.som.nodes[node]["weight"]
-                self.som.nodes[nbr]["error"] = 0
-                self.som.nodes[nbr]["epoch_created"] = self.current_epoch
-                self._add_new_connections(nbr)
+                new_node = nbr
+                new_weight = 1.1 * self.som.nodes[node]["weight"]
+                self._add_node_to_graph(node=new_node, weight=new_weight)
 
     def _insert_neuron_2p(self, node: tuple[int, int]) -> None:
         """Add new neuron to the direction with the larger error.
@@ -348,24 +354,16 @@ class DBGSOM:
         if nbr1_x == nbr2_x or nbr1_y == nbr2_y:
             if nbr1_x == nbr2_x:
                 new_node = (n_x + 1, n_y)
-                if new_node in self.som.nodes:
-                    raise ValueError
                 new_weight = (
                     2 * self.som.nodes[node]["weight"] - self.som.nodes[nbr2]["weight"]
                 )
             else:
                 new_node = (n_x, n_y + 1)
-                if new_node in self.som.nodes:
-                    raise ValueError
                 new_weight = (
                     2 * self.som.nodes[node]["weight"] - self.som.nodes[nbr1]["weight"]
                 )
 
-        self.som.add_node(new_node)
-        self.som.nodes[new_node]["weight"] = new_weight
-        self.som.nodes[new_node]["error"] = 0
-        self.som.nodes[new_node]["epoch_created"] = self.current_epoch
-        self._add_new_connections(new_node)
+        self._add_node_to_graph(node=new_node, weight=new_weight)
 
     def _insert_neuron_3p(self, bo: tuple[int, int]) -> None:
         """If the boundary neuron (BO) has three available positions (P1, P2
@@ -428,11 +426,7 @@ class DBGSOM:
             nb_3 = corner_neighbors[1]
             new_node, new_weight = self._3p_case_a(nb_1, bo, nb_2, nb_3)
 
-        self.som.add_node(new_node)
-        self.som.nodes[new_node]["weight"] = new_weight
-        self.som.nodes[new_node]["error"] = 0
-        self.som.nodes[new_node]["epoch_created"] = self.current_epoch
-        self._add_new_connections(new_node)
+        self._add_node_to_graph(node=new_node, weight=new_weight)
 
     def _3p_case_a(
         self,
@@ -479,6 +473,13 @@ class DBGSOM:
             2 * self.som.nodes[node]["weight"] - self.som.nodes[neighbor]["weight"]
         )
         return new_node, new_weight
+
+    def _add_node_to_graph(self, node: tuple[int, int], weight: np.ndarray) -> None:
+        self.som.add_node(node)
+        self.som.nodes[node]["weight"] = weight
+        self.som.nodes[node]["error"] = 0
+        self.som.nodes[node]["epoch_created"] = self.current_epoch
+        self._add_new_connections(node)
 
     def _add_new_connections(self, node: tuple[int, int]) -> None:
         """Given a node (x, y), add new connections to the neighbors of the
