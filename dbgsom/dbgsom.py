@@ -15,18 +15,19 @@ class DBGSOM:
     ----------
     sf : float (default = 0.4)
         Spreading factor to calculate the treshold for neuron insertion.
+        0 <= sf <= 1.
 
     n_epochs : int (default = 30)
         Number of training epochs.
 
-    sigma_start, sigma_end : {None, numeric}
+    sigma_start, sigma_end : {None, numeric}, default: None
         Start and end values for the neighborhood bandwidth.
         If None, it is calculated dynamically in each epoch.
 
-    decay_function : {'exponential', 'linear'}
+    decay_function : {'exponential', 'linear'}, default: 'exponential'
         Decay function to use for neighborhood bandwith sigma.
 
-    coarse_training : float (default = 1)
+    coarse_training_frac : float (default = 1)
         Fraction of training epochs to use for coarse training.
         In coarse training, the neighborhood bandwidth is decreased from
         sigma_start to sigma_end and the network grows according to the
@@ -44,7 +45,7 @@ class DBGSOM:
         sigma_start: float | None = None,
         sigma_end: float | None = None,
         decay_function: str = "exponential",
-        coarse_training: float = 1,
+        coarse_training_frac: float = 1,
         random_state: Any = None,
     ) -> None:
         self.SF = sf
@@ -52,9 +53,19 @@ class DBGSOM:
         self.SIGMA_START = sigma_start
         self.SIGMA_END = sigma_end
         self.DECAY_FUNCTION = decay_function
-        self.COARSE_TRAINING_FRAC = coarse_training
+        self.COARSE_TRAINING_FRAC = coarse_training_frac
         self.RANDOM_STATE = random_state
+        self.training_phase = "coarse"
+        self.rng = np.random.default_rng(seed=self.RANDOM_STATE)
+
+        # Only for python style guide. These are created in _initialization()
+        # at training time
+        self.current_epoch = 0
+        self.GROWING_TRESHOLD = None
         self.distance_matrix: np.ndarray | None = None
+        self.som: None | nx.Graph = None
+        self.weights = None
+        self.neurons: None | list[tuple[int, int]] = None
 
     def fit(self, data) -> None:
         """Train SOM on training data.
@@ -71,18 +82,18 @@ class DBGSOM:
         """First training phase.
 
         Calculate growing threshold as gt = -data_dimensions * log(spreading_factor).
-        Create a graph containing the first four neurons in a square with init vectors.
+        Create a graph containing the first four neurons in a square with
+        init vectors.
         """
         data = data.astype(np.float32)
-        BATCH_SIZE = np.sqrt(len(data))
-        self.N_BATCHES = int(len(data) / BATCH_SIZE)
-        data_dimensionality = data.shape[1]
-        self.GROWING_TRESHOLD = -data_dimensionality * log(self.SF)
-        self.rng = np.random.default_rng(seed=self.RANDOM_STATE)
+        # BATCH_SIZE = np.sqrt(len(data))
+        # self.N_BATCHES = int(len(data) / BATCH_SIZE)
+        self.GROWING_TRESHOLD = -data.shape[1] * log(self.SF)
+
         self.som = self._create_som(data)
         self.distance_matrix = nx.floyd_warshall_numpy(self.som)
         self.weights = np.array(list(dict(self.som.nodes.data("weight")).values()))
-        self.neurons: list[tuple[int, int]] = list(self.som.nodes)
+        self.neurons = list(self.som.nodes)
 
     def _grow(self, data: npt.NDArray) -> None:
         """Second training phase"""
@@ -91,6 +102,8 @@ class DBGSOM:
             unit=" epochs",
         ):
             self.current_epoch = i + 1
+            if self.current_epoch > self.COARSE_TRAINING_FRAC * self.N_EPOCHS:
+                self.training_phase = "fine"
             self.weights = np.array(list(dict(self.som.nodes.data("weight")).values()))
             if len(self.som.nodes) > len(self.neurons) or self.current_epoch == 1:
                 self.neurons = list(self.som.nodes)
@@ -99,10 +112,7 @@ class DBGSOM:
             winners = self._get_winning_neurons(data, n_bmu=1)
             self._update_weights(winners, data)
             self._calculate_accumulative_error(winners, data)
-            if (
-                self.current_epoch != self.N_EPOCHS
-                and self.current_epoch < self.COARSE_TRAINING_FRAC * self.N_EPOCHS
-            ):
+            if self.current_epoch != self.N_EPOCHS and self.training_phase == "coarse":
                 self._distribute_errors()
                 self._add_new_neurons()
 
@@ -152,12 +162,12 @@ class DBGSOM:
         Only paths of length =< 3 * sigma + 1 are considered for performance
         reasons.
         """
-        som = self.som
-        sigma = self._sigma()
-        n = len(self.neurons)
-        m = np.zeros((n, n))
+        n_neurons = len(self.neurons)
+        m = np.zeros((n_neurons, n_neurons))
         m.fill(np.inf)
-        dist_dict = dict(nx.all_pairs_shortest_path_length(som, cutoff=3 * sigma + 1))
+        dist_dict = dict(
+            nx.all_pairs_shortest_path_length(self.som, cutoff=3 * self._sigma() + 1)
+        )
         for i1, neuron1 in enumerate(self.neurons):
             for i2, neuron2 in enumerate(self.neurons):
                 if neuron2 in dist_dict[neuron1].keys():
@@ -500,11 +510,11 @@ class DBGSOM:
             sigma_start = self.SIGMA_START
 
         if self.SIGMA_END is None:
-            sigma_end = 0.05 * np.sqrt(self.som.number_of_nodes())
+            sigma_end = 0.01 * np.sqrt(self.som.number_of_nodes())
         else:
             sigma_end = self.SIGMA_END
 
-        if epoch < self.N_EPOCHS * self.COARSE_TRAINING_FRAC:
+        if self.training_phase == "coarse":
             if self.DECAY_FUNCTION == "linear":
                 sigma = sigma_start * (
                     1 - (1 / self.COARSE_TRAINING_FRAC * epoch / self.N_EPOCHS)
@@ -516,7 +526,7 @@ class DBGSOM:
                     fac * 1 / self.COARSE_TRAINING_FRAC * epoch
                 )
         else:
-            sigma = sigma_end
+            sigma = 0.1
 
         return sigma
 
@@ -557,10 +567,10 @@ class DBGSOM:
         topographic error : float
             Fraction of samples with topographic errors over all samples.
         """
-        sample_bmus = self._get_winning_neurons(data, n_bmu=2)
+        bmu_indices = self._get_winning_neurons(data, n_bmu=2).T
         errors = 0
-        for sample in sample_bmus.T:
-            dist = self.distance_matrix[sample[0], sample[1]]
+        for bmu_1, bmu_2 in bmu_indices:
+            dist = self.distance_matrix[bmu_1, bmu_2]
             if dist > 1:
                 errors += 1
 
