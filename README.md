@@ -5,6 +5,17 @@ This project was inspired by the great [MiniSom](https://github.com/JustGlowing/
 ## How it works
 In a growing SOM we start with a small map and extend the grid according to some growing criterion. In case of the DBGSOM algorithm, we add neurons the edge of the map where the quantization error of the boundary neurons is above a given growing threshold.
 
+## Usage
+dbgsom follows the scikit-learn API. 
+```Python
+from dbgsom import DBGSOM
+
+classifier = DBGSOM()
+classifier.fit(data_train)
+predictions = classifier.predict(data_test)
+
+```
+
 ## Dependencies
 - Numpy
 - NetworkX
