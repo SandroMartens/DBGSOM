@@ -39,8 +39,8 @@ class DBGSOM:
         self,
         n_epochs: int = 30,
         sf: float = 0.4,
-        sigma_start: float = 1,
-        sigma_end: float = 0,
+        sigma_start: float = None,
+        sigma_end: float = None,
         decay_function: str = "exponential",
         coarse_training: float = 1,
         random_state: Any = None,
@@ -107,14 +107,14 @@ class DBGSOM:
 
     def _create_som(self, data: npt.NDArray) -> nx.Graph:
         """Create a graph containing the first four neurons in a square.
-        Each neuron has a weight vector randomly chosen from the training samples.
-        """
+        Each neuron has a weight vector randomly chosen from the training
+         samples."""
         init_vectors = self.rng.choice(a=data, size=4, replace=False)
         neurons = [
-            ((0, 0), {"weight": init_vectors[0]}),
-            ((0, 1), {"weight": init_vectors[1]}),
-            ((1, 0), {"weight": init_vectors[2]}),
-            ((1, 1), {"weight": init_vectors[3]}),
+            ((0, 0), {"weight": init_vectors[0], "epoch_created": 0}),
+            ((0, 1), {"weight": init_vectors[1], "epoch_created": 0}),
+            ((1, 0), {"weight": init_vectors[2], "epoch_created": 0}),
+            ((1, 1), {"weight": init_vectors[3], "epoch_created": 0}),
         ]
 
         #  Build a square
@@ -406,20 +406,13 @@ class DBGSOM:
             nb_3 = corner_neighbors[1]
             new_node, new_weight = self._3p_case_a(nb_1, bo, nb_2, nb_3)
 
-        # old
-        # neighbor = list(self.som.neighbors(node))[0]
-        # new_node = (2 * node[0] - neighbor[0], 2 * node[1] - neighbor[1])
-        # new_weight = (
-        #     2 * self.som.nodes[node]["weight"] - self.som.nodes[neighbor]["weight"]
-        # )
-
         self.som.add_node(new_node)
         self.som.nodes[new_node]["weight"] = new_weight
         self.som.nodes[new_node]["error"] = 0
         self.som.nodes[new_node]["epoch_created"] = self.current_epoch
         self._add_new_connections(new_node)
 
-    def _3p_case_a(self, nb_1, bo, nb_2, nb_3):
+    def _3p_case_a(self, nb_1, bo, nb_2, nb_3) -> tuple[tuple[int, int], np.ndarray]:
         if (
             self.som.nodes[nb_1]["error"] > self.som.nodes[nb_2]["error"]
             and self.som.nodes[nb_1]["error"] > self.som.nodes[nb_3]["error"]
@@ -439,11 +432,9 @@ class DBGSOM:
             new_node, new_weight = self._3p_case_c(nb_1, bo)
         else:
             new_node = (
-                nb_2[0] - bo[0] + nb_1[0],
-                nb_2[1] - bo[1] + nb_1[1],
+                nb_2[0] + bo[0] - nb_1[0],
+                nb_2[1] + bo[1] - nb_1[1],
             )
-            # if not isinstance(new_node, int):
-            #     raise ValueError
 
             new_weight = (
                 (2 * self.som.nodes[bo]["weight"] - self.som.nodes[nb_1]["weight"])
