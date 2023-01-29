@@ -412,7 +412,13 @@ class DBGSOM:
         self.som.nodes[new_node]["epoch_created"] = self.current_epoch
         self._add_new_connections(new_node)
 
-    def _3p_case_a(self, nb_1, bo, nb_2, nb_3) -> tuple[tuple[int, int], np.ndarray]:
+    def _3p_case_a(
+        self,
+        nb_1: tuple[int, int],
+        bo: tuple[int, int],
+        nb_2: tuple[int, int],
+        nb_3: tuple[int, int],
+    ) -> tuple[tuple[int, int], np.ndarray]:
         if (
             self.som.nodes[nb_1]["error"] > self.som.nodes[nb_2]["error"]
             and self.som.nodes[nb_1]["error"] > self.som.nodes[nb_3]["error"]
@@ -427,7 +433,7 @@ class DBGSOM:
 
     def _3p_case_b(
         self, nb_1: tuple[int, int], bo: tuple[int, int], nb_2: tuple[int, int]
-    ):
+    ) -> tuple[tuple[int, int], np.ndarray]:
         if self.som.nodes[nb_1]["error"] > self.som.nodes[nb_2]["error"]:
             new_node, new_weight = self._3p_case_c(nb_1, bo)
         else:
@@ -443,7 +449,9 @@ class DBGSOM:
 
         return new_node, new_weight
 
-    def _3p_case_c(self, neighbor, node):
+    def _3p_case_c(
+        self, neighbor: tuple[int, int], node: tuple[int, int]
+    ) -> tuple[tuple[int, int], np.ndarray]:
         new_node = (2 * node[0] - neighbor[0], 2 * node[1] - neighbor[1])
         new_weight = (
             2 * self.som.nodes[node]["weight"] - self.som.nodes[neighbor]["weight"]
