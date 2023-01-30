@@ -197,20 +197,21 @@ class DBGSOM:
         for winner in np.unique(winners):
             voronoi_set_centers[winner] = data[winners == winner].mean(axis=0)
 
-        neuron_counts = np.zeros(shape=len(self.neurons), dtype=np.float32)
+        neuron_activations = np.zeros(shape=len(self.neurons), dtype=np.float32)
+
         winners, winner_counts = np.unique(winners, return_counts=True)
         for winner, count in zip(winners, winner_counts):
-            neuron_counts[winner] = count
+            neuron_activations[winner] = count
 
         gaussian_kernel = self._gaussian_neighborhood()
         numerator = np.sum(
             voronoi_set_centers
-            * neuron_counts[:, np.newaxis]
+            * neuron_activations[:, np.newaxis]
             * gaussian_kernel[:, :, np.newaxis],
             axis=1,
         )
         denominator = np.sum(
-            gaussian_kernel[:, :, np.newaxis] * neuron_counts[:, np.newaxis],
+            gaussian_kernel[:, :, np.newaxis] * neuron_activations[:, np.newaxis],
             axis=1,
         )
         new_weights = numerator / denominator
@@ -241,7 +242,7 @@ class DBGSOM:
     def _distribute_errors(self) -> None:
         """For each neuron i which is not a boundary neuron and E_i > GT,
         a half value of E_i is equally distributed to the neighboring
-        boundary neurons if exist.
+        boundary neurons, if exist.
         """
         for node, neighbors in self.som.adj.items():
             if len(neighbors.items()) == 4:
@@ -498,7 +499,7 @@ class DBGSOM:
         """Return the neighborhood bandwidth for each epoch.
         If no sigma is given, the starting bandwidth is set to
         0.2 * the square root of the number of neurons in each epoch.
-        The ending bandwidth is set to 0.05 * the square root of the
+        The ending bandwidth is set to 0.02 * the square root of the
         number of neurons in each epoch.
 
         Returns:
@@ -511,7 +512,7 @@ class DBGSOM:
             sigma_start = self.SIGMA_START
 
         if self.SIGMA_END is None:
-            sigma_end = 0.01 * np.sqrt(self.som.number_of_nodes())
+            sigma_end = 0.02 * np.sqrt(self.som.number_of_nodes())
         else:
             sigma_end = self.SIGMA_END
 
@@ -523,9 +524,7 @@ class DBGSOM:
 
             elif self.DECAY_FUNCTION == "exponential":
                 fac = 1 / self.N_EPOCHS * (log(sigma_end) - log(sigma_start))
-                sigma = sigma_start * np.exp(
-                    fac * 1 / self.COARSE_TRAINING_FRAC * epoch
-                )
+                sigma = sigma_start * np.exp(fac * epoch / self.COARSE_TRAINING_FRAC)
         else:
             sigma = 0.1
 
