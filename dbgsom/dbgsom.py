@@ -36,6 +36,10 @@ class DBGSOM:
 
     random_state : any (optional, default = None)
         Random state for weight initialization.
+
+    convergence_treshold : float (default = 10 ** -10)
+        If the sum of all weight changes is smaller than the threshold,
+        convergence is assumed and the training is stopped.
     """
 
     def __init__(
@@ -47,6 +51,7 @@ class DBGSOM:
         decay_function: str = "exponential",
         coarse_training_frac: float = 1,
         random_state: Any = None,
+        convergence_treshold: float = 10**-10,
     ) -> None:
         self.SF = sf
         self.N_EPOCHS = n_epochs
@@ -57,6 +62,8 @@ class DBGSOM:
         self.RANDOM_STATE = random_state
         self.training_phase = "coarse"
         self.rng = np.random.default_rng(seed=self.RANDOM_STATE)
+        self.convergence_treshold = convergence_treshold
+        self.converged = False
 
         # Only for python style guide. These are created in _initialization()
         # at training time
@@ -118,7 +125,11 @@ class DBGSOM:
 
             winners = self._get_winning_neurons(data, n_bmu=1)
             self._update_weights(winners, data)
+
             self._write_accumulative_error(winners, data)
+            if self.converged:
+                print(self.current_epoch)
+                break
             if self.current_epoch != self.N_EPOCHS and self.training_phase == "coarse":
                 self._distribute_errors()
                 self._add_new_neurons()
@@ -217,9 +228,11 @@ class DBGSOM:
         new_weights = numerator / denominator
 
         new_weights_dict = dict(zip(self.neurons, new_weights))
+        change = np.linalg.norm(self.weights - new_weights, axis=1)
+        change_total = np.sum(change)
+        if change_total < self.convergence_treshold:
+            self.converged = True
         nx.set_node_attributes(G=self.som, values=new_weights_dict, name="weight")
-
-        # change =
 
     def _gaussian_neighborhood(self) -> np.ndarray:
         """Calculate the gaussian neighborhood function for all neuron
@@ -268,7 +281,6 @@ class DBGSOM:
         """Add new neurons to places where the error is above
         the growing threshold.
         """
-        # new
         sorted_indices = np.flip(
             np.argsort(list(dict(self.som.nodes.data("error")).values()))
         )
@@ -332,7 +344,6 @@ class DBGSOM:
         of the grid and there is no neuron adjacent to the available
         positions the preferable position is decided randomly.
         """
-        # new
         nbr1, nbr2 = self.som.adj[node]
         (nbr1_x, nbr1_y), (nbr2_x, nbr2_y) = nbr1, nbr2
         n_x, n_y = node
