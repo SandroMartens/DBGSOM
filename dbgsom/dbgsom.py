@@ -1,11 +1,16 @@
 from math import log
+import sys
 from typing import Any
 
-import networkx as nx
-import numpy as np
-import numpy.typing as npt
-from scipy.spatial.distance import cdist
-from tqdm import tqdm
+try:
+    import networkx as nx
+    import numpy as np
+    import numpy.typing as npt
+    from scipy.spatial.distance import cdist
+    from tqdm import tqdm
+except ImportError as e:
+    print(e)
+    sys.exit()
 
 
 class DBGSOM:
@@ -128,7 +133,6 @@ class DBGSOM:
 
             self._write_accumulative_error(winners, data)
             if self.converged:
-                print(self.current_epoch)
                 break
             if self.current_epoch != self.N_EPOCHS and self.training_phase == "coarse":
                 self._distribute_errors()
@@ -181,17 +185,17 @@ class DBGSOM:
         reasons.
         """
         n_neurons = len(self.neurons)
-        m = np.zeros((n_neurons, n_neurons))
-        m.fill(np.inf)
+        distance_matrix = np.zeros((n_neurons, n_neurons))
+        distance_matrix.fill(np.inf)
         dist_dict = dict(
             nx.all_pairs_shortest_path_length(self.som, cutoff=3 * self._sigma() + 1)
         )
         for i1, neuron1 in enumerate(self.neurons):
             for i2, neuron2 in enumerate(self.neurons):
                 if neuron2 in dist_dict[neuron1].keys():
-                    m[i1, i2] = dist_dict[neuron1][neuron2]
+                    distance_matrix[i1, i2] = dist_dict[neuron1][neuron2]
 
-        self.distance_matrix = m
+        self.distance_matrix = distance_matrix
 
     def _update_weights(self, winners: np.ndarray, data: npt.NDArray) -> None:
         """Update the weight vectors according to the batch learning rule.
@@ -204,17 +208,21 @@ class DBGSOM:
                 / sum(kernel * n_samples)
         Step 5: Write new weight vectors to the graph.
         """
+        # step 1
         voronoi_set_centers = np.zeros_like(self.weights)
         for winner in np.unique(winners):
             voronoi_set_centers[winner] = data[winners == winner].mean(axis=0)
 
+        # step 2
         neuron_activations = np.zeros(shape=len(self.neurons), dtype=np.float32)
-
         winners, winner_counts = np.unique(winners, return_counts=True)
         for winner, count in zip(winners, winner_counts):
             neuron_activations[winner] = count
 
+        # Step 3
         gaussian_kernel = self._gaussian_neighborhood()
+
+        # Step 4
         numerator = np.sum(
             voronoi_set_centers
             * neuron_activations[:, np.newaxis]
@@ -227,6 +235,7 @@ class DBGSOM:
         )
         new_weights = numerator / denominator
 
+        # Step 5
         new_weights_dict = dict(zip(self.neurons, new_weights))
         change = np.linalg.norm(self.weights - new_weights, axis=1)
         change_total = np.sum(change)
@@ -236,7 +245,7 @@ class DBGSOM:
 
     def _gaussian_neighborhood(self) -> np.ndarray:
         """Calculate the gaussian neighborhood function for all neuron
-        pairs."""
+        pairs using the distance matrix."""
         sigma = self._sigma()
         h = np.exp(-(self.distance_matrix**2 / (2 * sigma**2))).astype(np.float32)
 
@@ -320,7 +329,7 @@ class DBGSOM:
     def _insert_neuron_2p(self, node: tuple[int, int]) -> None:
         """Add new neuron to the direction with the larger error.
 
-        Case 1:
+        Case (a):
         o --nb1--nb4
          |   |
         nb2--bo--p1
@@ -329,7 +338,7 @@ class DBGSOM:
         The position P1 is preferable if E(NB4) > (ENB)3,
         otherwise P2 is the choice.
 
-        Case 2:
+        Case (b):
         o --nb1
          |   |
         nb2--bo--p1
@@ -339,7 +348,7 @@ class DBGSOM:
         preferable position is P1 if E(NB1) > E(NB2),otherwise a new
         neuron will be added to P2.
 
-
+        Case (c):
         For the case that the boundary neuron (BO) is not at the corner
         of the grid and there is no neuron adjacent to the available
         positions the preferable position is decided randomly.
@@ -413,7 +422,6 @@ class DBGSOM:
         available positions the position P1 is preferable
         """
 
-        # new
         bo_x, bo_y = bo
         corner_neighbor_positions = {
             (bo_x + 1, bo_y + 1),
@@ -423,7 +431,6 @@ class DBGSOM:
         }
 
         nb_1 = list(self.som.neighbors(bo))[0]
-        # n_nb = list(self.som.neighbors(nb_1))
         corner_neighbors = list(
             corner_neighbor_positions.intersection(set(self.som.neighbors(nb_1)))
         )
@@ -523,7 +530,7 @@ class DBGSOM:
             sigma_start = self.SIGMA_START
 
         if self.SIGMA_END is None:
-            sigma_end = 0.02 * np.sqrt(self.som.number_of_nodes())
+            sigma_end = 0.05 * np.sqrt(self.som.number_of_nodes())
         else:
             sigma_end = self.SIGMA_END
 
@@ -537,7 +544,7 @@ class DBGSOM:
                 fac = 1 / self.N_EPOCHS * (log(sigma_end) - log(sigma_start))
                 sigma = sigma_start * np.exp(fac * epoch / self.COARSE_TRAINING_FRAC)
         else:
-            sigma = 0.1
+            sigma = max(0.7, sigma_end)
 
         return sigma
 
