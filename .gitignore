@@ -5,6 +5,7 @@ __pycache__/
 
 #  Test stuff
 test.*
+profile.py
 
 # C extensions
 *.so

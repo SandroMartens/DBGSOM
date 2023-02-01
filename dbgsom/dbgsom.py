@@ -18,31 +18,31 @@ class DBGSOM:
 
     Parameters
     ----------
-    sf : float (default = 0.4)
+    sf : float, default = 0.4
         Spreading factor to calculate the treshold for neuron insertion.
         0 <= sf <= 1.
 
-    n_epochs : int (default = 30)
+    n_epochs : int, default = 30
         Number of training epochs.
 
-    sigma_start, sigma_end : {None, numeric}, default: None
+    sigma_start, sigma_end : {None, numeric}, default = None
         Start and end values for the neighborhood bandwidth.
         If None, it is calculated dynamically in each epoch.
 
-    decay_function : {'exponential', 'linear'}, default: 'exponential'
+    decay_function : {'exponential', 'linear'}, default = 'exponential'
         Decay function to use for neighborhood bandwith sigma.
 
-    coarse_training_frac : float (default = 1)
+    coarse_training_frac : float, default = 1
         Fraction of training epochs to use for coarse training.
         In coarse training, the neighborhood bandwidth is decreased from
         sigma_start to sigma_end and the network grows according to the
         growing rules. In fine training, the bandwidth is constant at
         sigma_end and no new neurons are added.
 
-    random_state : any (optional, default = None)
+    random_state : any (optional), default = None
         Random state for weight initialization.
 
-    convergence_treshold : float (default = 10 ** -10)
+    convergence_treshold : float, default = 10 ** -10
         If the sum of all weight changes is smaller than the threshold,
         convergence is assumed and the training is stopped.
     """
@@ -94,7 +94,19 @@ class DBGSOM:
         """Predict the closest cluster each sample in X belongs to. In the
         vector quantization literature, cluster_centers_ is called the
         code book and each value returned by predict is the index of the
-        closest code in the code book."""
+        closest code in the code book.
+
+        Parameters
+        ----------
+        X : {array-like, sparse matrix} of shape (n_samples, n_features)
+            New data to predict.
+
+
+        Returns
+        -------
+        labels : ndarray of shape (n_samples,)
+            Index of the cluster each sample belongs to.
+        """
         return self._get_winning_neurons(X, n_bmu=1)
 
     def _initialization(self, data: npt.NDArray) -> None:
@@ -124,6 +136,7 @@ class DBGSOM:
             if self.current_epoch > self.COARSE_TRAINING_FRAC * self.N_EPOCHS:
                 self.training_phase = "fine"
             self.weights = np.array(list(dict(self.som.nodes.data("weight")).values()))
+            # check if new neurons were inserted
             if len(self.som.nodes) > len(self.neurons) or self.current_epoch == 1:
                 self.neurons = list(self.som.nodes)
                 self._update_distance_matrix()
@@ -308,10 +321,10 @@ class DBGSOM:
     def _insert_neuron_1p(self, node: tuple[int, int]) -> None:
         """Add neuron to the only free position.
         The available positions are:
-        - x_i, y_i + 1
-        - x_i, y_i - 1
-        - x_i + 1, y_i
-        - x_i - 1, y_i
+        - (x_i, y_i + 1)
+        - (x_i, y_i - 1)
+        - (x_i + 1, y_i)
+        - (x_i - 1, y_i)
         """
         node_x, node_y = node
         nbrs = self.som.adj[node]
@@ -335,7 +348,7 @@ class DBGSOM:
         nb2--bo--p1
          |   |
         nb3  p2
-        The position P1 is preferable if E(NB4) > (ENB)3,
+        The position P1 is preferable if E(NB4) > E(NB3),
         otherwise P2 is the choice.
 
         Case (b):
@@ -516,21 +529,22 @@ class DBGSOM:
     def _sigma(self) -> float:
         """Return the neighborhood bandwidth for each epoch.
         If no sigma is given, the starting bandwidth is set to
-        0.2 * the square root of the number of neurons in each epoch.
-        The ending bandwidth is set to 0.02 * the square root of the
-        number of neurons in each epoch.
+        0.2 * sqrt(n_neurons) and the ending bandwidth is set to
+        max(0,7, 0.05 * sqrt(n_neurons)) where n_neurons is the
+        number of neurons in the graph in the current epoch.
 
         Returns:
             float: The neighborhood bandwidth for each epoch.
         """
         epoch = self.current_epoch - 1
+        n_neurons = self.som.number_of_nodes()
         if self.SIGMA_START is None:
-            sigma_start = 0.2 * np.sqrt(self.som.number_of_nodes())
+            sigma_start = 0.2 * np.sqrt(n_neurons)
         else:
             sigma_start = self.SIGMA_START
 
         if self.SIGMA_END is None:
-            sigma_end = 0.05 * np.sqrt(self.som.number_of_nodes())
+            sigma_end = 0.05 * np.sqrt(n_neurons)
         else:
             sigma_end = self.SIGMA_END
 
