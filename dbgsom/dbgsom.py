@@ -8,7 +8,7 @@ try:
     import numpy.typing as npt
     import pynndescent
     from scipy.spatial.distance import cdist
-    from sklearn.base import BaseEstimator
+    from sklearn.base import BaseEstimator, ClusterMixin
     from sklearn.utils import check_array
 
     # from sklearn.metrics import pairwise_distances_argmin
@@ -18,7 +18,8 @@ except ImportError as e:
     sys.exit()
 
 
-class DBGSOM(BaseEstimator):
+# pylint:  disable= attribute-defined-outside-init
+class DBGSOM(BaseEstimator, ClusterMixin):
     """A Directed Batch Growing Self-Organizing Map.
 
     Parameters
@@ -61,11 +62,11 @@ class DBGSOM(BaseEstimator):
     def __init__(
         self,
         n_epochs_max: int = 30,
-        sf: float = 0.4,
+        sf: float = 0.1,
         sigma_start: float | None = None,
         sigma_end: float | None = None,
         decay_function: str = "exponential",
-        coarse_training_frac: float = 1,
+        coarse_training_frac: float = 0.7,
         random_state: Any = None,
         convergence_treshold: float = 10**-10,
         nn_method: str = "naive",
@@ -91,6 +92,10 @@ class DBGSOM(BaseEstimator):
         X = check_array(array=X, dtype=[float, int], ensure_min_samples=4)
         self._initialization(X)
         self._grow(X)
+        labels = self._get_winning_neurons(X, n_bmu=1)
+        # if min(labels) > 0:
+        #     labels -= min(labels)
+        self.labels_ = labels
 
         return self
 
@@ -112,9 +117,11 @@ class DBGSOM(BaseEstimator):
             Index of the cluster each sample belongs to.
         """
         X = check_array(array=X, dtype=[float, int])
-        return self._get_winning_neurons(X, n_bmu=1)
+        labels = self._get_winning_neurons(X, n_bmu=1)
+        # if min(labels) > 0:
+        #     labels -= min(labels)
+        return labels
 
-    # pylint:  disable= attribute-defined-outside-init
     def _initialization(self, data: npt.NDArray) -> None:
         """First training phase.
 
