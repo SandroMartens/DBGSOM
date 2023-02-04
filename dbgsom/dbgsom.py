@@ -8,6 +8,7 @@ try:
     import pynndescent
     import numpy.typing as npt
     from scipy.spatial.distance import cdist
+    from sklearn.base import BaseEstimator
 
     # from sklearn.metrics import pairwise_distances_argmin
     from tqdm import tqdm
@@ -16,7 +17,7 @@ except ImportError as e:
     sys.exit()
 
 
-class DBGSOM:
+class DBGSOM(BaseEstimator):
     """A Directed Batch Growing Self-Organizing Map.
 
     Parameters
@@ -68,15 +69,15 @@ class DBGSOM:
         convergence_treshold: float = 10**-10,
         nn_method: str = "naive",
     ) -> None:
-        self.SF = sf
-        self.N_EPOCHS = n_epochs
-        self.SIGMA_START = sigma_start
-        self.SIGMA_END = sigma_end
-        self.DECAY_FUNCTION = decay_function
-        self.COARSE_TRAINING_FRAC = coarse_training_frac
-        self.RANDOM_STATE = random_state
+        self.sf = sf
+        self.n_epochs_max = n_epochs
+        self.sigma_start = sigma_start
+        self.sigma_end = sigma_end
+        self.decay_function = decay_function
+        self.coarse_training_frac = coarse_training_frac
+        self.random_state = random_state
         self.training_phase = "coarse"
-        self.rng = np.random.default_rng(seed=self.RANDOM_STATE)
+        self.rng = np.random.default_rng(seed=self.random_state)
         self.convergence_treshold = convergence_treshold
         self.converged = False
         self.nn_method = nn_method
@@ -130,7 +131,7 @@ class DBGSOM:
         data = data.astype(np.float32)
         # BATCH_SIZE = np.sqrt(len(data))
         # self.N_BATCHES = int(len(data) / BATCH_SIZE)
-        self.GROWING_TRESHOLD = -data.shape[1] * log(self.SF)
+        self.GROWING_TRESHOLD = -data.shape[1] * log(self.sf)
 
         self.som = self._create_som(data)
         self.distance_matrix = nx.floyd_warshall_numpy(self.som)
@@ -140,11 +141,11 @@ class DBGSOM:
     def _grow(self, data: npt.NDArray) -> None:
         """Second training phase"""
         for current_epoch in tqdm(
-            iterable=range(self.N_EPOCHS),
+            iterable=range(self.n_epochs_max),
             unit=" epochs",
         ):
             self.current_epoch = current_epoch
-            if current_epoch > self.COARSE_TRAINING_FRAC * self.N_EPOCHS:
+            if current_epoch > self.coarse_training_frac * self.n_epochs_max:
                 self.training_phase = "fine"
             self.weights = np.array(list(dict(self.som.nodes.data("weight")).values()))
             # check if new neurons were inserted
@@ -159,7 +160,7 @@ class DBGSOM:
             if self.converged:
                 break
             if (
-                current_epoch != self.N_EPOCHS
+                current_epoch != self.n_epochs_max
                 and self.training_phase == "coarse"
                 # and current_epoch % 2 == 0
             ):
@@ -201,11 +202,16 @@ class DBGSOM:
         weights = self.weights
         if self.nn_method == "naive" or n_bmu > 1:
             distances = cdist(weights, data)
-            winners = np.argsort(distances, axis=0)[:n_bmu]
+            if n_bmu == 1:
+                winners = np.argmin(distances, axis=0)
+            else:
+                winners = np.argsort(distances, axis=0)[:n_bmu]
 
         elif self.nn_method == "pynndescent" and n_bmu == 1:
             n_neurons = len(self.neurons)
-            index = pynndescent.NNDescent(weights, n_neighbors=min(30, n_neurons - 1))
+            index = pynndescent.NNDescent(
+                weights, n_neighbors=min(30, n_neurons - 1), n_jobs=-1
+            )
             winners = index.query(data, epsilon=0.01, k=min(10, n_neurons - 1))[0][:, 0]
 
         return winners
@@ -242,7 +248,7 @@ class DBGSOM:
         """
         # step 1
         voronoi_set_centers = np.zeros_like(self.weights)
-        for winner in np.unique(winners):
+        for winner in np.unique(winners.flatten()):
             voronoi_set_centers[winner] = data[winners == winner].mean(axis=0)
 
         # step 2
@@ -575,25 +581,25 @@ class DBGSOM:
         """
         epoch = self.current_epoch
         n_neurons = self.som.number_of_nodes()
-        if self.SIGMA_START is None:
+        if self.sigma_start is None:
             sigma_start = 0.2 * np.sqrt(n_neurons)
         else:
-            sigma_start = self.SIGMA_START
+            sigma_start = self.sigma_start
 
-        if self.SIGMA_END is None:
+        if self.sigma_end is None:
             sigma_end = max(0.7, 0.05 * np.sqrt(n_neurons))
         else:
-            sigma_end = self.SIGMA_END
+            sigma_end = self.sigma_end
 
         if self.training_phase == "coarse":
-            if self.DECAY_FUNCTION == "linear":
+            if self.decay_function == "linear":
                 sigma = sigma_start * (
-                    1 - (1 / self.COARSE_TRAINING_FRAC * epoch / self.N_EPOCHS)
-                ) + sigma_end * (epoch / self.N_EPOCHS)
+                    1 - (1 / self.coarse_training_frac * epoch / self.n_epochs_max)
+                ) + sigma_end * (epoch / self.n_epochs_max)
 
-            elif self.DECAY_FUNCTION == "exponential":
-                fac = 1 / self.N_EPOCHS * (log(sigma_end) - log(sigma_start))
-                sigma = sigma_start * np.exp(fac * epoch / self.COARSE_TRAINING_FRAC)
+            elif self.decay_function == "exponential":
+                fac = 1 / self.n_epochs_max * (log(sigma_end) - log(sigma_start))
+                sigma = sigma_start * np.exp(fac * epoch / self.coarse_training_frac)
         else:
             sigma = sigma_end
 
