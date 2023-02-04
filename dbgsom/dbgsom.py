@@ -1,5 +1,5 @@
-from math import log
 import sys
+from math import log
 from typing import Any
 
 try:
@@ -7,6 +7,8 @@ try:
     import numpy as np
     import numpy.typing as npt
     from scipy.spatial.distance import cdist
+
+    # from sklearn.metrics import pairwise_distances_argmin
     from tqdm import tqdm
 except ImportError as e:
     print(e)
@@ -128,16 +130,16 @@ class DBGSOM:
 
     def _grow(self, data: npt.NDArray) -> None:
         """Second training phase"""
-        for i in tqdm(
+        for current_epoch in tqdm(
             iterable=range(self.N_EPOCHS),
             unit=" epochs",
         ):
-            self.current_epoch = i + 1
-            if self.current_epoch > self.COARSE_TRAINING_FRAC * self.N_EPOCHS:
+            self.current_epoch = current_epoch
+            if current_epoch > self.COARSE_TRAINING_FRAC * self.N_EPOCHS:
                 self.training_phase = "fine"
             self.weights = np.array(list(dict(self.som.nodes.data("weight")).values()))
             # check if new neurons were inserted
-            if len(self.som.nodes) > len(self.neurons) or self.current_epoch == 1:
+            if len(self.som.nodes) > len(self.neurons) or current_epoch == 0:
                 self.neurons = list(self.som.nodes)
                 self._update_distance_matrix()
 
@@ -147,7 +149,11 @@ class DBGSOM:
             self._write_accumulative_error(winners, data)
             if self.converged:
                 break
-            if self.current_epoch != self.N_EPOCHS and self.training_phase == "coarse":
+            if (
+                current_epoch != self.N_EPOCHS
+                and self.training_phase == "coarse"
+                # and current_epoch % 2 == 0
+            ):
                 self._distribute_errors()
                 self._add_new_neurons()
 
@@ -183,8 +189,9 @@ class DBGSOM:
         Return index of winning neuron or best matching units(s) for each
         sample.
         """
+        # winners_1 = pairwise_distances_argmin(X=data, Y=self.weights)
         distances = cdist(self.weights, data)
-        #  Argmin is 10x faster than argsort
+        # #  Argmin is 10x faster than argsort
         if n_bmu == 1:
             winners = np.argmin(distances, axis=0)
         else:
@@ -200,8 +207,9 @@ class DBGSOM:
         n_neurons = len(self.neurons)
         distance_matrix = np.zeros((n_neurons, n_neurons))
         distance_matrix.fill(np.inf)
+        sigma = self._sigma()
         dist_dict = dict(
-            nx.all_pairs_shortest_path_length(self.som, cutoff=3 * self._sigma() + 1)
+            nx.all_pairs_shortest_path_length(self.som, cutoff=3 * sigma + 1)
         )
         for i1, neuron1 in enumerate(self.neurons):
             for i2, neuron2 in enumerate(self.neurons):
@@ -236,17 +244,15 @@ class DBGSOM:
         gaussian_kernel = self._gaussian_neighborhood()
 
         # Step 4
-        numerator = np.sum(
+        new_weights = np.sum(
             voronoi_set_centers
             * neuron_activations[:, np.newaxis]
             * gaussian_kernel[:, :, np.newaxis],
             axis=1,
-        )
-        denominator = np.sum(
+        ) / np.sum(
             gaussian_kernel[:, :, np.newaxis] * neuron_activations[:, np.newaxis],
             axis=1,
         )
-        new_weights = numerator / denominator
 
         # Step 5
         new_weights_dict = dict(zip(self.neurons, new_weights))
@@ -310,15 +316,20 @@ class DBGSOM:
             node = list(dict(self.som.nodes))[i]
             if self.som.nodes[node]["error"] > self.GROWING_TRESHOLD:
                 if nx.degree(self.som, node) == 1:
-                    self._insert_neuron_3p(node)
+                    new_node, new_weight = self._insert_neuron_3p(node)
                 elif nx.degree(self.som, node) == 2:
-                    self._insert_neuron_2p(node)
+                    new_node, new_weight = self._insert_neuron_2p(node)
                 elif nx.degree(self.som, node) == 3:
-                    self._insert_neuron_1p(node)
+                    new_node, new_weight = self._insert_neuron_1p(node)
+
+                self._add_node_to_graph(node=new_node, weight=new_weight)
+
             else:
                 break
 
-    def _insert_neuron_1p(self, node: tuple[int, int]) -> None:
+    def _insert_neuron_1p(
+        self, node: tuple[int, int]
+    ) -> tuple[tuple[int, int], np.ndarray]:
         """Add neuron to the only free position.
         The available positions are:
         - (x_i, y_i + 1)
@@ -328,18 +339,24 @@ class DBGSOM:
         """
         node_x, node_y = node
         nbrs = self.som.adj[node]
-        for nbr in [
+        for p1_candidate in [
             (node_x, node_y + 1),
             (node_x, node_y - 1),
             (node_x + 1, node_y),
             (node_x - 1, node_y),
         ]:
-            if nbr not in nbrs:
-                new_node = nbr
-                new_weight = 1.1 * self.som.nodes[node]["weight"]
-                self._add_node_to_graph(node=new_node, weight=new_weight)
+            if p1_candidate not in nbrs:
+                p1 = p1_candidate
+                nb_1 = (2 * node_x - p1[0], 2 * node_y - p1[1])
+                new_weight = (
+                    2 * self.som.nodes[node]["weight"] - self.som.nodes[nb_1]["weight"]
+                )
 
-    def _insert_neuron_2p(self, node: tuple[int, int]) -> None:
+        return p1, new_weight
+
+    def _insert_neuron_2p(
+        self, node: tuple[int, int]
+    ) -> tuple[tuple[int, int], np.ndarray]:
         """Add new neuron to the direction with the larger error.
 
         Case (a):
@@ -396,10 +413,11 @@ class DBGSOM:
                 new_weight = (
                     2 * self.som.nodes[node]["weight"] - self.som.nodes[nbr1]["weight"]
                 )
+        return new_node, new_weight
 
-        self._add_node_to_graph(node=new_node, weight=new_weight)
-
-    def _insert_neuron_3p(self, bo: tuple[int, int]) -> None:
+    def _insert_neuron_3p(
+        self, bo: tuple[int, int]
+    ) -> tuple[tuple[int, int], np.ndarray]:
         """If the boundary neuron (BO) has three available positions (P1, P2
         and P3), the accumulative error of surrounding neurons should be
         considered according to the insertion rule.
@@ -458,7 +476,7 @@ class DBGSOM:
             nb_3 = corner_neighbors[1]
             new_node, new_weight = self._3p_case_a(nb_1, bo, nb_2, nb_3)
 
-        self._add_node_to_graph(node=new_node, weight=new_weight)
+        return new_node, new_weight
 
     def _3p_case_a(
         self,
@@ -536,7 +554,7 @@ class DBGSOM:
         Returns:
             float: The neighborhood bandwidth for each epoch.
         """
-        epoch = self.current_epoch - 1
+        epoch = self.current_epoch
         n_neurons = self.som.number_of_nodes()
         if self.SIGMA_START is None:
             sigma_start = 0.2 * np.sqrt(n_neurons)
