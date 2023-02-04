@@ -5,6 +5,7 @@ from typing import Any
 try:
     import networkx as nx
     import numpy as np
+    import pynndescent
     import numpy.typing as npt
     from scipy.spatial.distance import cdist
 
@@ -22,7 +23,7 @@ class DBGSOM:
     ----------
     sf : float, default = 0.4
         Spreading factor to calculate the treshold for neuron insertion.
-        0 <= sf <= 1.
+        0 < sf <= 1.
 
     n_epochs : int, default = 30
         Number of training epochs.
@@ -189,12 +190,20 @@ class DBGSOM:
         Return index of winning neuron or best matching units(s) for each
         sample.
         """
+        weights = self.weights
+        # if n_bmu == 1:
+        #     n_neurons = len(self.neurons)
+        #     index = pynndescent.NNDescent(weights, n_neighbors=min(20, n_neurons - 1))
+        #     winners = index.query(data, epsilon=0.01, k=min(10, n_neurons - 1))[0][:, 1]
+
         # winners_1 = pairwise_distances_argmin(X=data, Y=self.weights)
-        distances = cdist(self.weights, data)
+
+        distances = cdist(weights, data)
         # #  Argmin is 10x faster than argsort
         if n_bmu == 1:
             winners = np.argmin(distances, axis=0)
         else:
+            distances = cdist(weights, data)
             winners = np.argsort(distances, axis=0)[:n_bmu]
 
         return winners
@@ -253,6 +262,11 @@ class DBGSOM:
             gaussian_kernel[:, :, np.newaxis] * neuron_activations[:, np.newaxis],
             axis=1,
         )
+
+        # new_weights = voronoi_set_centers * np.sum(
+        #     gaussian_kernel[:, :, np.newaxis] * neuron_activations[:, np.newaxis],
+        #     axis=1,
+        # )
 
         # Step 5
         new_weights_dict = dict(zip(self.neurons, new_weights))
@@ -314,13 +328,16 @@ class DBGSOM:
         )
         for i in sorted_indices:
             node = list(dict(self.som.nodes))[i]
+            node_degree = nx.degree(self.som, node)
             if self.som.nodes[node]["error"] > self.GROWING_TRESHOLD:
-                if nx.degree(self.som, node) == 1:
+                if node_degree == 1:
                     new_node, new_weight = self._insert_neuron_3p(node)
-                elif nx.degree(self.som, node) == 2:
+                elif node_degree == 2:
                     new_node, new_weight = self._insert_neuron_2p(node)
-                elif nx.degree(self.som, node) == 3:
+                elif node_degree == 3:
                     new_node, new_weight = self._insert_neuron_1p(node)
+                elif node_degree == 4:
+                    continue
 
                 self._add_node_to_graph(node=new_node, weight=new_weight)
 
@@ -562,7 +579,7 @@ class DBGSOM:
             sigma_start = self.SIGMA_START
 
         if self.SIGMA_END is None:
-            sigma_end = 0.05 * np.sqrt(n_neurons)
+            sigma_end = max(0.7, 0.05 * np.sqrt(n_neurons))
         else:
             sigma_end = self.SIGMA_END
 
@@ -576,7 +593,7 @@ class DBGSOM:
                 fac = 1 / self.N_EPOCHS * (log(sigma_end) - log(sigma_start))
                 sigma = sigma_start * np.exp(fac * epoch / self.COARSE_TRAINING_FRAC)
         else:
-            sigma = max(0.7, sigma_end)
+            sigma = sigma_end
 
         return sigma
 
