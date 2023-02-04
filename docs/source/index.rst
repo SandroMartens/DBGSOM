@@ -6,7 +6,10 @@
 Welcome to DBGSOM's documentation!
 ==================================
 
-DBGSOM an implementation of the directed batch growing self organizing map. 
+DBGSOM an implementation of the directed batch growing self organizing map. SOMs are a type of artificial neural network. They learn prototypes in an high dimensional input space (similar ro kmeans), but also maintain a topological ordering in an lower dimensional output space. If the output space is two dimensional, the SOM can be used to generate 2D-visualizations.
+
+User Guide
+----------
 .. toctree::
    :maxdepth: 2
    :caption: Contents:
@@ -14,7 +17,7 @@ DBGSOM an implementation of the directed batch growing self organizing map.
 
 
 Indices and tables
-==================
+------------------
 
 * :ref:`genindex`
 * :ref:`modindex`
