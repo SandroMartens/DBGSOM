@@ -5,7 +5,7 @@ __pycache__/
 
 #  Test stuff
 test.*
-profile.py
+estimator_checks.ipynb
 
 # C extensions
 *.so

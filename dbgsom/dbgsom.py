@@ -48,6 +48,12 @@ class DBGSOM:
     convergence_treshold : float, default = 10 ** -10
         If the sum of all weight changes is smaller than the threshold,
         convergence is assumed and the training is stopped.
+
+    nn_method : {'naive', "pynndescent"}, default = "naive"
+        Method to find the nearest prototype for each sample.
+        Naive calculates the entire distance matrix for all samples
+        and all prototypes. pynndescent uses a nearest neighbor search
+        for a fast (approximate) solution.
     """
 
     def __init__(
@@ -60,6 +66,7 @@ class DBGSOM:
         coarse_training_frac: float = 1,
         random_state: Any = None,
         convergence_treshold: float = 10**-10,
+        nn_method: str = "naive",
     ) -> None:
         self.SF = sf
         self.N_EPOCHS = n_epochs
@@ -72,6 +79,7 @@ class DBGSOM:
         self.rng = np.random.default_rng(seed=self.RANDOM_STATE)
         self.convergence_treshold = convergence_treshold
         self.converged = False
+        self.nn_method = nn_method
 
         # Only for python style guide. These are created in _initialization()
         # at training time
@@ -191,20 +199,14 @@ class DBGSOM:
         sample.
         """
         weights = self.weights
-        # if n_bmu == 1:
-        #     n_neurons = len(self.neurons)
-        #     index = pynndescent.NNDescent(weights, n_neighbors=min(20, n_neurons - 1))
-        #     winners = index.query(data, epsilon=0.01, k=min(10, n_neurons - 1))[0][:, 1]
-
-        # winners_1 = pairwise_distances_argmin(X=data, Y=self.weights)
-
-        distances = cdist(weights, data)
-        # #  Argmin is 10x faster than argsort
-        if n_bmu == 1:
-            winners = np.argmin(distances, axis=0)
-        else:
+        if self.nn_method == "naive" or n_bmu > 1:
             distances = cdist(weights, data)
             winners = np.argsort(distances, axis=0)[:n_bmu]
+
+        elif self.nn_method == "pynndescent" and n_bmu == 1:
+            n_neurons = len(self.neurons)
+            index = pynndescent.NNDescent(weights, n_neighbors=min(30, n_neurons - 1))
+            winners = index.query(data, epsilon=0.01, k=min(10, n_neurons - 1))[0][:, 0]
 
         return winners
 
