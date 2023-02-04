@@ -14,6 +14,8 @@ User Guide
    :maxdepth: 2
    :caption: Contents:
 
+   api.rst
+
 
 
 Indices and tables
