@@ -9,6 +9,8 @@ setup(
    description='A directed batch growing approach to enhance the topology preservation of self-organizing maps ',
    long_description=long_description,
    author='Sandro Martens',
+   author_email='sandro.martens@web.de',
+   license="MIT",
    packages=['dbgsom'],
-   install_requires=['numpy', 'networkx', "scipy"],
+   install_requires=['numpy', 'networkx', "scipy", "tqdm", "scikit-learn", "pynndescent"],
 )

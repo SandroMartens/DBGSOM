@@ -10,6 +10,7 @@ try:
     from scipy.spatial.distance import cdist
     from sklearn.base import BaseEstimator, ClusterMixin
     from sklearn.utils import check_array
+    from sklearn.utils.validation import check_is_fitted
 
     # from sklearn.metrics import pairwise_distances_argmin
     from tqdm import tqdm
@@ -30,6 +31,9 @@ class DBGSOM(BaseEstimator, ClusterMixin):
 
     n_epochs_max : int, default = 30
         Maximal Number of training epochs.
+
+    max_neurons : int, default = 10**10
+        Maximum number of neurons in the som.
 
     sigma_start, sigma_end : {None, numeric}, default = None
         Start and end values for the neighborhood bandwidth.
@@ -70,6 +74,7 @@ class DBGSOM(BaseEstimator, ClusterMixin):
         random_state: Any = None,
         convergence_treshold: float = 10**-10,
         nn_method: str = "naive",
+        max_neurons: int = 10**10,
     ) -> None:
         self.sf = sf
         self.n_epochs_max = n_epochs_max
@@ -80,6 +85,7 @@ class DBGSOM(BaseEstimator, ClusterMixin):
         self.random_state = random_state
         self.convergence_treshold = convergence_treshold
         self.nn_method = nn_method
+        self.max_neurons = max_neurons
 
     def fit(self, X: np.ndarray, y=None):
         """Train SOM on training data.
@@ -118,6 +124,7 @@ class DBGSOM(BaseEstimator, ClusterMixin):
         labels : ndarray of shape (n_samples,)
             Index of the cluster each sample belongs to.
         """
+        check_is_fitted(self)
         X = check_array(array=X, dtype=[float, int])
         labels = self._get_winning_neurons(X, n_bmu=1)
         # if min(labels) > 0:
@@ -135,8 +142,6 @@ class DBGSOM(BaseEstimator, ClusterMixin):
         self.converged_ = False
         self._training_phase = "coarse"
         data = data.astype(np.float32)
-        # BATCH_SIZE = np.sqrt(len(data))
-        # self.N_BATCHES = int(len(data) / BATCH_SIZE)
         self.growing_threshold_ = -data.shape[1] * log(self.sf)
 
         self.som_ = self._create_som(data)
@@ -170,6 +175,7 @@ class DBGSOM(BaseEstimator, ClusterMixin):
             if (
                 current_epoch != self.n_epochs_max
                 and self._training_phase == "coarse"
+                and len(self.neurons_) < self.max_neurons
                 # and current_epoch % 2 == 0
             ):
                 self._distribute_errors()
@@ -654,6 +660,7 @@ class DBGSOM(BaseEstimator, ClusterMixin):
         error : float
             Average distance from each sample to the nearest prototype.
         """
+        check_is_fitted(self)
         data = check_array(data)
         winners = self._get_winning_neurons(data, n_bmu=1)
         error = np.mean(np.linalg.norm(self.weights_[winners] - data, axis=1))
@@ -678,6 +685,7 @@ class DBGSOM(BaseEstimator, ClusterMixin):
         topographic error : float
             Fraction of samples with topographic errors over all samples.
         """
+        check_is_fitted(self)
         data = check_array(data)
         bmu_indices = self._get_winning_neurons(data, n_bmu=2).T
         errors = 0
