@@ -24,7 +24,7 @@ class DBGSOM(BaseEstimator, ClusterMixin):
 
     Parameters
     ----------
-    sf : float, default = 0.4
+    sf : float, default = 0.1
         Spreading factor to calculate the treshold for neuron insertion.
         0 < sf <= 1.
 
@@ -38,7 +38,7 @@ class DBGSOM(BaseEstimator, ClusterMixin):
     decay_function : {'exponential', 'linear'}, default = 'exponential'
         Decay function to use for neighborhood bandwith sigma.
 
-    coarse_training_frac : float, default = 1
+    coarse_training_frac : float, default = 0.7
         Fraction of training epochs to use for coarse training.
         In coarse training, the neighborhood bandwidth is decreased from
         sigma_start to sigma_end and the network grows according to the
@@ -93,9 +93,11 @@ class DBGSOM(BaseEstimator, ClusterMixin):
         self._initialization(X)
         self._grow(X)
         labels = self._get_winning_neurons(X, n_bmu=1)
-        # if min(labels) > 0:
-        #     labels -= min(labels)
+        if min(labels) > 0:
+            labels -= min(labels)
         self.labels_ = labels
+        self.quantization_error_ = self.calculate_quantization_error(X)
+        self.n_features_in_ = X.shape[1]
 
         return self
 
@@ -131,14 +133,7 @@ class DBGSOM(BaseEstimator, ClusterMixin):
         """
         self._current_epoch = 0
         self.converged_ = False
-
-        self.growing_threshold_ = None
         self._training_phase = "coarse"
-
-        self._distance_matrix: np.ndarray | None = None
-        self.som_: nx.Graph = None
-        self.weights_ = None
-        self.neurons_: list[tuple[int, int]] = None
         data = data.astype(np.float32)
         # BATCH_SIZE = np.sqrt(len(data))
         # self.N_BATCHES = int(len(data) / BATCH_SIZE)
@@ -168,10 +163,10 @@ class DBGSOM(BaseEstimator, ClusterMixin):
 
             winners = self._get_winning_neurons(data, n_bmu=1)
             self._update_weights(winners, data)
-
-            self._write_accumulative_error(winners, data)
             if self.converged_:
                 break
+
+            self._write_accumulative_error(winners, data)
             if (
                 current_epoch != self.n_epochs_max
                 and self._training_phase == "coarse"
@@ -358,7 +353,7 @@ class DBGSOM(BaseEstimator, ClusterMixin):
                     new_node, new_weight = self._insert_neuron_2p(node)
                 elif node_degree == 3:
                     new_node, new_weight = self._insert_neuron_1p(node)
-                elif node_degree == 4:
+                else:
                     continue
 
                 self._add_node_to_graph(node=new_node, weight=new_weight)
@@ -395,12 +390,12 @@ class DBGSOM(BaseEstimator, ClusterMixin):
         return p1, new_weight
 
     def _insert_neuron_2p(
-        self, node: tuple[int, int]
+        self, bo: tuple[int, int]
     ) -> tuple[tuple[int, int], np.ndarray]:
         """Add new neuron to the direction with the larger error.
 
         Case (a):
-        o --nb1--nb4
+         o--nb1--nb4
          |   |
         nb2--bo--p1
          |   |
@@ -409,7 +404,7 @@ class DBGSOM(BaseEstimator, ClusterMixin):
         otherwise P2 is the choice.
 
         Case (b):
-        o --nb1
+         o--nb1
          |   |
         nb2--bo--p1
              |
@@ -423,38 +418,57 @@ class DBGSOM(BaseEstimator, ClusterMixin):
         of the grid and there is no neuron adjacent to the available
         positions the preferable position is decided randomly.
         """
-        nbr1, nbr2 = self.som_.adj[node]
+        nbr1, nbr2 = self.som_.adj[bo]
         (nbr1_x, nbr1_y), (nbr2_x, nbr2_y) = nbr1, nbr2
-        n_x, n_y = node
         error_nbr1 = self.som_.nodes[nbr1]["error"]
         error_nbr2 = self.som_.nodes[nbr2]["error"]
+        bo_x, bo_y = bo
+        corner_neighbor_positions = {
+            (bo_x + 1, bo_y + 1),
+            (bo_x + 1, bo_y - 1),
+            (bo_x - 1, bo_y + 1),
+            (bo_x - 1, bo_y - 1),
+        }
 
-        # Case b:
+        corner_neighbors = list(
+            corner_neighbor_positions.intersection(set(self.som_.neighbors(nbr1)))
+        )
+
+        # # Case (a)
+        # if len(corner_neighbors) == 1:
+        #     nbr3 = corner_neighbors[0]
+        #     error_nbr3 = self.som_.nodes[nbr3]["error"]
+
+        # else:
+        #     nbr3, nbr4 = corner_neighbors[:2]
+        #     error_nbr3 = self.som_.nodes[nbr3]["error"]
+        #     error_nbr4 = self.som_.nodes[nbr4]["error"]
+
+        # Case (b):
         if error_nbr1 > error_nbr2:
-            new_node = (2 * n_x - nbr2_x, 2 * n_y - nbr2_y)
+            new_node = (2 * bo_x - nbr2_x, 2 * bo_y - nbr2_y)
             new_weight = (
-                2 * self.som_.nodes[node]["weight"] - self.som_.nodes[nbr2]["weight"]
+                2 * self.som_.nodes[bo]["weight"] - self.som_.nodes[nbr2]["weight"]
             )
         else:
-            new_node = (2 * n_x - nbr1_x, 2 * n_y - nbr1_y)
+            new_node = (2 * bo_x - nbr1_x, 2 * bo_y - nbr1_y)
             new_weight = (
-                2 * self.som_.nodes[node]["weight"] - self.som_.nodes[nbr1]["weight"]
+                2 * self.som_.nodes[bo]["weight"] - self.som_.nodes[nbr1]["weight"]
             )
 
-        #  Case c: Two opposite neighbors
+        #  Case (c): Two opposite neighbors
         if nbr1_x == nbr2_x or nbr1_y == nbr2_y:
             if nbr1_x == nbr2_x:
-                new_node = (n_x + 1, n_y)
+                new_node = (bo_x + 1, bo_y)
                 new_weight = (
-                    2 * self.som_.nodes[node]["weight"]
-                    - self.som_.nodes[nbr2]["weight"]
+                    2 * self.som_.nodes[bo]["weight"] - self.som_.nodes[nbr2]["weight"]
                 )
             else:
-                new_node = (n_x, n_y + 1)
+                new_node = (bo_x, bo_y + 1)
                 new_weight = (
-                    2 * self.som_.nodes[node]["weight"]
-                    - self.som_.nodes[nbr1]["weight"]
+                    2 * self.som_.nodes[bo]["weight"] - self.som_.nodes[nbr1]["weight"]
                 )
+
         return new_node, new_weight
 
     def _insert_neuron_3p(
@@ -615,14 +629,17 @@ class DBGSOM(BaseEstimator, ClusterMixin):
                 ) + sigma_end * (epoch / self.n_epochs_max)
 
             elif self.decay_function == "exponential":
-                fac = 1 / self.n_epochs_max * (log(sigma_end) - log(sigma_start))
-                sigma = sigma_start * np.exp(fac * epoch / self.coarse_training_frac)
+                sigma = sigma_start * np.exp(
+                    (1 / self.n_epochs_max * (log(sigma_end) - log(sigma_start)))
+                    * epoch
+                    / self.coarse_training_frac
+                )
         else:
             sigma = sigma_end
 
         return sigma
 
-    def quantization_error(self, data: npt.NDArray[np.float32]) -> float:
+    def calculate_quantization_error(self, data: npt.NDArray[np.float32]) -> float:
         """Return the average distance from each sample to the nearest
         prototype.
 
@@ -636,6 +653,7 @@ class DBGSOM(BaseEstimator, ClusterMixin):
         error : float
             Average distance from each sample to the nearest prototype.
         """
+        data = check_array(data)
         winners = self._get_winning_neurons(data, n_bmu=1)
         error = np.mean(np.linalg.norm(self.weights_[winners] - data, axis=1))
         return error
@@ -659,6 +677,7 @@ class DBGSOM(BaseEstimator, ClusterMixin):
         topographic error : float
             Fraction of samples with topographic errors over all samples.
         """
+        data = check_array(data)
         bmu_indices = self._get_winning_neurons(data, n_bmu=2).T
         errors = 0
         for bmu_1, bmu_2 in bmu_indices:
