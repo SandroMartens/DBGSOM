@@ -9,14 +9,15 @@ In a growing SOM we start with a small map and extend the grid according to some
 
 ## Usage
 
-dbgsom follows the scikit-learn API.
+dbgsom implements the scikit-learn API.
 
 ```Python
 from dbgsom import DBGSOM
 
-classifier = DBGSOM()
-classifier.fit(data_train)
-predictions = classifier.predict(data_test)
+quantizer = DBGSOM()
+quantizer.fit(X=data_train)
+labels = quantizer.labels_
+labels_new = quantizer.predict(data_test)
 
 ```
 
@@ -26,6 +27,8 @@ predictions = classifier.predict(data_test)
 - NetworkX
 - Scipy
 - tqdm
+- scikit-learn
+- pynndescent
 
 ## References
 

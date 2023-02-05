@@ -303,7 +303,7 @@ class DBGSOM(BaseEstimator, ClusterMixin):
 
     def _write_accumulative_error(self, winners: np.ndarray, data: npt.NDArray) -> None:
         """Get the quantization error for each neuron
-        and save it as "error" to the graph.
+        and save it as "error" attribute of each node.
         """
         for winner_index, _ in enumerate(self.neurons_):
             samples = data[winners == winner_index]
@@ -338,7 +338,8 @@ class DBGSOM(BaseEstimator, ClusterMixin):
 
     def _add_new_neurons(self) -> None:
         """Add new neurons to places where the error is above
-        the growing threshold.
+        the growing threshold. Begin with the neuron with the largest
+        error.
         """
         sorted_indices = np.flip(
             np.argsort(list(dict(self.som_.nodes.data("error")).values()))
@@ -430,9 +431,9 @@ class DBGSOM(BaseEstimator, ClusterMixin):
             (bo_x - 1, bo_y - 1),
         }
 
-        corner_neighbors = list(
-            corner_neighbor_positions.intersection(set(self.som_.neighbors(nbr1)))
-        )
+        # corner_neighbors = list(
+        #     corner_neighbor_positions.intersection(set(self.som_.neighbors(nbr1)))
+        # )
 
         # # Case (a)
         # if len(corner_neighbors) == 1:
