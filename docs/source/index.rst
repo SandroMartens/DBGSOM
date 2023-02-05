@@ -14,6 +14,7 @@ User Guide
    :maxdepth: 2
    :caption: Contents:
 
+   user_guide
    api.rst
 
 
