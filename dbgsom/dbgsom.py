@@ -136,8 +136,9 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin):
         return labels
 
     def transform(self, X) -> np.ndarray:
+        check_is_fitted(self)
         X = check_array(X)
-        distances = pairwise_distances(self.weights_, X, metric=self.metric)
+        distances = pairwise_distances(self.weights_, X, metric=self.metric).T
         return distances
 
     def _initialization(self, data: npt.NDArray) -> None:
