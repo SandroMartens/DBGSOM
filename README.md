@@ -1,11 +1,22 @@
 # DBGSOM
 
-DBGSOM is short for _A directed batch growing approach to enhance the topology preservation of self-organizing map_ (SOM) (after the paper with the same title).  
+DBGSOM is short for _A directed batch growing approach to enhance the topology preservation of self-organizing map_ (SOM). A SOM is a type of artificial neural network that is used for unsupervised learning. It can be used for clustering tasks and many different data visualization tasks.
+
 This project was inspired by the great [MiniSom](https://github.com/JustGlowing/minisom).
 
 ## How it works
 
-In a growing SOM we start with a small map and extend the grid according to some growing criterion. In case of the DBGSOM algorithm, we add neurons the edge of the map where the quantization error of the boundary neurons is above a given growing threshold.
+The DBGSOM algorithm works by constructing a two-dimensional map of neurons, where each neuron is connected to its neighboring neurons. The neurons on the map are initialized with random weights. The input data is then presented to the SOM, and each neuron's weights are updated so that it becomes more similar to the input data. The DBGSOM algorithm uses a growing mechanism to expand the map as needed. We add neurons the edge of the map where the quantization error of the boundary neurons is above a given growing threshold.
+
+## How to install
+
+(ToDo)
+
+```Powershell
+git clone https://github.com/SandroMartens/DBGSOM.git
+cd dbgsom
+pip install -e .
+```
 
 ## Usage
 
@@ -16,16 +27,25 @@ from dbgsom import DBGSOM
 
 quantizer = DBGSOM()
 quantizer.fit(X=data_train)
-labels = quantizer.labels_
-labels_new = quantizer.predict(data_test)
+labels_train = quantizer.labels_
+labels_test = quantizer.predict(X=data_test)
 
 ```
+
+## Examples
+
+Here are a few use cases for dbgsom (#ToDo)
+
+### Fashion Mnist
+
+see examples notebook
+
+### Color Quantization
 
 ## Dependencies
 
 - Numpy
 - NetworkX
-- Scipy
 - tqdm
 - scikit-learn
 - pynndescent

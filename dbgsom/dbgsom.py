@@ -7,11 +7,10 @@ try:
     import numpy as np
     import numpy.typing as npt
     import pynndescent
-
     from sklearn.base import BaseEstimator, ClusterMixin, TransformerMixin
+    from sklearn.metrics import pairwise_distances
     from sklearn.utils import check_array
     from sklearn.utils.validation import check_is_fitted
-    from sklearn.metrics import pairwise_distances
     from tqdm import tqdm
 except ImportError as e:
     print(e)
