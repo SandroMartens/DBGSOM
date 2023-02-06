@@ -7,12 +7,11 @@ try:
     import numpy as np
     import numpy.typing as npt
     import pynndescent
-    from scipy.spatial.distance import cdist
-    from sklearn.base import BaseEstimator, ClusterMixin
+
+    from sklearn.base import BaseEstimator, ClusterMixin, TransformerMixin
     from sklearn.utils import check_array
     from sklearn.utils.validation import check_is_fitted
-
-    # from sklearn.metrics import pairwise_distances_argmin
+    from sklearn.metrics import pairwise_distances
     from tqdm import tqdm
 except ImportError as e:
     print(e)
@@ -20,7 +19,7 @@ except ImportError as e:
 
 
 # pylint:  disable= attribute-defined-outside-init
-class DBGSOM(BaseEstimator, ClusterMixin):
+class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin):
     """A Directed Batch Growing Self-Organizing Map.
 
     Parameters
@@ -61,6 +60,9 @@ class DBGSOM(BaseEstimator, ClusterMixin):
         Naive calculates the entire distance matrix for all samples
         and all prototypes. pynndescent uses a nearest neighbor search
         for a fast (approximate) solution.
+
+    metric : str, default = euclidean
+        The metric to use for computing distances between prototypes and samples.
     """
 
     def __init__(
@@ -75,6 +77,7 @@ class DBGSOM(BaseEstimator, ClusterMixin):
         convergence_treshold: float = 10**-10,
         nn_method: str = "naive",
         max_neurons: int = 10**10,
+        metric: str = "euclidean",
     ) -> None:
         self.sf = sf
         self.n_epochs_max = n_epochs_max
@@ -86,6 +89,7 @@ class DBGSOM(BaseEstimator, ClusterMixin):
         self.convergence_treshold = convergence_treshold
         self.nn_method = nn_method
         self.max_neurons = max_neurons
+        self.metric = metric
 
     def fit(self, X: np.ndarray, y=None):
         """Train SOM on training data.
@@ -130,6 +134,11 @@ class DBGSOM(BaseEstimator, ClusterMixin):
         # if min(labels) > 0:
         #     labels -= min(labels)
         return labels
+
+    def transform(self, X) -> np.ndarray:
+        X = check_array(X)
+        distances = pairwise_distances(self.weights_, X, metric=self.metric)
+        return distances
 
     def _initialization(self, data: npt.NDArray) -> None:
         """First training phase.
@@ -216,7 +225,7 @@ class DBGSOM(BaseEstimator, ClusterMixin):
         """
         weights = self.weights_
         if self.nn_method == "naive" or n_bmu > 1:
-            distances = cdist(weights, data)
+            distances = pairwise_distances(weights, data, metric=self.metric)
             if n_bmu == 1:
                 winners = np.argmin(distances, axis=0)
             else:
@@ -225,7 +234,10 @@ class DBGSOM(BaseEstimator, ClusterMixin):
         elif self.nn_method == "pynndescent" and n_bmu == 1:
             n_neurons = len(self.neurons_)
             index = pynndescent.NNDescent(
-                weights, n_neighbors=min(30, n_neurons - 1), n_jobs=-1
+                weights,
+                n_neighbors=min(30, n_neurons - 1),
+                n_jobs=-1,
+                metric=self.metric,
             )
             winners = index.query(data, epsilon=0.01, k=min(10, n_neurons - 1))[0][:, 0]
 
