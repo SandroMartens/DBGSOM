@@ -4,13 +4,19 @@ DBGSOM is short for _A directed batch growing approach to enhance the topology p
 
 This project was inspired by the great [MiniSom](https://github.com/JustGlowing/minisom).
 
+## Features
+
+- Compatible with scikit-learn's API and can be used as a drop-in replacement for other clustering algorithms.
+- Can handle high-dimensional and non-uniform data distributions.
+- Good results without parameter tuning
+
 ## How it works
 
-The DBGSOM algorithm works by constructing a two-dimensional map of neurons, where each neuron is connected to its neighboring neurons. The neurons on the map are initialized with random weights. The input data is then presented to the SOM, and each neuron's weights are updated so that it becomes more similar to the input data. The DBGSOM algorithm uses a growing mechanism to expand the map as needed. We add neurons the edge of the map where the quantization error of the boundary neurons is above a given growing threshold.
+The DBGSOM algorithm works by constructing a two-dimensional map of neurons, where each neuron is connected to its neighboring neurons. The neurons on the map are initialized with random weights. The input data is then presented to the SOM, and each neuron's weights are updated so that it becomes more similar to the input data. Each neurons affects it's neighbors to preserve the topological ordering of the map. The DBGSOM algorithm uses a growing mechanism to expand the map as needed. We add neurons the edge of the map where the quantization error of the boundary neurons is above a given growing threshold.
 
 ## How to install
 
-(ToDo)
+(WiP)
 
 ```Powershell
 git clone https://github.com/SandroMartens/DBGSOM.git
@@ -34,7 +40,7 @@ labels_test = quantizer.predict(X=data_test)
 
 ## Examples
 
-Here are a few use cases for dbgsom (#ToDo)
+Here are a few use cases for dbgsom (WiP)
 
 ### Fashion Mnist
 
@@ -56,3 +62,7 @@ see examples notebook
 - Reference implementation by the authors in Matlab: <https://github.com/mvasighi/DBGSOM>
 - _Self-Organizing Maps_, 3rd Edition, Teuvo Kohonen, 2003
 - _MATLAB Implementations and Applications of the Self-Organizing Map_, Teuvo Kohonen, 2014
+
+## License
+
+dbgsom is licensed under the MIT license.
