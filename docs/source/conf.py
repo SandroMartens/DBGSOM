@@ -27,8 +27,10 @@ extensions = [
     "sphinx.ext.doctest",
     "sphinx.ext.autodoc",
     "numpydoc",
+    "sphinx.ext.autosummary",
+    # "sphinx_autodoc_typehints",
 ]
-
+numpydoc_class_members_toctree = False
 templates_path = ["_templates"]
 exclude_patterns = []
 

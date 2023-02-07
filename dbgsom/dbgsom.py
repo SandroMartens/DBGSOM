@@ -111,10 +111,7 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin):
         return self
 
     def predict(self, X) -> np.ndarray:
-        """Predict the closest cluster each sample in X belongs to. In the
-        vector quantization literature, cluster_centers_ is called the
-        code book and each value returned by predict is the index of the
-        closest code in the code book.
+        """Predict the closest cluster each sample in X belongs to.
 
         Parameters
         ----------
