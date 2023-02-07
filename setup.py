@@ -19,5 +19,6 @@ setup(
         "tqdm",
         "scikit-learn",
         "pynndescent",
+        "numpydoc",
     ],
 )

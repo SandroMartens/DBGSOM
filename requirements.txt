@@ -4,3 +4,4 @@ scipy>=1.7
 tqdm>=4.19
 scikit-learn>=1.2
 pynndescent>=0.5
+numpydoc
