@@ -151,12 +151,17 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin):
         self.converged_ = False
         self._training_phase = "coarse"
         data = data.astype(np.float32)
-        self.growing_threshold_ = -data.shape[1] * log(self.sf)
+        self.growing_threshold_ = self._calculate_growing_threshold(data)
 
         self.som_ = self._create_som(data)
         self._distance_matrix = nx.floyd_warshall_numpy(self.som_)
         self.weights_ = np.array(list(dict(self.som_.nodes.data("weight")).values()))
         self.neurons_ = list(self.som_.nodes)
+
+    def _calculate_growing_threshold(self, data):
+        n_dim = data.shape[1]
+
+        return -n_dim * log(self.sf)
 
     def _grow(self, data: npt.NDArray) -> None:
         """Second training phase"""

@@ -135,3 +135,5 @@ mypy.ini
 
 # Pyre type checker
 .pyre/
+
+fashion-mnist_train.csv
