@@ -3,7 +3,7 @@ version: 2
 jobs:
   build:
     docker:
-      - image: circleci/python:3.6.1
+      - image: cimg/python:3.10
     working_directory: ~/repo
     steps:
       - checkout
@@ -16,7 +16,7 @@ jobs:
             conda update --yes --quiet conda
             conda create -n testenv --yes --quiet python=3
             source activate testenv
-            conda install --yes pip numpy scipy scikit-learn matplotlib sphinx sphinx_rtd_theme numpydoc pillow
+            conda install --yes pip numpy scipy scikit-learn matplotlib sphinx sphinx_rtd_theme numpydoc
             pip install sphinx-gallery
             pip install .
             cd doc

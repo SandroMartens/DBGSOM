@@ -44,7 +44,8 @@ Here are a few use cases for dbgsom (WiP)
 
 ### Fashion Mnist
 
-see examples notebook
+![The fashion mnist dataset](examples/fashion_mnist.png)
+![The fashion mnist dataset](examples/fashion_mnist_map.png)
 
 ### Color Quantization
 
