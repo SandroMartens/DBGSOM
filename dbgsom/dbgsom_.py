@@ -9,7 +9,7 @@ try:
     import pynndescent
     from sklearn.base import BaseEstimator, ClusterMixin, TransformerMixin
     from sklearn.metrics import pairwise_distances
-    from sklearn.utils import check_array
+    from sklearn.utils import check_array, check_random_state
     from sklearn.utils.validation import check_is_fitted
     from tqdm import tqdm
 except ImportError as e:
@@ -27,7 +27,7 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin):
         Spreading factor to calculate the treshold for neuron insertion.
         0 < sf <= 1.
 
-    n_epochs_max : int, default = 30
+    n_epochs_max : int, default = 50
         Maximal Number of training epochs.
 
     max_neurons : int, default = 10**10
@@ -40,12 +40,12 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin):
     decay_function : {'exponential', 'linear'}, default = 'exponential'
         Decay function to use for neighborhood bandwith sigma.
 
-    coarse_training_frac : float, default = 0.7
+    coarse_training_frac : float, default = 0.5
         Fraction of training epochs to use for coarse training.
-        In coarse training, the neighborhood bandwidth is decreased from
-        sigma_start to sigma_end and the network grows according to the
-        growing rules. In fine training, the bandwidth is constant at
-        sigma_end and no new neurons are added.
+        Training happens in two phases, coarse and fine training. In coarse training,
+        the neighborhood bandwidth is decreased from sigma_start to sigma_end and
+        the network grows according to the growing rules. In fine training, the
+        bandwidth is constant at sigma_end and no new neurons are added.
 
     random_state : any (optional), default = None
         Random state for weight initialization.
@@ -66,12 +66,12 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin):
 
     def __init__(
         self,
-        n_epochs_max: int = 30,
+        n_epochs_max: int = 50,
         sf: float = 0.1,
         sigma_start: float | None = None,
         sigma_end: float | None = None,
         decay_function: str = "exponential",
-        coarse_training_frac: float = 0.7,
+        coarse_training_frac: float = 0.5,
         random_state: Any = None,
         convergence_treshold: float = 10**-10,
         nn_method: str = "naive",
@@ -95,10 +95,16 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin):
 
         Parameters
         ----------
-        data : array_like of shape (n_samples, n_features)
+        X : array_like of shape (n_samples, n_features)
             Training data.
+
+        Returns
+        -------
+        self : dbgsom
+            Trained estimator
         """
         X = check_array(array=X, dtype=[float, int], ensure_min_samples=4)
+        self.random_state_ = check_random_state(self.random_state)
         self._initialization(X)
         self._grow(X)
         labels = self._get_winning_neurons(X, n_bmu=1)
@@ -131,7 +137,19 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin):
         #     labels -= min(labels)
         return labels
 
-    def transform(self, X) -> np.ndarray:
+    def transform(self, X, y=None) -> np.ndarray:
+        """Calculate the distance matrix of all samples and prototypes.
+
+        Parameters
+        ----------
+        X : {array-like, sparse matrix} of shape (n_samples, n_features)
+            Data to transform
+
+        Returns
+        -------
+        distances : np.ndarray
+            Distance matrix of shape (n_protypes, n_samples)
+        """
         check_is_fitted(self)
         X = check_array(X)
         distances = pairwise_distances(self.weights_, X, metric=self.metric).T
@@ -660,13 +678,13 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin):
 
         return sigma
 
-    def calculate_quantization_error(self, data: npt.NDArray[np.float32]) -> float:
+    def calculate_quantization_error(self, X: npt.NDArray[np.float32]) -> float:
         """Return the average distance from each sample to the nearest
         prototype.
 
         Parameters
         ----------
-        data : array_like of shape (n_samples, n_features)
+        X : array_like of shape (n_samples, n_features)
             Data to quantize.
 
         Returns
@@ -675,12 +693,12 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin):
             Average distance from each sample to the nearest prototype.
         """
         check_is_fitted(self)
-        data = check_array(data)
-        winners = self._get_winning_neurons(data, n_bmu=1)
-        error = np.mean(np.linalg.norm(self.weights_[winners] - data, axis=1))
+        X = check_array(X)
+        winners = self._get_winning_neurons(X, n_bmu=1)
+        error = np.mean(np.linalg.norm(self.weights_[winners] - X, axis=1))
         return error
 
-    def topographic_error(self, data: npt.NDArray[np.float32]) -> float:
+    def topographic_error(self, X: npt.NDArray[np.float32]) -> float:
         """The topographic error is a measure for the topology preservation of
         the map.
 
@@ -691,7 +709,7 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin):
 
         Parameters
         ----------
-        data : array_like of shape (n_samples, n_features)
+        X : array_like of shape (n_samples, n_features)
             Data to show the SOM.
 
         Returns
@@ -700,12 +718,12 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin):
             Fraction of samples with topographic errors over all samples.
         """
         check_is_fitted(self)
-        data = check_array(data)
-        bmu_indices = self._get_winning_neurons(data, n_bmu=2).T
+        X = check_array(X)
+        bmu_indices = self._get_winning_neurons(X, n_bmu=2).T
         errors = 0
         for bmu_1, bmu_2 in bmu_indices:
             dist = self._distance_matrix[bmu_1, bmu_2]
             if dist > 1:
                 errors += 1
 
-        return errors / data.shape[0]
+        return errors / X.shape[0]
