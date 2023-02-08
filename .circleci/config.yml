@@ -22,11 +22,11 @@ jobs:
             cd docs
             make html
       - store_artifacts:
-          path: doc/_build/html/
+          path: docs/build/html/
           destination: doc
       - store_artifacts:
           path: ~/log.txt
-      - run: ls -ltrh doc/_build/html
+      - run: ls -ltrh docs/build/html
     filters:
       branches:
         ignore: gh-pages
