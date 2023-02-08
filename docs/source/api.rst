@@ -4,5 +4,5 @@ API Reference
 DBGSOM
 ------
 
-.. autoclass:: dbgsom.DBGSOM
+.. autoclass:: dbgsom.dbgsom_.DBGSOM
     :members:

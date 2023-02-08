@@ -16,7 +16,6 @@ User Guide
 
    user_guide
    api.rst
-   modules
    dbgsom
 
 

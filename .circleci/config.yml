@@ -23,7 +23,7 @@ jobs:
             make html
       - store_artifacts:
           path: docs/build/html/
-          destination: doc
+          destination: docs
       - store_artifacts:
           path: ~/log.txt
       - run: ls -ltrh docs/build/html

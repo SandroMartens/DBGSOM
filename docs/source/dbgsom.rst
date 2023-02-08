@@ -7,7 +7,7 @@ Submodules
 dbgsom.dbgsom module
 --------------------
 
-.. automodule:: dbgsom.dbgsom
+.. automodule:: dbgsom.dbgsom_
    :members:
    :undoc-members:
    :show-inheritance:

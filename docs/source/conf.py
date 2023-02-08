@@ -43,4 +43,5 @@ root_doc = "index"
 html_theme = "alabaster"
 html_static_path = ["_static"]
 
-sys.path.append(os.path.abspath("./Main/Scripts"))
+sys.path.append(os.path.abspath("./dbgsom"))
+sys.path.insert(0, os.path.abspath("."))
