@@ -19,7 +19,7 @@ jobs:
             conda install --yes pip numpy scipy scikit-learn matplotlib sphinx sphinx_rtd_theme numpydoc
             pip install sphinx-gallery
             pip install .
-            cd doc
+            cd docs
             make html
       - store_artifacts:
           path: doc/_build/html/
