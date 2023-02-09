@@ -24,8 +24,13 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin):
     Parameters
     ----------
     sf : float, default = 0.1
-        Spreading factor to calculate the treshold for neuron insertion.
+        Spreading factor to calculate the treshold for neuron insertion if we use
+        the original growing threshold.
         0 < sf <= 1.
+
+    lmbda : float, default = 10
+        Regulation coefficient lambda if we use the statistics enhanced growing
+        threshold.
 
     n_epochs_max : int, default = 50
         Maximal Number of training epochs.
@@ -60,13 +65,21 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin):
         and all prototypes. pynndescent uses a nearest neighbor search
         for a fast (approximate) solution.
 
+    threshold_method : {"classical", "se"}
+        Method to calculate the growing threshold.
+
     metric : str, default = euclidean
         The metric to use for computing distances between prototypes and samples.
+
+    Attributes
+    ----------
+
     """
 
     def __init__(
         self,
         n_epochs_max: int = 50,
+        lmbda: float = 10,
         sf: float = 0.1,
         sigma_start: float | None = None,
         sigma_end: float | None = None,
@@ -77,8 +90,10 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin):
         nn_method: str = "naive",
         max_neurons: int = 10**10,
         metric: str = "euclidean",
+        threshold_method: str = "classical",
     ) -> None:
         self.sf = sf
+        self.lmbda = lmbda
         self.n_epochs_max = n_epochs_max
         self.sigma_start = sigma_start
         self.sigma_end = sigma_end
@@ -89,8 +104,9 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin):
         self.nn_method = nn_method
         self.max_neurons = max_neurons
         self.metric = metric
+        self.theshold_method = threshold_method
 
-    def fit(self, X: np.ndarray, y=None):
+    def fit(self, X: npt.ArrayLike, y=None):
         """Train SOM on training data.
 
         Parameters
@@ -137,7 +153,7 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin):
         #     labels -= min(labels)
         return labels
 
-    def transform(self, X, y=None) -> np.ndarray:
+    def transform(self, X: npt.ArrayLike, y=None) -> np.ndarray:
         """Calculate the distance matrix of all samples and prototypes.
 
         Parameters
@@ -174,9 +190,17 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin):
         self.neurons_ = list(self.som_.nodes)
 
     def _calculate_growing_threshold(self, data):
-        n_dim = data.shape[1]
+        # Classical case
+        if self.theshold_method == "classical":
+            n_dim = data.shape[1]
+            gt = -n_dim * log(self.sf)
 
-        return -n_dim * log(self.sf)
+        elif self.theshold_method == "se":
+            lmbd = self.lmbda
+            gt = lmbd * np.sqrt(np.sum(np.std(data, axis=0, ddof=1) ** 2))
+        return gt
+
+    #
 
     def _grow(self, data: npt.NDArray) -> None:
         """Second training phase"""
@@ -462,12 +486,12 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin):
         error_nbr1 = self.som_.nodes[nbr1]["error"]
         error_nbr2 = self.som_.nodes[nbr2]["error"]
         bo_x, bo_y = bo
-        corner_neighbor_positions = {
-            (bo_x + 1, bo_y + 1),
-            (bo_x + 1, bo_y - 1),
-            (bo_x - 1, bo_y + 1),
-            (bo_x - 1, bo_y - 1),
-        }
+        # corner_neighbor_positions = {
+        #     (bo_x + 1, bo_y + 1),
+        #     (bo_x + 1, bo_y - 1),
+        #     (bo_x - 1, bo_y + 1),
+        #     (bo_x - 1, bo_y - 1),
+        # }
 
         # corner_neighbors = list(
         #     corner_neighbor_positions.intersection(set(self.som_.neighbors(nbr1)))
@@ -678,7 +702,7 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin):
 
         return sigma
 
-    def calculate_quantization_error(self, X: npt.NDArray[np.float32]) -> float:
+    def calculate_quantization_error(self, X: npt.ArrayLike) -> float:
         """Return the average distance from each sample to the nearest
         prototype.
 
@@ -698,7 +722,7 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin):
         error = np.mean(np.linalg.norm(self.weights_[winners] - X, axis=1))
         return error
 
-    def topographic_error(self, X: npt.NDArray[np.float32]) -> float:
+    def topographic_error(self, X: npt.ArrayLike) -> float:
         """The topographic error is a measure for the topology preservation of
         the map.
 

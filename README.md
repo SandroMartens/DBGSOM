@@ -1,6 +1,6 @@
 # DBGSOM
 
-DBGSOM is short for _A directed batch growing approach to enhance the topology preservation of self-organizing map_ (SOM). A SOM is a type of artificial neural network that is used for unsupervised learning. It can be used for clustering tasks and many different data visualization tasks.
+DBGSOM is short for _A directed batch growing approach to enhance the topology preservation of self-organizing map_ (SOM). A SOM is a type of artificial neural network that is used for supervised and unsupervised learning. It can be used for clustering, classification and many different data visualization tasks.
 
 This project was inspired by the great [MiniSom](https://github.com/JustGlowing/minisom).
 
@@ -46,8 +46,10 @@ Here are a few use cases for dbgsom (WiP)
 
 ### Fashion Mnist
 
-![The fashion mnist dataset](examples/fashion_mnist.png)
-![The fashion mnist dataset](examples/fashion_mnist_map.png)
+|||
+|-|-|
+|![The fashion mnist dataset](examples/fashion_mnist.png) | ![The fashion mnist dataset](examples/fashion_mnist_map.png) |
+
 
 ### Color Quantization
 
@@ -63,6 +65,7 @@ Here are a few use cases for dbgsom (WiP)
 
 - _A directed batch growing approach to enhance the topology preservation of self-organizing map_, Mahdi Vasighi and Homa Amini, 2017, <http://dx.doi.org/10.1016/j.asoc.2017.02.015>
 - Reference implementation by the authors in Matlab: <https://github.com/mvasighi/DBGSOM>
+- _Statistics-enhanced Direct Batch Growth Self- organizing Mapping for efficient DoS Attack Detection_, Xiaofei Qu et al, 2019, [10.1109/ACCESS.2017.DOI](https://ieeexplore.ieee.org/document/8736234)
 - _Self-Organizing Maps_, 3rd Edition, Teuvo Kohonen, 2003
 - _MATLAB Implementations and Applications of the Self-Organizing Map_, Teuvo Kohonen, 2014
 
