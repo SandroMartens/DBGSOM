@@ -179,9 +179,17 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin):
 
         Parameters
         ----------
-        color : str (optional), default = None
+        color : {None, "epoch_created", "error", "distances"}, default = None
             Attribute which is represented as color.
+
+            "epoch_created" : When the neuron was created.
+
+            "error" : Quantization error of each neuron.
+
+            "distances" : Average distance to neighbor neurons in
+            the input space. Creates a U-Matrix.
         """
+
         dots = pd.DataFrame(np.array(self.neurons_), columns=["x", "y"])
         dots["epoch_created"] = list(
             dict(self.som_.nodes.data("epoch_created")).values()

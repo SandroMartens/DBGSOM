@@ -4,26 +4,26 @@ dbgsom package
 Submodules
 ----------
 
-dbgsom.dbgsom module
---------------------
+.. dbgsom.dbgsom module
+.. --------------------
 
-.. automodule:: dbgsom.dbgsom_
-   :members:
-   :undoc-members:
-   :show-inheritance:
+.. .. automodule:: dbgsom.dbgsom_
+..    :members:
+..    :undoc-members:
+..    :show-inheritance:
 
-dbgsom.test module
-------------------
+.. dbgsom.test module
+.. ------------------
 
-.. automodule:: dbgsom.test
-   :members:
-   :undoc-members:
-   :show-inheritance:
+.. .. automodule:: dbgsom.test
+..    :members:
+..    :undoc-members:
+..    :show-inheritance:
 
-Module contents
----------------
+.. Module contents
+.. ---------------
 
-.. automodule:: dbgsom
-   :members:
-   :undoc-members:
-   :show-inheritance:
+.. .. automodule:: dbgsom
+..    :members:
+..    :undoc-members:
+..    :show-inheritance:
