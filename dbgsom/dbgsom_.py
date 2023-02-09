@@ -2,11 +2,14 @@ import sys
 from math import log
 from typing import Any
 
+import pandas as pd
+
 try:
     import networkx as nx
     import numpy as np
     import numpy.typing as npt
     import pynndescent
+    import seaborn.objects as so
     from sklearn.base import BaseEstimator, ClusterMixin, TransformerMixin
     from sklearn.metrics import pairwise_distances
     from sklearn.utils import check_array, check_random_state
@@ -171,6 +174,37 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin):
         distances = pairwise_distances(self.weights_, X, metric=self.metric).T
         return distances
 
+    def plot(self, color: None | str = None) -> None:
+        """Plot the neurons.
+
+        Parameters
+        ----------
+        color : str (optional), default = None
+            Attribute which is represented as color.
+        """
+        dots = pd.DataFrame(np.array(self.neurons_), columns=["x", "y"])
+        dots["epoch_created"] = list(
+            dict(self.som_.nodes.data("epoch_created")).values()
+        )
+        dots["error"] = list(dict(self.som_.nodes.data("error")).values())
+        dots["distances"] = self._get_u_matrix()
+        so.Plot(dots, x="x", y="y", color=color).add(so.Dot()).scale(
+            color="magma_r"
+        ).show()
+
+    def _get_u_matrix(self) -> list:
+        g = self.som_
+        distances = []
+        for node, neighbors in g.adj.items():
+            node_weight = g.nodes[node]["weight"]
+            distance = 0
+            for neighbor in neighbors:
+                nbr_weight = g.nodes[neighbor]["weight"]
+                distance += np.linalg.norm(node_weight - nbr_weight)
+            distances.append(distance / len(neighbors))
+
+        return distances
+
     def _initialization(self, data: npt.NDArray) -> None:
         """First training phase.
 
@@ -195,9 +229,10 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin):
             n_dim = data.shape[1]
             gt = -n_dim * log(self.sf)
 
+        # se case
         elif self.theshold_method == "se":
-            lmbd = self.lmbda
-            gt = lmbd * np.sqrt(np.sum(np.std(data, axis=0, ddof=1) ** 2))
+            gt = self.lmbda * np.sqrt(np.sum(np.std(data, axis=0, ddof=1) ** 2))
+
         return gt
 
     #
@@ -229,7 +264,7 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin):
                 current_epoch != self.n_epochs_max
                 and self._training_phase == "coarse"
                 and len(self.neurons_) < self.max_neurons
-                # and current_epoch % 2 == 0
+                and current_epoch % 2 == 0
             ):
                 self._distribute_errors()
                 self._add_new_neurons()
