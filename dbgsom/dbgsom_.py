@@ -71,6 +71,15 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin):
     threshold_method : {"classical", "se"}
         Method to calculate the growing threshold.
 
+    error_method : {"distance", "entropy"}
+        Method for calculating the error of neurons and samples.
+
+        "distance" : The cumulative error is the sum of individual
+        error.
+
+        "entropy": For supervised learning we can use the entropy
+        of labels of the samples as error-
+
     metric : str, default = euclidean
         The metric to use for computing distances between prototypes and samples.
 
@@ -94,6 +103,7 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin):
         max_neurons: int = 10**10,
         metric: str = "euclidean",
         threshold_method: str = "classical",
+        error_method: str = "distance",
     ) -> None:
         self.sf = sf
         self.lmbda = lmbda
@@ -108,8 +118,9 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin):
         self.max_neurons = max_neurons
         self.metric = metric
         self.theshold_method = threshold_method
+        self.error_method = error_method
 
-    def fit(self, X: npt.ArrayLike, y=None):
+    def fit(self, X: npt.ArrayLike, y: npt.ArrayLike = None):
         """Train SOM on training data.
 
         Parameters
@@ -125,7 +136,7 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin):
         X = check_array(array=X, dtype=[float, int], ensure_min_samples=4)
         self.random_state_ = check_random_state(self.random_state)
         self._initialization(X)
-        self._grow(X)
+        self._grow(X, y)
         labels = self._get_winning_neurons(X, n_bmu=1)
         if min(labels) > 0:
             labels -= min(labels)
@@ -245,7 +256,7 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin):
 
     #
 
-    def _grow(self, data: npt.NDArray) -> None:
+    def _grow(self, data: npt.NDArray, y) -> None:
         """Second training phase"""
         for current_epoch in tqdm(
             iterable=range(self.n_epochs_max),
@@ -267,7 +278,7 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin):
             if self.converged_:
                 break
 
-            self._write_accumulative_error(winners, data)
+            self._write_accumulative_error(winners, data, y)
             if (
                 current_epoch != self.n_epochs_max
                 and self._training_phase == "coarse"
@@ -406,14 +417,24 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin):
 
         return h
 
-    def _write_accumulative_error(self, winners: np.ndarray, data: npt.NDArray) -> None:
+    def _write_accumulative_error(
+        self, winners: np.ndarray, data: npt.NDArray, y
+    ) -> None:
         """Get the quantization error for each neuron
         and save it as "error" attribute of each node.
         """
         for winner_index, _ in enumerate(self.neurons_):
             samples = data[winners == winner_index]
-            dist = np.linalg.norm(self.weights_[winner_index] - samples, axis=1)
-            error = dist.sum()
+            if self.error_method == "entropy":
+                _, counts = np.unique(y[winners == winner_index], return_counts=True)
+                total = np.sum(counts, dtype="float64")
+                counts = counts / total
+                error = np.sum(-counts * np.log(counts))
+
+            else:
+                dist = np.linalg.norm(self.weights_[winner_index] - samples, axis=1)
+                error = dist.sum()
+
             self.som_.nodes[self.neurons_[winner_index]]["error"] = error
 
     def _distribute_errors(self) -> None:
