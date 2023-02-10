@@ -766,13 +766,15 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin):
         return error
 
     def topographic_error(self, X: npt.ArrayLike) -> float:
-        """The topographic error is a measure for the topology preservation of
+        """Return the topographic error of the training data.
+
+        The topographic error is a measure for the topology preservation of
         the map.
 
         For each sample we get the two best matching units. If the BMU are
         connected on the grid, there is no error. If the distance is
         larger an error occurred. The total error is the number
-        of single errors divided yb the number of samples.
+        of single errors divided by the number of samples.
 
         Parameters
         ----------

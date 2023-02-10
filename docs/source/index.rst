@@ -15,8 +15,7 @@ User Guide
    :caption: Contents:
 
    user_guide
-   api.rst
-   dbgsom
+   api
 
 
 
