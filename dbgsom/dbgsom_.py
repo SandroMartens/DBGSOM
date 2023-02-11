@@ -3,6 +3,7 @@ from math import log
 from typing import Any
 
 import pandas as pd
+from sklearn.utils import check_X_y
 
 try:
     import networkx as nx
@@ -64,12 +65,22 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin):
 
     nn_method : {'naive', "pynndescent"}, default = "naive"
         Method to find the nearest prototype for each sample.
-        Naive calculates the entire distance matrix for all samples
-        and all prototypes. pynndescent uses a nearest neighbor search
-        for a fast (approximate) solution.
+
+        "Naive" : Calculate the entire distance matrix for all samples
+        and all prototypes.
+
+        "pynndescent" : use a nearest neighbor search for a fast
+        (approximate) solution.
 
     threshold_method : {"classical", "se"}
         Method to calculate the growing threshold.
+
+        "classical" : Threshold is only dependent on the dimension of the input data.
+        gt = n_dim * -log(sf)
+
+        "se" : Statistics enhanced formula, which uses the standard
+        deviation of features in X.
+        gt = lambda * np.sqrt(np.sum(np.std(X, axis=0, ddof=1) ** 2))
 
     error_method : {"distance", "entropy"}
         Method for calculating the error of neurons and samples.
@@ -78,7 +89,7 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin):
         error.
 
         "entropy": For supervised learning we can use the entropy
-        of labels of the samples as error-
+        of labels of the samples as error.
 
     metric : str, default = euclidean
         The metric to use for computing distances between prototypes and samples.
@@ -133,7 +144,10 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin):
         self : dbgsom
             Trained estimator
         """
-        X = check_array(array=X, dtype=[float, int], ensure_min_samples=4)
+        if y is None:
+            X = check_array(array=X, ensure_min_samples=4)
+        else:
+            X, y = check_X_y(X=X, y=y, ensure_min_samples=4)
         self.random_state_ = check_random_state(self.random_state)
         self._initialization(X)
         self._grow(X, y)
@@ -141,6 +155,7 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin):
         if min(labels) > 0:
             labels -= min(labels)
         self.labels_ = labels
+        self.topographic_error_ = self._topographic_error_func(X)
         self.quantization_error_ = self.calculate_quantization_error(X)
         self.n_features_in_ = X.shape[1]
 
@@ -243,12 +258,10 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin):
         self.neurons_ = list(self.som_.nodes)
 
     def _calculate_growing_threshold(self, data):
-        # Classical case
         if self.theshold_method == "classical":
             n_dim = data.shape[1]
             gt = -n_dim * log(self.sf)
 
-        # se case
         elif self.theshold_method == "se":
             gt = self.lmbda * np.sqrt(np.sum(np.std(data, axis=0, ddof=1) ** 2))
 
@@ -786,7 +799,7 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin):
         error = np.mean(np.linalg.norm(self.weights_[winners] - X, axis=1))
         return error
 
-    def topographic_error(self, X: npt.ArrayLike) -> float:
+    def _topographic_error_func(self, X: npt.ArrayLike) -> float:
         """Return the topographic error of the training data.
 
         The topographic error is a measure for the topology preservation of
@@ -807,8 +820,8 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin):
         topographic error : float
             Fraction of samples with topographic errors over all samples.
         """
-        check_is_fitted(self)
-        X = check_array(X)
+        # check_is_fitted(self)
+        # X = check_array(X)
         bmu_indices = self._get_winning_neurons(X, n_bmu=2).T
         errors = 0
         for bmu_1, bmu_2 in bmu_indices:

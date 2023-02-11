@@ -1,8 +1,8 @@
-API Reference 
-=============
+.. API Reference 
+.. =============
 
-DBGSOM
-------
+.. DBGSOM
+.. ------
 
-.. autoclass:: dbgsom.dbgsom_.DBGSOM
-    :members:
+.. .. autoclass:: dbgsom.dbgsom_.DBGSOM
+..     :members:
