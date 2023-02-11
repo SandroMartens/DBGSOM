@@ -1,19 +1,23 @@
 import sys
 from math import log
+from statistics import mode
 from typing import Any
-
-import pandas as pd
-from sklearn.utils import check_X_y
 
 try:
     import networkx as nx
     import numpy as np
     import numpy.typing as npt
+    import pandas as pd
     import pynndescent
     import seaborn.objects as so
-    from sklearn.base import BaseEstimator, ClusterMixin, TransformerMixin
+    from sklearn.base import (
+        BaseEstimator,
+        ClassifierMixin,
+        ClusterMixin,
+        TransformerMixin,
+    )
     from sklearn.metrics import pairwise_distances
-    from sklearn.utils import check_array, check_random_state
+    from sklearn.utils import check_array, check_random_state, check_X_y
     from sklearn.utils.validation import check_is_fitted
     from tqdm import tqdm
 except ImportError as e:
@@ -22,7 +26,7 @@ except ImportError as e:
 
 
 # pylint:  disable= attribute-defined-outside-init
-class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin):
+class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
     """A Directed Batch Growing Self-Organizing Map.
 
     Parameters
@@ -128,10 +132,10 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin):
         self.nn_method = nn_method
         self.max_neurons = max_neurons
         self.metric = metric
-        self.theshold_method = threshold_method
+        self.threshold_method = threshold_method
         self.error_method = error_method
 
-    def fit(self, X: npt.ArrayLike, y: npt.ArrayLike = None):
+    def fit(self, X: npt.ArrayLike, y: None | npt.ArrayLike = None):
         """Train SOM on training data.
 
         Parameters
@@ -146,15 +150,21 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin):
         """
         if y is None:
             X = check_array(array=X, ensure_min_samples=4)
+            self._y_is_fitted = False
         else:
             X, y = check_X_y(X=X, y=y, ensure_min_samples=4)
+            self._y_is_fitted = True
         self.random_state_ = check_random_state(self.random_state)
         self._initialization(X)
         self._grow(X, y)
         labels = self._get_winning_neurons(X, n_bmu=1)
         if min(labels) > 0:
             labels -= min(labels)
-        self.labels_ = labels
+        # self.rep = self._calculate_rep(X)
+        # self.
+        # self.labels_ = labels
+        if self._y_is_fitted:
+            self._label_prototypes(X, y)
         self.topographic_error_ = self._topographic_error_func(X)
         self.quantization_error_ = self.calculate_quantization_error(X)
         self.n_features_in_ = X.shape[1]
@@ -177,7 +187,10 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin):
         """
         check_is_fitted(self)
         X = check_array(array=X, dtype=[float, int])
-        labels = self._get_winning_neurons(X, n_bmu=1)
+        if not self._y_is_fitted:
+            labels = self._get_winning_neurons(X, n_bmu=1)
+        else:
+            pass
         # if min(labels) > 0:
         #     labels -= min(labels)
         return labels
@@ -197,7 +210,9 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin):
         """
         check_is_fitted(self)
         X = check_array(X)
-        distances = pairwise_distances(self.weights_, X, metric=self.metric).T
+        distances = pairwise_distances(
+            self.weights_, X, metric=self.metric, n_jobs=-1
+        ).T
         return distances
 
     def plot(self, color: None | str = None) -> None:
@@ -222,8 +237,9 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin):
         )
         dots["error"] = list(dict(self.som_.nodes.data("error")).values())
         dots["distances"] = self._get_u_matrix()
+        dots["label"] = list(dict(self.som_.nodes.data("label")).values())
         so.Plot(dots, x="x", y="y", color=color).add(so.Dot()).scale(
-            color="magma_r"
+            color="magma"
         ).show()
 
     def _get_u_matrix(self) -> list:
@@ -238,6 +254,19 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin):
             distances.append(distance / len(neighbors))
 
         return distances
+
+    def _calculate_rep(self, X: npt.ArrayLike):
+        """Return the resemble entropy parameter.
+
+        1. Calculate histogram of components of each sample.
+        2. Calculate entropy of each sample from histogram
+        3. Save minimum and maximum rep for all classes
+
+        Use 20 bins as default"""
+
+        hists = []
+        for sample in X:
+            hists.append(np.histogram(sample, bins=20)[0])
 
     def _initialization(self, data: npt.NDArray) -> None:
         """First training phase.
@@ -258,16 +287,14 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin):
         self.neurons_ = list(self.som_.nodes)
 
     def _calculate_growing_threshold(self, data):
-        if self.theshold_method == "classical":
+        if self.threshold_method == "classical":
             n_dim = data.shape[1]
             gt = -n_dim * log(self.sf)
 
-        elif self.theshold_method == "se":
+        elif self.threshold_method == "se":
             gt = self.lmbda * np.sqrt(np.sum(np.std(data, axis=0, ddof=1) ** 2))
 
         return gt
-
-    #
 
     def _grow(self, data: npt.NDArray, y) -> None:
         """Second training phase"""
@@ -336,7 +363,7 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin):
         """
         weights = self.weights_
         if self.nn_method == "naive" or n_bmu > 1:
-            distances = pairwise_distances(weights, data, metric=self.metric)
+            distances = pairwise_distances(weights, data, metric=self.metric, n_jobs=-1)
             if n_bmu == 1:
                 winners = np.argmin(distances, axis=0)
             else:
@@ -353,6 +380,17 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin):
             winners = index.query(data, epsilon=0.01, k=min(10, n_neurons - 1))[0][:, 0]
 
         return winners
+
+    def _label_prototypes(self, X, y):
+        winners = self._get_winning_neurons(X, n_bmu=1)
+        for winner_index, neuron in enumerate(self.neurons_):
+            labels = y[winners == winner_index]
+            # dead neuron
+            if len(labels) == 0:
+                label_winner = None
+            else:
+                label_winner = mode(labels)
+            self.som_.nodes[neuron]["label"] = label_winner
 
     def _update_distance_matrix(self) -> None:
         """Update distance matrix between neurons.
