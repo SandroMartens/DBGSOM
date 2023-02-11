@@ -8,7 +8,8 @@ try:
     import numpy as np
     import numpy.typing as npt
     import pandas as pd
-    import pynndescent
+
+    # import pynndescent
     import seaborn.objects as so
     from sklearn.base import (
         BaseEstimator,
@@ -158,9 +159,9 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
         self.random_state_ = check_random_state(self.random_state)
         self._initialization(X)
         self._grow(X, y)
-        labels = self._get_winning_neurons(X, n_bmu=1)
-        if min(labels) > 0:
-            labels -= min(labels)
+        # labels = self._get_winning_neurons(X, n_bmu=1)
+        # if min(labels) > 0:
+        #     labels -= min(labels)
         # self.rep = self._calculate_rep(X)
         # self.
         # self.labels_ = labels
@@ -244,6 +245,8 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
         ).show()
 
     def _get_u_matrix(self) -> list:
+        """Calculate the average distance from each neuron to it's neighbors."""
+
         g = self.som_
         distances = []
         for node, neighbors in g.adj.items():
@@ -272,8 +275,8 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
     def _initialization(self, data: npt.NDArray) -> None:
         """First training phase.
 
-        Calculate growing threshold as gt = -data_dimensions * log(spreading_factor).
-        Create a graph containing the first four neurons in a square with
+        Calculate growing threshold according to the argument. Create
+        a graph containing the first four neurons in a square with
         init vectors.
         """
         self._current_epoch = 0
@@ -324,7 +327,7 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
                 current_epoch != self.n_epochs_max
                 and self._training_phase == "coarse"
                 and len(self.neurons_) < self.max_neurons
-                and current_epoch % 2 == 0
+                and current_epoch % 5 == 3
             ):
                 self._distribute_errors()
                 self._add_new_neurons()
@@ -412,6 +415,7 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
 
         self._distance_matrix = distance_matrix
 
+    # @profile
     def _update_weights(self, winners: np.ndarray, data: npt.NDArray) -> None:
         """Update the weight vectors according to the batch learning rule.
 
@@ -469,6 +473,7 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
 
         return h
 
+    # @profile
     def _write_accumulative_error(
         self, winners: np.ndarray, data: npt.NDArray, y
     ) -> None:
