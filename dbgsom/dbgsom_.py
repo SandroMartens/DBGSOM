@@ -68,6 +68,7 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
         convergence is assumed and the training is stopped.
 
     nn_method : {'naive', "pynndescent"}, default = "naive"
+        (not used atm)
         Method to find the nearest prototype for each sample.
 
         "Naive" : Calculate the entire distance matrix for all samples
