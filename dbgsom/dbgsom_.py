@@ -13,7 +13,8 @@ try:
     import numpy as np
     import numpy.typing as npt
     import pandas as pd
-    import numba as nb
+
+    # import numba as nb
 
     # import pynndescent
     import seaborn.objects as so
@@ -62,10 +63,6 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
     max_neurons : int, default = 10**10
         Maximum number of neurons in the som.
 
-    sigma_start, sigma_end : {None, numeric}, default = None
-        Start and end values for the neighborhood bandwidth.
-        If None, it is calculated dynamically in each epoch.
-
     decay_function : {'exponential', 'linear'}, default = 'exponential'
         Decay function to use for neighborhood bandwith sigma.
 
@@ -75,33 +72,6 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
         the neighborhood bandwidth is decreased from sigma_start to sigma_end and
         the network grows according to the growing rules. In fine training, the
         bandwidth is constant at sigma_end and no new neurons are added.
-
-    random_state : any (optional), default = None
-        Random state for weight initialization.
-
-    convergence_treshold : float, default = 10 ** -10
-        If the sum of all weight changes is smaller than the threshold,
-        convergence is assumed and the training is stopped.
-
-    nn_method : {'naive', "pynndescent"}, default = "naive"
-        (not used atm)
-        Method to find the nearest prototype for each sample.
-
-        "Naive" : Calculate the entire distance matrix for all samples
-        and all prototypes.
-
-        "pynndescent" : use a nearest neighbor search for a fast
-        (approximate) solution.
-
-    threshold_method : {"classical", "se"}
-        Method to calculate the growing threshold.
-
-        "classical" : Threshold is only dependent on the dimension of the input data.
-        gt = n_dim * -log(sf)
-
-        "se" : Statistics enhanced formula, which uses the standard
-        deviation of features in X.
-        gt = lambda * np.sqrt(np.sum(np.std(X, axis=0, ddof=1) ** 2))
 
     error_method : {"distance", "entropy"}
         Method for calculating the error of neurons and samples.
@@ -115,9 +85,45 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
     metric : str, default = euclidean
         The metric to use for computing distances between prototypes and samples.
 
+    random_state : any (optional), default = None
+        Random state for weight initialization.
+
+    convergence_treshold : float, default = 10 ** -10
+        If the sum of all weight changes is smaller than the threshold,
+        convergence is assumed and the training is stopped.
+
+    threshold_method : {"classical", "se"}
+        Method to calculate the growing threshold.
+
+        "classical" : Threshold is only dependent on the dimension of the input data.
+        gt = n_dim * -log(sf)
+
+        "se" : Statistics enhanced formula, which uses the standard
+        deviation of features in X.
+        gt = lambda * np.sqrt(np.sum(np.std(X, axis=0, ddof=1) ** 2))
+
+    sigma_start : {None, numeric}, default = None
+        Start for the neighborhood bandwidth.
+        If None, it is calculated dynamically in each epoch.
+
+    sigma_end : {None, numeric}, default = None
+        End for the neighborhood bandwidth.
+        If None, it is calculated dynamically in each epoch.
+
+    nn_method : {'naive', "pynndescent"}, default = "naive"
+        (not used atm)
+        Method to find the nearest prototype for each sample.
+
+        "Naive" : Calculate the entire distance matrix for all samples
+        and all prototypes.
+
+        "pynndescent" : use a nearest neighbor search for a fast
+        (approximate) solution.
+
     Attributes
     ----------
-
+    som_ : NetworkX.graph
+        Graph object containing the neurons with attributes
     """
 
     def __init__(
@@ -131,7 +137,7 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
         coarse_training_frac: float = 0.5,
         random_state: Any = None,
         convergence_treshold: float = 10**-10,
-        nn_method: str = "naive",
+        # nn_method: str = "naive",
         max_neurons: int = 10**10,
         metric: str = "euclidean",
         threshold_method: str = "classical",
@@ -146,7 +152,7 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
         self.coarse_training_frac = coarse_training_frac
         self.random_state = random_state
         self.convergence_treshold = convergence_treshold
-        self.nn_method = nn_method
+        # self.nn_method = nn_method
         self.max_neurons = max_neurons
         self.metric = metric
         self.threshold_method = threshold_method
@@ -381,22 +387,22 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
         sample.
         """
         weights = self.weights_
-        if self.nn_method == "naive" or n_bmu > 1:
-            distances = pairwise_distances(weights, data, metric=self.metric, n_jobs=-1)
-            if n_bmu == 1:
-                winners = np.argmin(distances, axis=0)
-            else:
-                winners = np.argsort(distances, axis=0)[:n_bmu]
+        # if self.nn_method == "naive" or n_bmu > 1:
+        distances = pairwise_distances(X=weights, Y=data, metric=self.metric, n_jobs=-1)
+        if n_bmu == 1:
+            winners = np.argmin(distances, axis=0)
+        else:
+            winners = np.argsort(distances, axis=0)[:n_bmu]
 
-        elif self.nn_method == "pynndescent" and n_bmu == 1:
-            n_neurons = len(self.neurons_)
-            index = pynndescent.NNDescent(
-                weights,
-                n_neighbors=min(30, n_neurons - 1),
-                n_jobs=-1,
-                metric=self.metric,
-            )
-            winners = index.query(data, epsilon=0.01, k=min(10, n_neurons - 1))[0][:, 0]
+        # elif self.nn_method == "pynndescent" and n_bmu == 1:
+        #     n_neurons = len(self.neurons_)
+        #     index = pynndescent.NNDescent(
+        #         weights,
+        #         n_neighbors=min(30, n_neurons - 1),
+        #         n_jobs=-1,
+        #         metric=self.metric,
+        #     )
+        #     winners = index.query(data, epsilon=0.01, k=min(10, n_neurons - 1))[0][:, 0]
 
         return winners
 
@@ -443,6 +449,8 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
         Step 5: Write new weight vectors to the graph.
         """
         # new
+        # Sadly we cant use the easy indexing with numpy because thats too slow
+        # see https://stackoverflow.com/questions/75423927/what-is-the-fastest-way-to-select-multiple-elements-from-a-numpy-array/75424204#75424204
         voronoi_set_centers_sum = np.zeros_like(self.weights_)
         center_counts = np.zeros(shape=(len(self.weights_),))
 
@@ -452,6 +460,7 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
 
         center_counts = np.maximum(center_counts, 1)
         voronoi_set_centers = voronoi_set_centers_sum / center_counts[:, None]
+
         # old
         # step 1
         # voronoi_set_centers = np.zeros_like(self.weights_)
