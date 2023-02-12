@@ -6,6 +6,7 @@ __pycache__/
 #  Test stuff
 test.*
 estimator_checks.ipynb
+benchmark.ipynb
 
 # C extensions
 *.so

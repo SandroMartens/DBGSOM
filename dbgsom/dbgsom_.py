@@ -1,3 +1,8 @@
+"""
+DBGSOM: Directed Batch Growing Self Organizing Map
+
+"""
+
 import sys
 from math import log
 from statistics import mode
@@ -429,7 +434,19 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
         """
         # step 1
         voronoi_set_centers = np.zeros_like(self.weights_)
-        for winner in np.unique(winners.flatten()):
+        # index = np.argsort(winners)
+        # groups, offsets = np.unique(winners[index], return_index=True)
+
+        # for i in range(groups.size):
+        #     neighbor_id = groups[i]
+        #     group_start = offsets[i]
+        #     group_end = offsets[i + 1] if i + 1 < groups.size else index.size
+        #     group_index = index[group_start:group_end]
+        #     samples = data[group_index]
+        #     mean = samples.mean(axis=0)
+        #     voronoi_set_centers[neighbor_id] = mean
+
+        for winner in np.unique(winners):
             voronoi_set_centers[winner] = data[winners == winner].mean(axis=0)
 
         # step 2
@@ -481,6 +498,7 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
         and save it as "error" attribute of each node.
         """
         for winner_index, _ in enumerate(self.neurons_):
+            # samples = self._get_samples()
             samples = data[winners == winner_index]
             if self.error_method == "entropy":
                 _, counts = np.unique(y[winners == winner_index], return_counts=True)
@@ -493,6 +511,8 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
                 error = dist.sum()
 
             self.som_.nodes[self.neurons_[winner_index]]["error"] = error
+
+    # def _get_samples(self, winners):
 
     def _distribute_errors(self) -> None:
         """For each neuron i which is not a boundary neuron and E_i > GT,
@@ -864,8 +884,6 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
         topographic error : float
             Fraction of samples with topographic errors over all samples.
         """
-        # check_is_fitted(self)
-        # X = check_array(X)
         bmu_indices = self._get_winning_neurons(X, n_bmu=2).T
         errors = 0
         for bmu_1, bmu_2 in bmu_indices:
