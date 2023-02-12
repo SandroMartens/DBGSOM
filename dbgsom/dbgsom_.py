@@ -13,6 +13,7 @@ try:
     import numpy as np
     import numpy.typing as npt
     import pandas as pd
+    import numba as nb
 
     # import pynndescent
     import seaborn.objects as so
@@ -29,6 +30,15 @@ try:
 except ImportError as e:
     print(e)
     sys.exit()
+
+
+# @nb.njit(parallel=True, cache=True, fastmath=True)
+# def get_samples_numba(data, index, groups, offsets, winner):
+#     group_start = offsets[winner]
+#     group_end = offsets[winner + 1] if winner + 1 < groups.size else index.size
+#     group_index = index[group_start:group_end]
+#     samples = data[group_index]
+#     return samples
 
 
 # pylint:  disable= attribute-defined-outside-init
@@ -432,22 +442,21 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
                 / sum(kernel * n_samples)
         Step 5: Write new weight vectors to the graph.
         """
+        # new
+        voronoi_set_centers_sum = np.zeros_like(self.weights_)
+        center_counts = np.zeros(shape=(len(self.weights_),))
+
+        for sample, winner in zip(data, winners):
+            voronoi_set_centers_sum[winner] += sample
+            center_counts[winner] += 1
+
+        center_counts = np.maximum(center_counts, 1)
+        voronoi_set_centers = voronoi_set_centers_sum / center_counts[:, None]
+        # old
         # step 1
-        voronoi_set_centers = np.zeros_like(self.weights_)
-        # index = np.argsort(winners)
-        # groups, offsets = np.unique(winners[index], return_index=True)
-
-        # for i in range(groups.size):
-        #     neighbor_id = groups[i]
-        #     group_start = offsets[i]
-        #     group_end = offsets[i + 1] if i + 1 < groups.size else index.size
-        #     group_index = index[group_start:group_end]
-        #     samples = data[group_index]
-        #     mean = samples.mean(axis=0)
-        #     voronoi_set_centers[neighbor_id] = mean
-
-        for winner in np.unique(winners):
-            voronoi_set_centers[winner] = data[winners == winner].mean(axis=0)
+        # voronoi_set_centers = np.zeros_like(self.weights_)
+        # for winner in np.unique(winners):
+        #     voronoi_set_centers[winner] = data[winners == winner].mean(axis=0)
 
         # step 2
         neuron_activations = np.zeros(shape=len(self.neurons_), dtype=np.float32)
@@ -501,8 +510,9 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
             # samples = self._get_samples()
             samples = data[winners == winner_index]
             if self.error_method == "entropy":
+                # error = error_numba()
                 _, counts = np.unique(y[winners == winner_index], return_counts=True)
-                total = np.sum(counts, dtype="float64")
+                total = np.sum(counts)
                 counts = counts / total
                 error = np.sum(-counts * np.log(counts))
 
