@@ -1,6 +1,6 @@
 # DBGSOM
 
-DBGSOM is short for _Directed batch growing self-organizing map_. A SOM is a type of artificial neural network that is used for supervised and unsupervised learning. It can be used for clustering, classification and many different data visualization tasks.
+DBGSOM is short for _Directed batch growing self-organizing map_. A SOM is a type of artificial neural network that is used to to produce a low-dimensional  representation of a higher dimensional data set while preserving the topological structure of the data.  It can be used for unsupervised vector quantization, classification and many different data visualization tasks.
 
 This project was inspired by the great [MiniSom](https://github.com/JustGlowing/minisom).
 
@@ -8,13 +8,13 @@ This project was inspired by the great [MiniSom](https://github.com/JustGlowing/
 
 - Compatible with scikit-learn's API and can be used as a drop-in replacement for other clustering and classification algorithms.
 - Can handle high-dimensional and non-uniform data distributions.
-- Good results without parameter tuning
-- Better topology preservation than classical SOMs
-- Interpretability of the results through plotting
+- Good results without parameter tuning.
+- Better topology preservation than classical SOMs.
+- Interpretability of the results through plotting.
 
 ## How it works
 
-The DBGSOM algorithm works by constructing a two-dimensional map of neurons, where each neuron is connected to its neighboring neurons. The neurons on the map are initialized with random weights. The input data is then presented to the SOM, and each neuron's weights are updated so that it becomes more similar to the input data. Each neurons affects it's neighbors to preserve the topological ordering of the map. The DBGSOM algorithm uses a growing mechanism to expand the map as needed. We add neurons the edge of the map where the quantization error of the boundary neurons is above a given growing threshold.
+The DBGSOM algorithm works by constructing a two-dimensional map of prototypes (neurons) where each neuron is connected to its neighbors. The first neurons on the map are initialized with random weights from the input data. The input data is then presented to the SOM. Each sample gets assigned to it's nearest neuron. The neuron weights are then updated to the samples that were mapped to each neuron. Neighboring neurons affect each others updates, so the low dimensional ordering of the map is preserved. The DBGSOM algorithm uses a growing mechanism to expand the map as needed. New neurons are added to the edge of the map where the quantization error of the boundary neurons is above a given growing threshold.
 
 ## How to install
 
