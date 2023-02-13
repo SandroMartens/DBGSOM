@@ -1,6 +1,5 @@
 """
 DBGSOM: Directed Batch Growing Self Organizing Map
-
 """
 
 import sys
@@ -13,10 +12,6 @@ try:
     import numpy as np
     import numpy.typing as npt
     import pandas as pd
-
-    # import numba as nb
-
-    # import pynndescent
     import seaborn.objects as so
     from sklearn.base import (
         BaseEstimator,
@@ -110,20 +105,22 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
         End for the neighborhood bandwidth.
         If None, it is calculated dynamically in each epoch.
 
-    nn_method : {'naive', "pynndescent"}, default = "naive"
-        (not used atm)
-        Method to find the nearest prototype for each sample.
-
-        "Naive" : Calculate the entire distance matrix for all samples
-        and all prototypes.
-
-        "pynndescent" : use a nearest neighbor search for a fast
-        (approximate) solution.
-
     Attributes
     ----------
     som_ : NetworkX.graph
         Graph object containing the neurons with attributes
+
+    weights_ : ndarray of shape (n_prototypes, n_features)
+        Learned weights of the neurons
+
+    topographic_error_ : float
+        Fraction of training samples where the first and second best matching
+        prototype are not neighbors on the SOM
+
+    quantization_error_ : float
+        Average distance from all training samples to their nearest prototypes
+
+
     """
 
     def __init__(
@@ -137,7 +134,6 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
         coarse_training_frac: float = 0.5,
         random_state: Any = None,
         convergence_treshold: float = 10**-10,
-        # nn_method: str = "naive",
         max_neurons: int = 10**10,
         metric: str = "euclidean",
         threshold_method: str = "classical",
@@ -152,7 +148,6 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
         self.coarse_training_frac = coarse_training_frac
         self.random_state = random_state
         self.convergence_treshold = convergence_treshold
-        # self.nn_method = nn_method
         self.max_neurons = max_neurons
         self.metric = metric
         self.threshold_method = threshold_method
@@ -180,12 +175,9 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
         self.random_state_ = check_random_state(self.random_state)
         self._initialization(X)
         self._grow(X, y)
-        # labels = self._get_winning_neurons(X, n_bmu=1)
         # if min(labels) > 0:
         #     labels -= min(labels)
         # self.rep = self._calculate_rep(X)
-        # self.
-        # self.labels_ = labels
         if self._y_is_fitted:
             self._label_prototypes(X, y)
         self.topographic_error_ = self._topographic_error_func(X)
@@ -202,18 +194,28 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
         X : {array-like, sparse matrix} of shape (n_samples, n_features)
             New data to predict.
 
-
         Returns
         -------
         labels : ndarray of shape (n_samples,)
-            Index of the cluster each sample belongs to.
+            If fitted unsupervised: Index of best matching prototype.
+
+            If fitted supervised: Label of the predicted class.
         """
         check_is_fitted(self)
         X = check_array(array=X, dtype=[float, int])
         if not self._y_is_fitted:
             labels = self._get_winning_neurons(X, n_bmu=1)
         else:
-            pass
+            bmus = self._get_winning_neurons(X, n_bmu=1)
+            labels = []
+            for bmu in bmus:
+                label = self.som_.nodes[self.neurons_[bmu]]["label"]
+                if label is not None:
+                    labels.append(label)
+                else:
+                    labels.append(-1)
+
+            labels = np.array(labels)
         # if min(labels) > 0:
         #     labels -= min(labels)
         return labels
@@ -238,12 +240,12 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
         ).T
         return distances
 
-    def plot(self, color: None | str = None) -> None:
+    def plot(self, attribute: None | str = None, palette="magma_r") -> None:
         """Plot the neurons.
 
         Parameters
         ----------
-        color : {None, "epoch_created", "error", "distances"}, default = None
+        attribute : {None, "epoch_created", "error", "distances"}, default = None
             Attribute which is represented as color.
 
             "epoch_created" : When the neuron was created.
@@ -252,6 +254,9 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
 
             "distances" : Average distance to neighbor neurons in
             the input space. Creates a U-Matrix.
+
+        palette : matplotlib colormap/seaborn palette, default = "magma_r"
+            Name of seaborn palette to color code the values of attribute
         """
 
         dots = pd.DataFrame(np.array(self.neurons_), columns=["x", "y"])
@@ -261,8 +266,8 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
         dots["error"] = list(dict(self.som_.nodes.data("error")).values())
         dots["distances"] = self._get_u_matrix()
         dots["label"] = list(dict(self.som_.nodes.data("label")).values())
-        so.Plot(dots, x="x", y="y", color=color).add(so.Dot()).scale(
-            color="magma"
+        so.Plot(dots, x="x", y="y", color=attribute).add(so.Dot()).scale(
+            color=palette
         ).show()
 
     def _get_u_matrix(self) -> list:
@@ -394,16 +399,6 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
         else:
             winners = np.argsort(distances, axis=0)[:n_bmu]
 
-        # elif self.nn_method == "pynndescent" and n_bmu == 1:
-        #     n_neurons = len(self.neurons_)
-        #     index = pynndescent.NNDescent(
-        #         weights,
-        #         n_neighbors=min(30, n_neurons - 1),
-        #         n_jobs=-1,
-        #         metric=self.metric,
-        #     )
-        #     winners = index.query(data, epsilon=0.01, k=min(10, n_neurons - 1))[0][:, 0]
-
         return winners
 
     def _label_prototypes(self, X, y):
@@ -412,10 +407,10 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
             labels = y[winners == winner_index]
             # dead neuron
             if len(labels) == 0:
-                label_winner = None
+                label_winner = -1
             else:
                 label_winner = mode(labels)
-            self.som_.nodes[neuron]["label"] = label_winner
+            self.som_.nodes[neuron]["label"] = int(label_winner)
 
     def _update_distance_matrix(self) -> None:
         """Update distance matrix between neurons.
@@ -487,11 +482,6 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
             axis=1,
         )
 
-        # new_weights = voronoi_set_centers * np.sum(
-        #     gaussian_kernel[:, :, np.newaxis] * neuron_activations[:, np.newaxis],
-        #     axis=1,
-        # )
-
         # Step 5
         new_weights_dict = dict(zip(self.neurons_, new_weights))
         change = np.linalg.norm(self.weights_ - new_weights, axis=1)
@@ -516,7 +506,6 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
         and save it as "error" attribute of each node.
         """
         for winner_index, _ in enumerate(self.neurons_):
-            # samples = self._get_samples()
             samples = data[winners == winner_index]
             if self.error_method == "entropy":
                 # error = error_numba()
