@@ -44,14 +44,11 @@ labels_test = quantizer.predict(X=data_test)
 
 Here are a few example use cases for dbgsom (WiP)
 
-<!-- ### Fashion Mnist -->
-
 |Example|Description|
 |-|-|
 |![example](examples/2d_example.png)| With a two dimensional input we can clearly see how the protoypes (red) approximate the input distribution (white) while still preserving the square topology to their neighbors.|
 |![The fashion mnist dataset](examples/fashion_mnist.png) | After training the SOM on the fashion mnist dataset we can plot the nearest neighbor of each prototype. We can see that the SOM ordered the prototypes in a way that neighboring prototypes are pairwise similar. |
-
-### Color Quantization
+|![digits](examples/digits_classes.png) | We can show the majority class each prototype represents. Samples from the same class are clustered together. The SOM was train on mnist digits.|
 
 ## Dependencies
 
