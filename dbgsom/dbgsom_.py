@@ -28,15 +28,6 @@ except ImportError as e:
     sys.exit()
 
 
-# @nb.njit(parallel=True, cache=True, fastmath=True)
-# def get_samples_numba(data, index, groups, offsets, winner):
-#     group_start = offsets[winner]
-#     group_end = offsets[winner + 1] if winner + 1 < groups.size else index.size
-#     group_index = index[group_start:group_end]
-#     samples = data[group_index]
-#     return samples
-
-
 # pylint:  disable= attribute-defined-outside-init
 class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
     """A Directed Batch Growing Self-Organizing Map.
@@ -46,7 +37,10 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
     sf : float, default = 0.1
         Spreading factor to calculate the treshold for neuron insertion if we use
         the original growing threshold.
-        0 < sf <= 1.
+
+        0 means no growth, 1 means unlimited growth.
+
+        0 < sf < 1.
 
     lmbda : float, default = 10
         Regulation coefficient lambda if we use the statistics enhanced growing
@@ -55,7 +49,7 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
     n_epochs_max : int, default = 50
         Maximal Number of training epochs.
 
-    max_neurons : int, default = 10**10
+    max_neurons : int, default = 100
         Maximum number of neurons in the som.
 
     decay_function : {'exponential', 'linear'}, default = 'exponential'
@@ -91,19 +85,27 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
         Method to calculate the growing threshold.
 
         "classical" : Threshold is only dependent on the dimension of the input data.
-        gt = n_dim * -log(sf)
+
+        `gt = n_dim * -log(sf)`
 
         "se" : Statistics enhanced formula, which uses the standard
         deviation of features in X.
-        gt = lambda * np.sqrt(np.sum(np.std(X, axis=0, ddof=1) ** 2))
+
+        `gt = lambda * np.sqrt(np.sum(np.std(X, axis=0, ddof=1) ** 2))`
 
     sigma_start : {None, numeric}, default = None
         Start for the neighborhood bandwidth.
-        If None, it is calculated dynamically in each epoch.
+
+        If `None`, it is calculated dynamically in each epoch as
+
+        `sigma_start = 0.2 * sqrt(n_neurons)`.
 
     sigma_end : {None, numeric}, default = None
         End for the neighborhood bandwidth.
-        If None, it is calculated dynamically in each epoch.
+
+        If `None` , it is calculated dynamically in each epoch as
+
+        `sigma_end = max(0.7, 0.05 * sqrt(n_neurons))`.
 
     Attributes
     ----------
@@ -134,7 +136,7 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
         coarse_training_frac: float = 0.5,
         random_state: Any = None,
         convergence_treshold: float = 10**-10,
-        max_neurons: int = 10**10,
+        max_neurons: int = 100,
         metric: str = "euclidean",
         threshold_method: str = "classical",
         error_method: str = "distance",
@@ -322,7 +324,7 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
             gt = -n_dim * log(self.sf)
 
         elif self.threshold_method == "se":
-            gt = self.lmbda * np.sqrt(np.sum(np.std(data, axis=0, ddof=1) ** 2))
+            gt = log(self.sf) * np.sqrt(np.sum(np.std(data, axis=0, ddof=1) ** 2))
 
         return gt
 
@@ -452,7 +454,7 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
         for sample, winner in zip(data, winners):
             voronoi_set_centers_sum[winner] += sample
             center_counts[winner] += 1
-
+        # No div by 0
         center_counts = np.maximum(center_counts, 1)
         voronoi_set_centers = voronoi_set_centers_sum / center_counts[:, None]
 
@@ -505,22 +507,22 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
         """Get the quantization error for each neuron
         and save it as "error" attribute of each node.
         """
-        for winner_index, _ in enumerate(self.neurons_):
-            samples = data[winners == winner_index]
-            if self.error_method == "entropy":
-                # error = error_numba()
+        if self.error_method == "entropy":
+            for winner_index, neuron in enumerate(self.neurons_):
                 _, counts = np.unique(y[winners == winner_index], return_counts=True)
                 total = np.sum(counts)
                 counts = counts / total
                 error = np.sum(-counts * np.log(counts))
+                self.som_.nodes[neuron]["error"] = error
 
-            else:
-                dist = np.linalg.norm(self.weights_[winner_index] - samples, axis=1)
-                error = dist.sum()
-
-            self.som_.nodes[self.neurons_[winner_index]]["error"] = error
-
-    # def _get_samples(self, winners):
+        else:
+            errors = np.zeros(shape=len(self.weights_))
+            for sample, winner in zip(data, winners):
+                error = np.linalg.norm(self.weights_[winner] - sample)
+                errors[winner] += error
+            for i, error in enumerate(errors):
+                neuron = self.neurons_[i]
+                self.som_.nodes[neuron]["error"] = error
 
     def _distribute_errors(self) -> None:
         """For each neuron i which is not a boundary neuron and E_i > GT,
