@@ -1,8 +1,7 @@
 ![license](https://img.shields.io/github/license/SandroMartens/DBGSOM)
 ![CircleCI](https://img.shields.io/circleci/build/github/SandroMartens/DBGSOM?label=CircleCI)
 ![readthedocs](https://img.shields.io/readthedocs/dbgsom)
-![AppVeyor tests](https://img.shields.io/appveyor/tests/SandroMartens/DBGSOM?label=appveyor)
-
+![AppVeyor](https://img.shields.io/appveyor/build/SandroMartens/DBGSOM?label=Appveyor)
 # DBGSOM
 
 DBGSOM is short for _Directed batch growing self-organizing map_. A SOM is a type of artificial neural network that is used to to produce a low-dimensional  representation of a higher dimensional data set while preserving the topological structure of the data.  It can be used for unsupervised vector quantization, classification and many different data visualization tasks.
