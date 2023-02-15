@@ -5,16 +5,19 @@ environment:
     - PYTHON: "C:\\Miniconda3-x64"
       PYTHON_VERSION: "3.10.x"
       PYTHON_ARCH: "32"
-      NUMPY_VERSION: "1.20."
-      SCIPY_VERSION: "0.19.1"
-      SKLEARN_VERSION: "0.19.1"
+      NUMPY_VERSION: "1.20"
+      SKLEARN_VERSION: ">1.2"
+      NETWORK_VERSION: "2.6"
+      TQDM_VERSION: "4.19"
 
     - PYTHON: "C:\\Miniconda3-x64"
       PYTHON_VERSION: "3.10.x"
       PYTHON_ARCH: "64"
       NUMPY_VERSION: "*"
-      SCIPY_VERSION: "*"
       SKLEARN_VERSION: "*"
+      PANDAS_VERSION: "*"
+      NETWORKX_VERSION: "*"
+      NUMPYDOC_VERSION: "*"
 
 install:
   # Prepend miniconda installed Python to the PATH of this build

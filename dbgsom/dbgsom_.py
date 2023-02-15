@@ -507,9 +507,9 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
 
         else:
             errors = np.zeros(shape=len(self.weights_))
-            for sample, winner in zip(data, winners):
-                error = np.linalg.norm(self.weights_[winner] - sample)
-                errors[winner] += error
+            distances = np.linalg.norm(self.weights_[winners] - data, axis=1)
+            for distance, winner in zip(distances, winners):
+                errors[winner] += distance
             for i, error in enumerate(errors):
                 neuron = self.neurons_[i]
                 self.som_.nodes[neuron]["error"] = error
@@ -835,8 +835,7 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
             elif self.decay_function == "exponential":
                 sigma = sigma_start * np.exp(
                     (1 / self.n_epochs_max * (log(sigma_end) - log(sigma_start)))
-                    * epoch
-                    / self.coarse_training_frac
+                    * (epoch / self.coarse_training_frac)
                 )
         else:
             sigma = sigma_end
