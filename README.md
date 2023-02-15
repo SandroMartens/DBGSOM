@@ -1,7 +1,7 @@
 ![license](https://img.shields.io/github/license/SandroMartens/DBGSOM)
-![cirlceci](https://img.shields.io/circleci/build/github/SandroMartens/DBGSOM)
+![CircleCI](https://img.shields.io/circleci/build/github/SandroMartens/DBGSOM?label=CircleCI)
 ![readthedocs](https://img.shields.io/readthedocs/dbgsom)
-![appveyor](https://img.shields.io/appveyor/build/SandroMartens/DBGSOM)
+![AppVeyor tests](https://img.shields.io/appveyor/tests/SandroMartens/DBGSOM?label=appveyor)
 
 # DBGSOM
 
