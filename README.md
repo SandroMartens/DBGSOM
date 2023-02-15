@@ -6,11 +6,11 @@ This project was inspired by the great [MiniSom](https://github.com/JustGlowing/
 
 ## Features
 
-- Compatible with scikit-learn's API and can be used as a drop-in replacement for other clustering and classification algorithms.
-- Can handle high-dimensional and non-uniform data distributions.
-- Good results without parameter tuning.
-- Better topology preservation than classical SOMs.
-- Interpretability of the results through plotting.
+- Compatible with scikit-learn's API and can be used as a drop-in replacement for other clustering and classification algorithms
+- Can handle high-dimensional and non-uniform data distributions
+- Good results without parameter tuning
+- Better topology preservation than classical SOMs
+- Interpretability of the results through plotting
 
 ## How it works
 
@@ -57,6 +57,7 @@ Here are a few example use cases for dbgsom (WiP)
 - tqdm
 - scikit-learn
 - seaborn
+- pandas
 
 ## References
 

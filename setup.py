@@ -15,10 +15,10 @@ setup(
     install_requires=[
         "numpy",
         "networkx",
-        "scipy",
+        "pandas",
+        "seaborn",
         "tqdm",
         "scikit-learn",
-        "pynndescent",
         "numpydoc",
     ],
 )

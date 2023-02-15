@@ -35,16 +35,11 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
     Parameters
     ----------
     sf : float, default = 0.1
-        Spreading factor to calculate the treshold for neuron insertion if we use
-        the original growing threshold.
+        Spreading factor to calculate the treshold for neuron insertion
 
-        0 means no growth, 1 means unlimited growth.
+        0 means no growth, 1 means unlimited growth
 
         0 < sf < 1.
-
-    lmbda : float, default = 10
-        Regulation coefficient lambda if we use the statistics enhanced growing
-        threshold.
 
     n_epochs_max : int, default = 50
         Maximal Number of training epochs.
@@ -128,7 +123,6 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
     def __init__(
         self,
         n_epochs_max: int = 50,
-        lmbda: float = 10,
         sf: float = 0.1,
         sigma_start: float | None = None,
         sigma_end: float | None = None,
@@ -142,7 +136,6 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
         error_method: str = "distance",
     ) -> None:
         self.sf = sf
-        self.lmbda = lmbda
         self.n_epochs_max = n_epochs_max
         self.sigma_start = sigma_start
         self.sigma_end = sigma_end
@@ -174,11 +167,10 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
         else:
             X, y = check_X_y(X=X, y=y, ensure_min_samples=4)
             self._y_is_fitted = True
+            self.classes_, y = np.unique(y, return_inverse=True)
         self.random_state_ = check_random_state(self.random_state)
         self._initialization(X)
         self._grow(X, y)
-        # if min(labels) > 0:
-        #     labels -= min(labels)
         # self.rep = self._calculate_rep(X)
         if self._y_is_fitted:
             self._label_prototypes(X, y)
@@ -218,9 +210,8 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
                     labels.append(-1)
 
             labels = np.array(labels)
-        # if min(labels) > 0:
-        #     labels -= min(labels)
-        return labels
+
+        return self.classes_[labels]
 
     def transform(self, X: npt.ArrayLike, y=None) -> np.ndarray:
         """Calculate the distance matrix of all samples and prototypes.
@@ -394,7 +385,6 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
         sample.
         """
         weights = self.weights_
-        # if self.nn_method == "naive" or n_bmu > 1:
         distances = pairwise_distances(X=weights, Y=data, metric=self.metric, n_jobs=-1)
         if n_bmu == 1:
             winners = np.argmin(distances, axis=0)
