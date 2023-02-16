@@ -177,8 +177,47 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
         self.topographic_error_ = self._topographic_error_func(X)
         self.quantization_error_ = self.calculate_quantization_error(X)
         self.n_features_in_ = X.shape[1]
+        self._write_node_statistics(X)
 
         return self
+
+    # @profile
+    def _write_node_statistics(self, X):
+        """Write the following statistics as attributes to the graph:
+
+        1. local density. Use a gaussian kernel to estimate the local density around
+        each prototype. Use the average distance from all prototype to their neighbors
+        as bandwith sigma.
+
+        2. Hit count: How many samples each prototype represents.
+
+        3. average distance: average distance from each prototype to their neighbors.
+        used for plotting the u matrix"""
+        winners = self._get_winning_neurons(X, n_bmu=1)
+        average_distances = self._get_u_matrix()
+        sigma = average_distances.mean()
+        weights = self.weights_
+        densities = np.zeros((len(self.neurons_)))
+        hit_counts = np.zeros((len(self.neurons_)))
+        for winner in np.unique(winners):
+            samples = X[winners == winner]
+            distances = np.linalg.norm(samples - weights[winner], axis=1)
+            if len(distances) > 0:
+                d = np.mean(
+                    (np.exp(-(distances**2) / (2 * sigma**2)))
+                    / (sigma * np.sqrt(2 * np.pi))
+                )
+            else:
+                d = 0
+            densities[winner] = d
+            hit_counts[winner] = len(samples)
+
+        for i, node in enumerate(self.som_.nodes):
+            self.som_.nodes[node]["density"] = densities[i]
+            self.som_.nodes[node]["hit_count"] = hit_counts[i]
+            self.som_.nodes[node]["average_distance"] = average_distances[i]
+
+    # def _estimate_local_density(self, X):
 
     def predict(self, X) -> np.ndarray:
         """Predict the closest cluster each sample in X belongs to.
@@ -251,19 +290,23 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
         palette : matplotlib colormap/seaborn palette, default = "magma_r"
             Name of seaborn palette to color code the values of attribute
         """
-
-        dots = pd.DataFrame(np.array(self.neurons_), columns=["x", "y"])
-        dots["epoch_created"] = list(
-            dict(self.som_.nodes.data("epoch_created")).values()
+        data = pd.DataFrame(dict(self.som_.nodes)).T.set_index(
+            np.arange(len(self.som_.nodes))
         )
-        dots["error"] = list(dict(self.som_.nodes.data("error")).values())
-        dots["distances"] = self._get_u_matrix()
-        dots["label"] = list(dict(self.som_.nodes.data("label")).values())
+        data["epoch_created"] = pd.to_numeric(data["epoch_created"])
+        data["label"] = pd.to_numeric(data["label"])
+        data["error"] = pd.to_numeric(data["error"])
+        data["density"] = pd.to_numeric(data["density"])
+        data["hit_count"] = pd.to_numeric(data["hit_count"])
+        data["average_distance"] = pd.to_numeric(data["average_distance"])
+        coordinates = pd.DataFrame(np.array(self.neurons_), columns=["x", "y"])
+        dots = pd.concat([coordinates, data], axis=1)
+
         so.Plot(dots, x="x", y="y", color=attribute).add(so.Dot()).scale(
             color=palette
         ).show()
 
-    def _get_u_matrix(self) -> list:
+    def _get_u_matrix(self) -> np.ndarray:
         """Calculate the average distance from each neuron to it's neighbors."""
 
         g = self.som_
@@ -276,7 +319,7 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
                 distance += np.linalg.norm(node_weight - nbr_weight)
             distances.append(distance / len(neighbors))
 
-        return distances
+        return np.array(distances)
 
     def _calculate_rep(self, X: npt.ArrayLike):
         """Return the resemble entropy parameter.
