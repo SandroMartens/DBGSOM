@@ -18,6 +18,7 @@ environment:
       PANDAS_VERSION: "*"
       NETWORKX_VERSION: "*"
       NUMPYDOC_VERSION: "*"
+    - TOXENV: py310
 
 install:
   # Prepend miniconda installed Python to the PATH of this build
