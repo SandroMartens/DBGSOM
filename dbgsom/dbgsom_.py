@@ -34,7 +34,7 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
 
     Parameters
     ----------
-    sf : float, default = 0.1
+    spreading_factor : float, default = 0.1
         Spreading factor to calculate the treshold for neuron insertion
 
         0 means no growth, 1 means unlimited growth
@@ -123,7 +123,7 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
     def __init__(
         self,
         n_epochs_max: int = 50,
-        sf: float = 0.1,
+        spreading_factor: float = 0.1,
         sigma_start: float | None = None,
         sigma_end: float | None = None,
         decay_function: str = "exponential",
@@ -135,7 +135,7 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
         threshold_method: str = "classical",
         error_method: str = "distance",
     ) -> None:
-        self.sf = sf
+        self.spreading_factor = spreading_factor
         self.n_epochs_max = n_epochs_max
         self.sigma_start = sigma_start
         self.sigma_end = sigma_end
@@ -355,10 +355,14 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
     def _calculate_growing_threshold(self, data):
         if self.threshold_method == "classical":
             n_dim = data.shape[1]
-            gt = -n_dim * log(self.sf)
+            gt = -n_dim * log(self.spreading_factor)
 
         elif self.threshold_method == "se":
-            gt = log(self.sf) * np.sqrt(np.sum(np.std(data, axis=0, ddof=1) ** 2))
+            gt = (
+                10
+                * -log(self.spreading_factor)
+                * np.sqrt(np.sum(np.std(data, axis=0, ddof=1) ** 2))
+            )
 
         return gt
 
