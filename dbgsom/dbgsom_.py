@@ -67,7 +67,8 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
         of labels of the samples as error.
 
     metric : str, default = euclidean
-        The metric to use for computing distances between prototypes and samples.
+        The metric to use for computing distances between prototypes and samples. Must
+        be supported by sci-kit learn or scipy.
 
     random_state : any (optional), default = None
         Random state for weight initialization.
@@ -81,26 +82,21 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
 
         "classical" : Threshold is only dependent on the dimension of the input data.
 
-        `gt = n_dim * -log(sf)`
+        `gt =  -log(spreading_factor) * n_dim`
 
         "se" : Statistics enhanced formula, which uses the standard
         deviation of features in X.
 
-        `gt = lambda * np.sqrt(np.sum(np.std(X, axis=0, ddof=1) ** 2))`
+        `gt = 10 * -log(spreading_factor) * np.sqrt(np.sum(np.std(X, axis=0, ddof=1) ** 2))`
 
-    sigma_start : {None, numeric}, default = None
-        Start for the neighborhood bandwidth.
+    sigma_start, sigma_end : {None, numeric}, default = None
+        Start and end value for the neighborhood bandwidth.
 
         If `None`, it is calculated dynamically in each epoch as
 
-        `sigma_start = 0.2 * sqrt(n_neurons)`.
+        `sigma_start = 0.2 * sqrt(n_neurons)`
 
-    sigma_end : {None, numeric}, default = None
-        End for the neighborhood bandwidth.
-
-        If `None` , it is calculated dynamically in each epoch as
-
-        `sigma_end = max(0.7, 0.05 * sqrt(n_neurons))`.
+        `sigma_end = max(0.7, 0.05 * sqrt(n_neurons))`
 
     Attributes
     ----------
@@ -272,12 +268,13 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
         ).T
         return distances
 
-    def plot(self, attribute: None | str = None, palette="magma_r") -> None:
+    def plot(self, color: None | str = None, palette="magma_r", pointsize=None) -> None:
         """Plot the neurons.
 
         Parameters
         ----------
-        attribute : {None, "epoch_created", "error", "distances"}, default = None
+        color, pointsize : {None, "epoch_created", "error", "distances", "density",
+            "hit_count"}, default = None
             Attribute which is represented as color.
 
             "epoch_created" : When the neuron was created.
@@ -286,6 +283,10 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
 
             "distances" : Average distance to neighbor neurons in
             the input space. Creates a U-Matrix.
+
+            "density" : estimated local density around the prototype
+
+            "hit_count" : How many samples the prototype represents
 
         palette : matplotlib colormap/seaborn palette, default = "magma_r"
             Name of seaborn palette to color code the values of attribute
@@ -302,9 +303,9 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
         coordinates = pd.DataFrame(np.array(self.neurons_), columns=["x", "y"])
         dots = pd.concat([coordinates, data], axis=1)
 
-        so.Plot(dots, x="x", y="y", color=attribute).add(so.Dot()).scale(
-            color=palette
-        ).show()
+        so.Plot(dots, x="x", y="y", color=color, pointsize=pointsize).add(
+            so.Dot()
+        ).scale(color=palette).label(x="", y="").show()
 
     def _get_u_matrix(self) -> np.ndarray:
         """Calculate the average distance from each neuron to it's neighbors."""
@@ -456,17 +457,19 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
         Only paths of length =< 3 * sigma + 1 are considered for performance
         reasons.
         """
-        n_neurons = len(self.neurons_)
-        distance_matrix = np.zeros((n_neurons, n_neurons))
-        distance_matrix.fill(np.inf)
-        sigma = self._sigma()
-        dist_dict = dict(
-            nx.all_pairs_shortest_path_length(self.som_, cutoff=3 * sigma + 1)
-        )
-        for i1, neuron1 in enumerate(self.neurons_):
-            for i2, neuron2 in enumerate(self.neurons_):
-                if neuron2 in dist_dict[neuron1].keys():
-                    distance_matrix[i1, i2] = dist_dict[neuron1][neuron2]
+        # n_neurons = len(self.neurons_)
+        # distance_matrix = np.zeros((n_neurons, n_neurons))
+        # distance_matrix.fill(np.inf)
+        # sigma = self._sigma()
+        # dist_dict = dict(
+        #     nx.all_pairs_shortest_path_length(self.som_, cutoff=3 * sigma + 1)
+        # )
+        # for i1, neuron1 in enumerate(self.neurons_):
+        #     for i2, neuron2 in enumerate(self.neurons_):
+        #         if neuron2 in dist_dict[neuron1].keys():
+        #             distance_matrix[i1, i2] = dist_dict[neuron1][neuron2]
+
+        distance_matrix = nx.floyd_warshall_numpy(self.som_)
 
         self._distance_matrix = distance_matrix
 
