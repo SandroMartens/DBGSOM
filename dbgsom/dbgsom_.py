@@ -57,14 +57,14 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
         the network grows according to the growing rules. In fine training, the
         bandwidth is constant at sigma_end and no new neurons are added.
 
-    error_method : {"distance", "entropy"}
+    growth_criterion : {"quantization_error", "entropy"}
         Method for calculating the error of neurons and samples.
 
-        "distance" : The cumulative error is the sum of individual
-        error.
+        "quantization_error" : Use the quantization error of the prototypes.
+        The cumulative error is the sum of individual errors of all samples.
 
         "entropy": For supervised learning we can use the entropy
-        of labels of the samples as error.
+        of labels of the samples represented by each prototype as error.
 
     metric : str, default = euclidean
         The metric to use for computing distances between prototypes and samples. Must
@@ -129,7 +129,7 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
         max_neurons: int = 100,
         metric: str = "euclidean",
         threshold_method: str = "classical",
-        error_method: str = "distance",
+        growth_criterion: str = "quantization_error",
     ) -> None:
         self.spreading_factor = spreading_factor
         self.n_epochs_max = n_epochs_max
@@ -142,7 +142,7 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
         self.max_neurons = max_neurons
         self.metric = metric
         self.threshold_method = threshold_method
-        self.error_method = error_method
+        self.growth_criterion = growth_criterion
 
     def fit(self, X: npt.ArrayLike, y: None | npt.ArrayLike = None):
         """Train SOM on training data.
@@ -273,7 +273,7 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
 
         Parameters
         ----------
-        color, pointsize : {None, "epoch_created", "error", "distances", "density",
+        color, pointsize : {None, "epoch_created", "error", "average_distance", "density",
             "hit_count"}, default = None
             Attribute which is represented as color.
 
@@ -281,7 +281,7 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
 
             "error" : Quantization error of each neuron.
 
-            "distances" : Average distance to neighbor neurons in
+            "average_distance" : Average distance to neighbor neurons in
             the input space. Creates a U-Matrix.
 
             "density" : estimated local density around the prototype
@@ -547,7 +547,7 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
         """Get the quantization error for each neuron
         and save it as "error" attribute of each node.
         """
-        if self.error_method == "entropy":
+        if self.growth_criterion == "entropy":
             for winner_index, neuron in enumerate(self.neurons_):
                 _, counts = np.unique(y[winners == winner_index], return_counts=True)
                 total = np.sum(counts)
