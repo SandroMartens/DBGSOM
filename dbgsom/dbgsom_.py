@@ -18,6 +18,7 @@ try:
         ClassifierMixin,
         ClusterMixin,
         TransformerMixin,
+        clone,
     )
     from sklearn.metrics import pairwise_distances
     from sklearn.utils import check_array, check_random_state, check_X_y
@@ -157,6 +158,7 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
         self : dbgsom
             Trained estimator
         """
+        # Horizontal growing phase
         if y is None:
             X = check_array(array=X, ensure_min_samples=4)
             self._y_is_fitted = False
@@ -174,6 +176,20 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
         self.quantization_error_ = self.calculate_quantization_error(X)
         self.n_features_in_ = X.shape[1]
         self._write_node_statistics(X)
+
+        # Vertical growing phase
+        self.vertical_growing_threshold = 0.5
+        winners = self._get_winning_neurons(X, n_bmu=1)
+        for i, (node, error) in enumerate(self.som_.nodes(data="error")):
+            if error > self.vertical_growing_threshold:
+                new_som = clone(self)
+                X_filtered = X[winners == i]
+                y_filtered = y[winners == i]
+                if X_filtered.shape[0] > 1000:
+                    new_som.fit(X_filtered, y_filtered)
+                    self.som_.nodes[node]["som"] = new_som
+                # else:
+                #     self.som_.nodes[node]["som"] = None
 
         return self
 
@@ -213,8 +229,6 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
             self.som_.nodes[node]["hit_count"] = hit_counts[i]
             self.som_.nodes[node]["average_distance"] = average_distances[i]
 
-    # def _estimate_local_density(self, X):
-
     def predict(self, X) -> np.ndarray:
         """Predict the closest cluster each sample in X belongs to.
 
@@ -237,14 +251,19 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
         else:
             bmus = self._get_winning_neurons(X, n_bmu=1)
             labels = []
-            for bmu in bmus:
-                label = self.som_.nodes[self.neurons_[bmu]]["label"]
+            for sample, bmu in zip(X, bmus):
+                if "som" not in self.som_.nodes[self.neurons_[bmu]].keys():
+                    label = self.som_.nodes[self.neurons_[bmu]]["label"]
+                else:
+                    label = self.som_.nodes[self.neurons_[bmu]]["som"].predict(
+                        sample.reshape(1, -1)
+                    )[0]
+
                 if label is not None:
                     labels.append(label)
                 else:
                     labels.append(-1)
-
-            labels = np.array(labels)
+            # labels = np.array(labels)
 
         return self.classes_[labels]
 
@@ -394,7 +413,7 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
                 current_epoch != self.n_epochs_max
                 and self._training_phase == "coarse"
                 and len(self.neurons_) < self.max_neurons
-                and current_epoch % 5 == 3
+                and current_epoch % 5 == 4
             ):
                 self._distribute_errors()
                 self._add_new_neurons()
@@ -452,6 +471,7 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
                 label_winner = mode(labels)
             self.som_.nodes[neuron]["label"] = int(label_winner)
 
+    # @profile
     def _update_distance_matrix(self) -> None:
         """Update distance matrix between neurons.
         Only paths of length =< 3 * sigma + 1 are considered for performance
