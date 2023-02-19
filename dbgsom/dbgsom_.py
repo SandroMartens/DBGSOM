@@ -153,6 +153,9 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
         X : array_like of shape (n_samples, n_features)
             Training data.
 
+        y : array_like of shape (n_samples), optional
+            Class labels of the samples
+
         Returns
         -------
         self : dbgsom
@@ -178,18 +181,16 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
         self._write_node_statistics(X)
 
         # Vertical growing phase
-        self.vertical_growing_threshold = 0.5
+        self.vertical_growing_threshold_ = 1.5 * self.growing_threshold_
         winners = self._get_winning_neurons(X, n_bmu=1)
         for i, (node, error) in enumerate(self.som_.nodes(data="error")):
-            if error > self.vertical_growing_threshold:
+            if error > self.vertical_growing_threshold_:
                 new_som = clone(self)
                 X_filtered = X[winners == i]
                 y_filtered = y[winners == i]
-                if X_filtered.shape[0] > 1000:
+                if X_filtered.shape[0] > 200:
                     new_som.fit(X_filtered, y_filtered)
                     self.som_.nodes[node]["som"] = new_som
-                # else:
-                #     self.som_.nodes[node]["som"] = None
 
         return self
 
@@ -379,7 +380,7 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
 
         elif self.threshold_method == "se":
             gt = (
-                10
+                150
                 * -log(self.spreading_factor)
                 * np.sqrt(np.sum(np.std(data, axis=0, ddof=1) ** 2))
             )
