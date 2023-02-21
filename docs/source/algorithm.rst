@@ -3,7 +3,8 @@ The Algorithm
 
 Runtime complexity
 ------------------
-There are different ways to estimate the complexity of SOMs. A rough estimate for the complexity is:
+There are different ways to estimate the complexity of SOMs. A rough estimate for the time complexity `T` and space complexity `S` is:
+
 .. math::
 
     T = O(nmde)
@@ -11,6 +12,7 @@ There are different ways to estimate the complexity of SOMs. A rough estimate fo
     S = O(nmd)
 
 where
+
 * `n` is the number of data samples
 * `m` is the number of neurons
 * `d` is the data dimension and
