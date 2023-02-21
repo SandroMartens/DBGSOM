@@ -40,7 +40,7 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
 
         0 means no growth, 1 means unlimited growth
 
-        0 < sf < 1.
+        0 < spreading_factor < 1.
 
     n_epochs_max : int, default = 50
         Maximal Number of training epochs.
@@ -90,6 +90,9 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
 
         `gt = 10 * -log(spreading_factor) * np.sqrt(np.sum(np.std(X, axis=0, ddof=1) ** 2))`
 
+    min_samples_vertical_growth : int, default = 100
+        Minimum samples represented by a prototpye to trigger a vertical growth
+
     sigma_start, sigma_end : {None, numeric}, default = None
         Start and end value for the neighborhood bandwidth.
 
@@ -131,6 +134,7 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
         metric: str = "euclidean",
         threshold_method: str = "classical",
         growth_criterion: str = "quantization_error",
+        min_samples_vertical_growth: int = 100,
     ) -> None:
         self.spreading_factor = spreading_factor
         self.n_epochs_max = n_epochs_max
@@ -144,6 +148,7 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
         self.metric = metric
         self.threshold_method = threshold_method
         self.growth_criterion = growth_criterion
+        self.min_samples_vertical_growth = min_samples_vertical_growth
 
     def fit(self, X: npt.ArrayLike, y: None | npt.ArrayLike = None):
         """Train SOM on training data.
@@ -187,14 +192,14 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
             if error > self.vertical_growing_threshold_:
                 new_som = clone(self)
                 X_filtered = X[winners == i]
-                y_filtered = y[winners == i]
-                if X_filtered.shape[0] > 200:
+                if y is not None:
+                    y_filtered = y[winners == i]
+                if X_filtered.shape[0] > self.min_samples_vertical_growth:
                     new_som.fit(X_filtered, y_filtered)
                     self.som_.nodes[node]["som"] = new_som
 
         return self
 
-    # @profile
     def _write_node_statistics(self, X):
         """Write the following statistics as attributes to the graph:
 
@@ -264,7 +269,6 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
                     labels.append(label)
                 else:
                     labels.append(-1)
-            # labels = np.array(labels)
 
         return self.classes_[labels]
 
@@ -374,18 +378,21 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
         self.neurons_ = list(self.som_.nodes)
 
     def _calculate_growing_threshold(self, data):
-        if self.threshold_method == "classical":
-            n_dim = data.shape[1]
-            gt = -n_dim * log(self.spreading_factor)
+        if self.growth_criterion == "entropy":
+            growing_threshold = self.spreading_factor
+        else:
+            if self.threshold_method == "classical":
+                n_dim = data.shape[1]
+                growing_threshold = -n_dim * log(self.spreading_factor)
 
-        elif self.threshold_method == "se":
-            gt = (
-                150
-                * -log(self.spreading_factor)
-                * np.sqrt(np.sum(np.std(data, axis=0, ddof=1) ** 2))
-            )
+            elif self.threshold_method == "se":
+                growing_threshold = (
+                    150
+                    * -log(self.spreading_factor)
+                    * np.sqrt(np.sum(np.std(data, axis=0, ddof=1) ** 2))
+                )
 
-        return gt
+        return growing_threshold
 
     def _grow(self, data: npt.NDArray, y) -> None:
         """Second training phase"""
@@ -573,7 +580,7 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
                 _, counts = np.unique(y[winners == winner_index], return_counts=True)
                 total = np.sum(counts)
                 counts = counts / total
-                error = np.sum(-counts * np.log(counts))
+                error = np.sum(-counts * np.log2(counts))
                 self.som_.nodes[neuron]["error"] = error
 
         else:
