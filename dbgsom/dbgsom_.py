@@ -194,6 +194,8 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
                 X_filtered = X[winners == i]
                 if y is not None:
                     y_filtered = y[winners == i]
+                else:
+                    y_filtered = None
                 if X_filtered.shape[0] > self.min_samples_vertical_growth:
                     new_som.fit(X_filtered, y_filtered)
                     self.som_.nodes[node]["som"] = new_som
