@@ -42,17 +42,20 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
 
         0 < spreading_factor < 1.
 
-    n_epochs_max : int, default = 50
-        Maximal Number of training epochs.
+    max_epochs : int, default = 200
+        Maximum Number of training epochs.
 
     max_neurons : int, default = 100
         Maximum number of neurons in the som.
+
+    vertical_growth : bool, default = False
+        Wether to trigger hierarchical growth.
 
     decay_function : {'exponential', 'linear'}, default = 'exponential'
         Decay function to use for neighborhood bandwith sigma.
 
     coarse_training_frac : float, default = 0.5
-        Fraction of training epochs to use for coarse training.
+        Fraction of max_epochs to use for coarse training.
         Training happens in two phases, coarse and fine training. In coarse training,
         the neighborhood bandwidth is decreased from sigma_start to sigma_end and
         the network grows according to the growing rules. In fine training, the
@@ -88,7 +91,7 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
         "se" : Statistics enhanced formula, which uses the standard
         deviation of features in X.
 
-        `gt = 10 * -log(spreading_factor) * np.sqrt(np.sum(np.std(X, axis=0, ddof=1) ** 2))`
+        `gt = 150 * -log(spreading_factor) * np.sqrt(np.sum(np.std(X, axis=0, ddof=1) ** 2))`
 
     min_samples_vertical_growth : int, default = 100
         Minimum samples represented by a prototpye to trigger a vertical growth
@@ -122,10 +125,11 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
 
     def __init__(
         self,
-        n_epochs_max: int = 50,
-        spreading_factor: float = 0.1,
+        max_epochs: int = 200,
+        spreading_factor: float = 0.5,
         sigma_start: float | None = None,
         sigma_end: float | None = None,
+        vertical_growth: bool = False,
         decay_function: str = "exponential",
         coarse_training_frac: float = 0.5,
         random_state: Any = None,
@@ -137,7 +141,7 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
         min_samples_vertical_growth: int = 100,
     ) -> None:
         self.spreading_factor = spreading_factor
-        self.n_epochs_max = n_epochs_max
+        self.n_epochs_max = max_epochs
         self.sigma_start = sigma_start
         self.sigma_end = sigma_end
         self.decay_function = decay_function
@@ -149,6 +153,7 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
         self.threshold_method = threshold_method
         self.growth_criterion = growth_criterion
         self.min_samples_vertical_growth = min_samples_vertical_growth
+        self.vertical_growth = vertical_growth
 
     def fit(self, X: npt.ArrayLike, y: None | npt.ArrayLike = None):
         """Train SOM on training data.
@@ -186,19 +191,20 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
         self._write_node_statistics(X)
 
         # Vertical growing phase
-        self.vertical_growing_threshold_ = 1.5 * self.growing_threshold_
-        winners = self._get_winning_neurons(X, n_bmu=1)
-        for i, (node, error) in enumerate(self.som_.nodes(data="error")):
-            if error > self.vertical_growing_threshold_:
-                new_som = clone(self)
-                X_filtered = X[winners == i]
-                if y is not None:
-                    y_filtered = y[winners == i]
-                else:
-                    y_filtered = None
-                if X_filtered.shape[0] > self.min_samples_vertical_growth:
-                    new_som.fit(X_filtered, y_filtered)
-                    self.som_.nodes[node]["som"] = new_som
+        if self.vertical_growth:
+            self.vertical_growing_threshold_ = 1.5 * self.growing_threshold_
+            winners = self._get_winning_neurons(X, n_bmu=1)
+            for i, (node, error) in enumerate(self.som_.nodes(data="error")):
+                if error > self.vertical_growing_threshold_:
+                    new_som = clone(self)
+                    X_filtered = X[winners == i]
+                    if y is not None:
+                        y_filtered = y[winners == i]
+                    else:
+                        y_filtered = None
+                    if X_filtered.shape[0] > self.min_samples_vertical_growth:
+                        new_som.fit(X_filtered, y_filtered)
+                        self.som_.nodes[node]["som"] = new_som
 
         return self
 

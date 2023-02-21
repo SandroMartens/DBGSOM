@@ -15,6 +15,8 @@ User Guide
    :caption: Contents:
 
    user_guide
+   plotting
+   algorithm
    api
 
 
