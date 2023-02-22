@@ -14,7 +14,7 @@ This project was inspired by the great [MiniSom](https://github.com/JustGlowing/
 - Compatible with scikit-learn's API and can be used as a drop-in replacement for other clustering and classification algorithms
 - Can handle high-dimensional and non-uniform data distributions
 - Good results without parameter tuning
-- Better topology preservation than classical SOMs
+- Better topology preservation and faster training time than classical SOMs
 - Interpretability of the results through plotting
 
 ## How it works
