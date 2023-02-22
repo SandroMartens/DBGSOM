@@ -417,7 +417,7 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
             # check if new neurons were inserted
             if len(self.som_.nodes) > len(self.neurons_) or current_epoch == 0:
                 self.neurons_ = list(self.som_.nodes)
-                self._update_distance_matrix()
+                self._distance_matrix = nx.floyd_warshall_numpy(self.som_)
 
             winners = self._get_winning_neurons(data, n_bmu=1)
             self._update_weights(winners, data)
@@ -486,28 +486,6 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
             else:
                 label_winner = mode(labels)
             self.som_.nodes[neuron]["label"] = int(label_winner)
-
-    # @profile
-    def _update_distance_matrix(self) -> None:
-        """Update distance matrix between neurons.
-        Only paths of length =< 3 * sigma + 1 are considered for performance
-        reasons.
-        """
-        # n_neurons = len(self.neurons_)
-        # distance_matrix = np.zeros((n_neurons, n_neurons))
-        # distance_matrix.fill(np.inf)
-        # sigma = self._sigma()
-        # dist_dict = dict(
-        #     nx.all_pairs_shortest_path_length(self.som_, cutoff=3 * sigma + 1)
-        # )
-        # for i1, neuron1 in enumerate(self.neurons_):
-        #     for i2, neuron2 in enumerate(self.neurons_):
-        #         if neuron2 in dist_dict[neuron1].keys():
-        #             distance_matrix[i1, i2] = dist_dict[neuron1][neuron2]
-
-        distance_matrix = nx.floyd_warshall_numpy(self.som_)
-
-        self._distance_matrix = distance_matrix
 
     # @profile
     def _update_weights(self, winners: np.ndarray, data: npt.NDArray) -> None:
