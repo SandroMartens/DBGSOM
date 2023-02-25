@@ -16,10 +16,10 @@ For a training data, the batch learning algorithm for SOMs can be performed by p
 .. math::
     w_i^{new} = \frac{\sum_{j=1}^{k}h_{c_{j, i}} x_j}{\sum_{j=1}^{k}h_{c_{j, i}}}
 
-where :math:`h_{c_{j, i}}` is the gaussian neighborhood function defined as:
+where :math:`h_{c_{j, i}}` is the Gaussian neighborhood function defined as:
 
 .. math::
-    h_{c_{j, i}} = exp(- \frac{{\lvert w_i - w_{c_j} \rvert}^2}{2{\sigma}^2(t)})
+    h_{c_{j, i}} = \exp \left(- \frac{{\lvert w_i - w_{c_j} \rvert}^2}{2{\sigma}^2(t)}\right)
 
 where :math:`w_i` is the weight vectors of the `i` th neuron and :math:`w_{c_j}` is the weight vector of winning neuron `c` for `j` th input vector. :math:`\lvert w_i - w_{c_j} \rvert` is the distance between these two prototype on the grid. :math:`\sigma` is the width of the Gaussian function which controls the cooperation of neighbor neurons in the learning process. The value of :math:`\sigma(t)` decreases with time. This procedure can be repeated a number of times specified
 by the user.
@@ -30,7 +30,7 @@ Directed Horizontal Growth
 We calculate a growing threshold `GT` as 
 
 .. math::
-    GT = -log(sf) * d
+    GT = -\log(sf) * d
 
 where `sf` as the spreading factor chosen by the user and `d` is the dimensionality of the data. After each training epoch the accumulative error (:math:`E_i`) for each neuron is calculated as:
 
@@ -59,6 +59,8 @@ The SE-DBGSOM uses the standard deviation of the input features to control the g
 
 Hierarchical DBGSOM
 *******************
+
+
 
 Statistics Enhanced DBGSOM
 ***************************

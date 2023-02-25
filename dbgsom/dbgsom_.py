@@ -141,7 +141,7 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
         min_samples_vertical_growth: int = 100,
     ) -> None:
         self.spreading_factor = spreading_factor
-        self.n_epochs_max = max_epochs
+        self.max_epochs = max_epochs
         self.sigma_start = sigma_start
         self.sigma_end = sigma_end
         self.decay_function = decay_function
@@ -327,7 +327,7 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
             np.arange(len(self.som_.nodes))
         )
         data["epoch_created"] = pd.to_numeric(data["epoch_created"])
-        data["label"] = pd.to_numeric(data["label"])
+        data["label"] = self.classes_[pd.to_numeric(data["label"])]
         data["error"] = pd.to_numeric(data["error"])
         data["density"] = pd.to_numeric(data["density"])
         data["hit_count"] = pd.to_numeric(data["hit_count"])
@@ -405,11 +405,11 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
     def _grow(self, data: npt.NDArray, y) -> None:
         """Second training phase"""
         for current_epoch in tqdm(
-            iterable=range(self.n_epochs_max),
+            iterable=range(self.max_epochs),
             unit=" epochs",
         ):
             self._current_epoch = current_epoch
-            if current_epoch > self.coarse_training_frac * self.n_epochs_max:
+            if current_epoch > self.coarse_training_frac * self.max_epochs:
                 self._training_phase = "fine"
             self.weights_ = np.array(
                 list(dict(self.som_.nodes.data("weight")).values())
@@ -426,7 +426,7 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
 
             self._write_accumulative_error(winners, data, y)
             if (
-                current_epoch != self.n_epochs_max
+                current_epoch != self.max_epochs
                 and self._training_phase == "coarse"
                 and len(self.neurons_) < self.max_neurons
                 and current_epoch % 5 == 4
@@ -893,12 +893,12 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
         if self._training_phase == "coarse":
             if self.decay_function == "linear":
                 sigma = sigma_start * (
-                    1 - (1 / self.coarse_training_frac * epoch / self.n_epochs_max)
-                ) + sigma_end * (epoch / self.n_epochs_max)
+                    1 - (1 / self.coarse_training_frac * epoch / self.max_epochs)
+                ) + sigma_end * (epoch / self.max_epochs)
 
             elif self.decay_function == "exponential":
                 sigma = sigma_start * np.exp(
-                    (1 / self.n_epochs_max * (log(sigma_end) - log(sigma_start)))
+                    (1 / self.max_epochs * (log(sigma_end) - log(sigma_start)))
                     * (epoch / self.coarse_training_frac)
                 )
         else:
