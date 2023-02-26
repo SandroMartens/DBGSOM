@@ -39,7 +39,7 @@ where `sf` as the spreading factor chosen by the user and `d` is the dimensional
 
 where :math:`w_i` is the weight vector of the neuron `i` and `k` is the number of input vectors mapped on `i`. 
 
-For each non boundary neuron where :math:`E_i > GT`, :math:`\frac{E_i}{2}` is distributed to neighboring boundary neurons. Then a new neuron is added to a free position to all boundary neurons where :math:`E_i > GT`. The position and weight of the new neuron are described in the paper.
+For each non boundary neuron where :math:`E_i > GT`, :math:`\frac{1}{2} * E_i` is distributed to neighboring boundary neurons. Then a new neuron is added to a free position to all boundary neurons where :math:`E_i > GT`. The position and weight of the new neuron are described in the paper.
 
 First classification
 ********************
@@ -55,12 +55,11 @@ There are currently three extensions to the original DBGSOM implemented:
 - Statistics Enhanced DBGGSOM (SE-DBGSOM) and
 - Entropy Defined DBGSOM (ED-DBGSOM)
 
-The SE-DBGSOM uses the standard deviation of the input features to control the growth and fine classification, while the ED-DBGSOM uses the entropy of the classses of each prototype and the entropy of the features in each sample.
+The HSOM can handle deeply bunched data samples, that cannot be distinguished by more neuron growth. A new, smaller SOM is created only for one neuron of the original SOM. The SE-DBGSOM uses the standard deviation of the input features to control the growth and fine classification, while the ED-DBGSOM uses the entropy of the classses of each prototype and the entropy of the features in each sample.
 
 Hierarchical DBGSOM
 *******************
-
-
+We calculate a vertical growing threshold as :math:`VGT = 1.5 * GT`. After the horizontal growth phase is finished, for each neuron :math:`n_i` where :math:`E_i > VGT` a new SOM is created and trained on all samples mapped to `n_i`. This is done recursively.
 
 Statistics Enhanced DBGSOM
 ***************************
