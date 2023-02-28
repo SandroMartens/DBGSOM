@@ -39,12 +39,15 @@ where `sf` as the spreading factor chosen by the user and `d` is the dimensional
 
 where :math:`w_i` is the weight vector of the neuron `i` and `k` is the number of input vectors mapped on `i`. 
 
-For each non boundary neuron where :math:`E_i > GT`, :math:`\frac{1}{2} * E_i` is distributed to neighboring boundary neurons. Then a new neuron is added to a free position to all boundary neurons where :math:`E_i > GT`. The position and weight of the new neuron are described in the paper.
+For each non boundary neuron :math:`n_i` where :math:`E_i > GT`, :math:`0.5 E_i` is distributed to neighboring boundary neurons. Then a new neuron is added to a free position to all boundary neurons where :math:`E_i > GT`. The position and weight of the new neuron are described in the paper.
 
 First classification
 ********************
 
-For a sample classification, each prototype gets assigned a label. That label is decided by a majority vote of the class labels of all samples represented by that prototype.
+For a sample classification, each neuron :math:`n_i` gets assigned a label :math:`L_i`. That label is decided by a majority vote of the class labels `l` of all samples represented by that prototype: 
+
+.. math::
+    L_i = \mode(l_1 \ldots l_n)
 
 Extensions
 ----------
@@ -59,7 +62,7 @@ The HSOM can handle deeply bunched data samples, that cannot be distinguished by
 
 Hierarchical DBGSOM
 *******************
-We calculate a vertical growing threshold as :math:`VGT = 1.5 * GT`. After the horizontal growth phase is finished, for each neuron :math:`n_i` where :math:`E_i > VGT` a new SOM is created and trained on all samples mapped to `n_i`. This is done recursively.
+We calculate a vertical growing threshold as :math:`VGT = 1.5 * GT`. After the horizontal growth phase is finished, for each neuron :math:`n_i` where :math:`E_i > VGT`, a new SOM is created and trained on all samples mapped to :math:`n_i`. This is done recursively.
 
 Statistics Enhanced DBGSOM
 ***************************
@@ -67,8 +70,16 @@ Statistics Enhanced DBGSOM
 Entropy Defined DBGSOM
 **********************
 
+The entropy of each neuron :math:`n_i` is given by:
+
+.. math::
+    E_i = \sum_{x \in s(x)} -p_i(x) * \log_2 p_i(x)
+
+Here, subscript `i` denotes the neuron serial, :math:`p_i(x)` denotes the probability of the data vectors typed `x`, `s(x)` denotes the set of all data types. So the SOM grows in the direction where the classification of the samples is bad.
+
 Fine Grained Classification
 ###########################
+Currently not implemented.
 
 Runtime complexity
 ------------------

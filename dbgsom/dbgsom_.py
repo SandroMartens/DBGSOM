@@ -35,7 +35,7 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
 
     Parameters
     ----------
-    spreading_factor : float, default = 0.1
+    spreading_factor : float, default = 0.5
         Spreading factor to calculate the treshold for neuron insertion
 
         0 means no growth, 1 means unlimited growth
@@ -81,7 +81,7 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
         If the sum of all weight changes is smaller than the threshold,
         convergence is assumed and the training is stopped.
 
-    threshold_method : {"classical", "se"}
+    threshold_method : {"classical", "se"}, default = "se"
         Method to calculate the growing threshold.
 
         "classical" : Threshold is only dependent on the dimension of the input data.
@@ -91,7 +91,7 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
         "se" : Statistics enhanced formula, which uses the standard
         deviation of features in X.
 
-        `gt = 150 * -log(spreading_factor) * np.sqrt(np.sum(np.std(X, axis=0, ddof=1) ** 2))`
+        `gt = 150 * -log(spreading_factor) * np.sqrt(np.sum(np.std(X, axis=0) ** 2))`
 
     min_samples_vertical_growth : int, default = 100
         Minimum samples represented by a prototpye to trigger a vertical growth
@@ -136,7 +136,7 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
         convergence_treshold: float = 10**-10,
         max_neurons: int = 100,
         metric: str = "euclidean",
-        threshold_method: str = "classical",
+        threshold_method: str = "se",
         growth_criterion: str = "quantization_error",
         min_samples_vertical_growth: int = 100,
     ) -> None:
@@ -426,8 +426,7 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
 
             self._write_accumulative_error(winners, data, y)
             if (
-                current_epoch != self.max_epochs
-                and self._training_phase == "coarse"
+                self._training_phase == "coarse"
                 and len(self.neurons_) < self.max_neurons
                 and current_epoch % 5 == 4
             ):
