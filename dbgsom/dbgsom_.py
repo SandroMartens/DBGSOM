@@ -320,6 +320,8 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
 
             "hit_count" : How many samples the prototype represents
 
+            "pricipal_components"
+
         palette : matplotlib colormap/seaborn palette, default = "magma_r"
             Name of seaborn palette to color code the values of attribute
         """
