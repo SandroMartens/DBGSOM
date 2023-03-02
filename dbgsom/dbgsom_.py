@@ -178,7 +178,11 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
         else:
             X, y = check_X_y(X=X, y=y, ensure_min_samples=4)
             self._y_is_fitted = True
-            self.classes_, y = np.unique(y, return_inverse=True)
+            classes, y = np.unique(y, return_inverse=True)
+            # So self.classes_[-1] returns "None"
+            classes_with_none = list(classes)
+            classes_with_none.append("None")
+            self.classes_ = np.array(classes_with_none)
         self.random_state_ = check_random_state(self.random_state)
         self._initialization(X)
         self._grow(X, y)
@@ -329,7 +333,9 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
             np.arange(len(self.som_.nodes))
         )
         data["epoch_created"] = pd.to_numeric(data["epoch_created"])
-        data["label"] = self.classes_[pd.to_numeric(data["label"])]
+        data["label_index"] = pd.to_numeric(data["label"])
+        data["label"] = self.classes_[data["label_index"]]
+
         data["error"] = pd.to_numeric(data["error"])
         data["density"] = pd.to_numeric(data["density"])
         data["hit_count"] = pd.to_numeric(data["hit_count"])
