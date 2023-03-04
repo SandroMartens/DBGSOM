@@ -44,10 +44,10 @@ For each non boundary neuron :math:`n_i` where :math:`E_i > GT`, :math:`0.5 E_i`
 First classification
 ********************
 
-For a sample classification, each neuron :math:`n_i` gets assigned a label :math:`L_i`. That label is decided by a majority vote of the class labels `l` of all samples represented by that prototype: 
+For a sample classification, each neuron :math:`n_i` gets assigned a label :math:`L_i`. That label is decided as the most common class label `l` of all samples represented by that prototype: 
 
 .. math::
-    L_i = \mode(l_1 \ldots l_n)
+    L_i = mode(l_1 \ldots l_n)
 
 Extensions
 ----------
@@ -66,6 +66,12 @@ We calculate a vertical growing threshold as :math:`VGT = 1.5 * GT`. After the h
 
 Statistics Enhanced DBGSOM
 ***************************
+The SE-DBGSOM calculates the growing threshold depending on the standard deviation of the input features:
+
+.. math::
+    GT = 150 * -\log(spreading\_factor) * \sqrt{\sum_{i=1}^D std_i^2}
+
+where :math:`std_i` denotes the Standard deviation of all samples in the the `i` th input dimension. This improved approach makes it possible to reflect various datasets more accurately.
 
 Entropy Defined DBGSOM
 **********************

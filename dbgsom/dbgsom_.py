@@ -77,7 +77,7 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
     random_state : any (optional), default = None
         Random state for weight initialization.
 
-    convergence_treshold : float, default = 10 ** -10
+    convergence_treshold : float, default = 10 ** -5
         If the sum of all weight changes is smaller than the threshold,
         convergence is assumed and the training is stopped.
 
@@ -133,7 +133,7 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
         decay_function: str = "exponential",
         coarse_training_frac: float = 0.5,
         random_state: Any = None,
-        convergence_treshold: float = 10**-10,
+        convergence_treshold: float = 10**-5,
         max_neurons: int = 100,
         metric: str = "euclidean",
         threshold_method: str = "se",
@@ -179,9 +179,9 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
             X, y = check_X_y(X=X, y=y, ensure_min_samples=4)
             self._y_is_fitted = True
             classes, y = np.unique(y, return_inverse=True)
-            # So self.classes_[-1] returns "None"
+            # So self.classes_[-1] returns -1
             classes_with_none = list(classes)
-            classes_with_none.append("None")
+            classes_with_none.append(-1)
             self.classes_ = np.array(classes_with_none)
         self.random_state_ = check_random_state(self.random_state)
         self._initialization(X)
@@ -263,7 +263,7 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
             If fitted supervised: Label of the predicted class.
         """
         check_is_fitted(self)
-        X = check_array(array=X, dtype=[float, int])
+        X = check_array(X)
         if not self._y_is_fitted:
             labels = self._get_winning_neurons(X, n_bmu=1)
         else:
@@ -277,10 +277,7 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
                         sample.reshape(1, -1)
                     )[0]
 
-                if label is not None:
-                    labels.append(label)
-                else:
-                    labels.append(-1)
+                labels.append(label)
 
         return self.classes_[labels]
 
@@ -436,7 +433,7 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
             if (
                 self._training_phase == "coarse"
                 and len(self.neurons_) < self.max_neurons
-                and current_epoch % 5 == 4
+                and current_epoch % 10 == 9
             ):
                 self._distribute_errors()
                 self._add_new_neurons()
