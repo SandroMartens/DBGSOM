@@ -76,16 +76,17 @@ where :math:`std_i` denotes the Standard deviation of all samples in the the `i`
 Entropy Defined DBGSOM
 **********************
 
-The entropy of each neuron :math:`n_i` is given by:
+Instead of the quantization error, the entropy is used a growing criterion. The entropy of each neuron :math:`n_i` is given by:
 
 .. math::
     E_i = \sum_{x \in s(x)} -p_i(x) * \log_2 p_i(x)
 
-Here, subscript `i` denotes the neuron serial, :math:`p_i(x)` denotes the probability of the data vectors typed `x`, `s(x)` denotes the set of all data types. So the SOM grows in the direction where the classification of the samples is bad.
+Here, subscript `i` denotes the neuron serial, :math:`p_i(x)` denotes the probability of the data vectors labeled `x`, `s(x)` denotes the set of all data labels. So the SOM grows in the direction where the classification of the samples is bad.
 
 Fine Grained Classification
 ###########################
-Currently not implemented.
+_Currently not implemented._
+
 
 Runtime complexity
 ------------------

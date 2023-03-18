@@ -187,8 +187,7 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
         self._initialization(X)
         self._grow(X, y)
         # self.rep = self._calculate_rep(X)
-        if self._y_is_fitted:
-            self._label_prototypes(X, y)
+        self._label_prototypes(X, y)
         self.topographic_error_ = self._topographic_error_func(X)
         self.quantization_error_ = self.calculate_quantization_error(X)
         self.n_features_in_ = X.shape[1]
@@ -321,18 +320,17 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
 
             "hit_count" : How many samples the prototype represents
 
-            "pricipal_components"
-
         palette : matplotlib colormap/seaborn palette, default = "magma_r"
             Name of seaborn palette to color code the values of attribute
         """
         data = pd.DataFrame(dict(self.som_.nodes)).T.set_index(
             np.arange(len(self.som_.nodes))
         )
+        if self._y_is_fitted:
+            data["label_index"] = pd.to_numeric(data["label"])
+            data["label"] = self.classes_[data["label_index"]]
+            
         data["epoch_created"] = pd.to_numeric(data["epoch_created"])
-        data["label_index"] = pd.to_numeric(data["label"])
-        data["label"] = self.classes_[data["label_index"]]
-
         data["error"] = pd.to_numeric(data["error"])
         data["density"] = pd.to_numeric(data["density"])
         data["hit_count"] = pd.to_numeric(data["hit_count"])
@@ -481,15 +479,19 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
         return winners
 
     def _label_prototypes(self, X, y):
-        winners = self._get_winning_neurons(X, n_bmu=1)
-        for winner_index, neuron in enumerate(self.neurons_):
-            labels = y[winners == winner_index]
-            # dead neuron
-            if len(labels) == 0:
-                label_winner = -1
-            else:
-                label_winner = mode(labels)
-            self.som_.nodes[neuron]["label"] = int(label_winner)
+        if self._y_is_fitted:
+            winners = self._get_winning_neurons(X, n_bmu=1)
+            for winner_index, neuron in enumerate(self.neurons_):
+                labels = y[winners == winner_index]
+                # dead neuron
+                if len(labels) == 0:
+                    label_winner = -1
+                else:
+                    label_winner = mode(labels)
+                self.som_.nodes[neuron]["label"] = int(label_winner)
+        else:
+            for i, neuron in enumerate(self.som_):
+                self.som_.nodes[neuron]["label"] = i
 
     # @profile
     def _update_weights(self, winners: np.ndarray, data: npt.NDArray) -> None:
