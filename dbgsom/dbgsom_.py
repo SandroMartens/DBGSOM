@@ -36,17 +36,17 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
     Parameters
     ----------
     spreading_factor : float, default = 0.5
-        Spreading factor to calculate the treshold for neuron insertion
-
-        0 means no growth, 1 means unlimited growth
+        Spreading factor to calculate the treshold for neuron insertion.
 
         0 < spreading_factor < 1.
+
+        0 means no growth, 1 means unlimited growth
 
     max_iter : int, default = 200
         Maximum Number of training epochs.
 
     convergence_iter : int, default = 1
-        How many training iterations run until new neurons are added
+        How many training iterations run until new neurons are added.
 
     max_neurons : int, default = 100
         Maximum number of neurons in the som.
@@ -58,13 +58,14 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
         Decay function to use for neighborhood bandwith sigma.
 
     coarse_training_frac : float, default = 0.5
-        Fraction of max_epochs to use for coarse training.
+        Fraction of max_iter to use for coarse training.
+
         Training happens in two phases, coarse and fine training. In coarse training,
         the neighborhood bandwidth is decreased from sigma_start to sigma_end and
         the network grows according to the growing rules. In fine training, the
         bandwidth is constant at sigma_end and no new neurons are added.
 
-    growth_criterion : {"quantization_error", "entropy"}
+    growth_criterion : {"quantization_error", "entropy"}, default = "quantization_error"
         Method for calculating the error of neurons and samples.
 
         "quantization_error" : Use the quantization error of the prototypes.
@@ -73,7 +74,7 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
         "entropy": For supervised learning we can use the entropy
         of labels of the samples represented by each prototype as error.
 
-    metric : str, default = euclidean
+    metric : str, default = "euclidean"
         The metric to use for computing distances between prototypes and samples. Must
         be supported by sci-kit learn or scipy.
 
@@ -310,9 +311,11 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
 
         Parameters
         ----------
-        color, pointsize : {None, "epoch_created", "error", "average_distance", "density",
+        color, pointsize : {None, "label", "epoch_created", "error", "average_distance", "density",
             "hit_count"}, default = None
             Attribute which is represented as color.
+
+            "label" : Label of the prototype when trained supervised.
 
             "epoch_created" : When the neuron was created.
 
