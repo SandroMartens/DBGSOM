@@ -57,6 +57,9 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
     decay_function : {'exponential', 'linear'}, default = 'exponential'
         Decay function to use for neighborhood bandwith sigma.
 
+    learning_rate : int, default = 0.02
+        Decay factor if decay function is set to "exponential".
+
     coarse_training_frac : float, default = 0.5
         Fraction of max_iter to use for coarse training.
 
@@ -136,6 +139,7 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
         sigma_end: float | None = None,
         vertical_growth: bool = False,
         decay_function: str = "exponential",
+        learning_rate: float = 0.02,
         coarse_training_frac: float = 0.5,
         random_state: Any = None,
         convergence_treshold: float = 10**-5,
@@ -151,6 +155,7 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
         self.sigma_start = sigma_start
         self.sigma_end = sigma_end
         self.decay_function = decay_function
+        self.learning_rate = learning_rate
         self.coarse_training_frac = coarse_training_frac
         self.random_state = random_state
         self.convergence_treshold = convergence_treshold
@@ -912,12 +917,17 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
             elif self.decay_function == "exponential":
                 decay_function = exponential_decay
 
+            else:
+                raise ValueError(
+                    "Decay function not supported. Must be 'linear' or 'exponential'."
+                )
+
             sigma = decay_function(
                 sigma_end=sigma_end,
                 sigma_start=sigma_start,
                 max_iter=self.max_iter,
                 current_iter=1 / self.coarse_training_frac * epoch,
-                learning_rate=0.02,
+                learning_rate=self.learning_rate,
             )
             print(sigma)
         else:
