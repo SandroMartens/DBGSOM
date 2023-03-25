@@ -3,6 +3,7 @@ DBGSOM: Directed Batch Growing Self Organizing Map
 """
 
 import sys
+import numba as nb
 from math import log
 from statistics import mode
 from typing import Any
@@ -437,10 +438,10 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
 
             winners = self._get_winning_neurons(data, n_bmu=1)
             self._update_weights(winners, data)
-            if self.converged_:
+            self._write_accumulative_error(winners, data, y)
+            if self.converged_ and self._training_phase == "fine":
                 break
 
-            self._write_accumulative_error(winners, data, y)
             if (
                 self._training_phase == "coarse"
                 and len(self.neurons_) < self.max_neurons
@@ -522,15 +523,21 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
         # Sadly we cant use the easy indexing with numpy because thats too slow
         # see https://stackoverflow.com/questions/75423927/what-is-the-fastest-way
         # -to-select-multiple-elements-from-a-numpy-array/75424204#75424204
-        voronoi_set_centers_sum = np.zeros_like(self.weights_)
-        center_counts = np.zeros(shape=(len(self.weights_),))
 
-        for sample, winner in zip(data, winners):
-            voronoi_set_centers_sum[winner] += sample
-            center_counts[winner] += 1
-        # No div by 0
-        center_counts = np.maximum(center_counts, 1)
-        voronoi_set_centers = voronoi_set_centers_sum / center_counts[:, None]
+        # new numba
+        voronoi_set_centers = numba_voronoi_set_centers(
+            winners=winners, data=data, shape=self.weights_.shape
+        )
+
+        # voronoi_set_centers_sum = np.zeros_like(self.weights_)
+        # center_counts = np.zeros(shape=(len(self.weights_),))
+
+        # for sample, winner in zip(data, winners):
+        #     voronoi_set_centers_sum[winner] += sample
+        #     center_counts[winner] += 1
+        # # No div by 0
+        # center_counts = np.maximum(center_counts, 1)
+        # voronoi_set_centers = voronoi_set_centers_sum / center_counts[:, None]
 
         # old
         # step 1
@@ -1013,3 +1020,21 @@ def exponential_decay(
     )
 
     return sigma
+
+
+@nb.njit(
+    parallel=True,
+)
+def numba_voronoi_set_centers(winners: npt.NDArray, data: npt.NDArray, shape: tuple):
+    voronoi_set_centers = np.zeros(shape=shape)
+    voronoi_set_centers_sum = np.zeros(shape=shape)
+    center_counts = np.zeros(shape=(shape[0],))
+
+    for sample, winner in zip(data, winners):
+        voronoi_set_centers_sum[winner] += sample
+        center_counts[winner] += 1
+    # No div by 0
+    center_counts = np.maximum(center_counts, 1)
+    voronoi_set_centers = (voronoi_set_centers_sum.T / center_counts).T
+
+    return voronoi_set_centers
