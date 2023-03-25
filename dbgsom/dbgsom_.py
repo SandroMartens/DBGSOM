@@ -311,8 +311,8 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
 
         Parameters
         ----------
-        color, pointsize : {None, "label", "epoch_created", "error", "average_distance", "density",
-            "hit_count"}, default = None
+        color, pointsize : {None, "label", "epoch_created", "error", "average_distance",
+        "density", "hit_count"}, default = None
             Attribute which is represented as color.
 
             "label" : Label of the prototype when trained supervised.
@@ -515,7 +515,8 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
         """
         # new
         # Sadly we cant use the easy indexing with numpy because thats too slow
-        # see https://stackoverflow.com/questions/75423927/what-is-the-fastest-way-to-select-multiple-elements-from-a-numpy-array/75424204#75424204
+        # see https://stackoverflow.com/questions/75423927/what-is-the-fastest-way
+        # -to-select-multiple-elements-from-a-numpy-array/75424204#75424204
         voronoi_set_centers_sum = np.zeros_like(self.weights_)
         center_counts = np.zeros(shape=(len(self.weights_),))
 
@@ -906,15 +907,19 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
 
         if self._training_phase == "coarse":
             if self.decay_function == "linear":
-                sigma = sigma_start * (
-                    1 - (1 / self.coarse_training_frac * epoch / self.max_iter)
-                ) + sigma_end * (epoch / self.max_iter)
+                decay_function = linear_decay
 
             elif self.decay_function == "exponential":
-                sigma = sigma_start * np.exp(
-                    (1 / self.max_iter * (log(sigma_end) - log(sigma_start)))
-                    * (epoch / self.coarse_training_frac)
-                )
+                decay_function = exponential_decay
+
+            sigma = decay_function(
+                sigma_end=sigma_end,
+                sigma_start=sigma_start,
+                max_iter=self.max_iter,
+                current_iter=1 / self.coarse_training_frac * epoch,
+                learning_rate=0.02,
+            )
+            print(sigma)
         else:
             sigma = sigma_end
 
@@ -969,3 +974,33 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
                 errors += 1
 
         return errors / X.shape[0]
+
+
+def linear_decay(
+    sigma_start: float,
+    sigma_end: float,
+    max_iter: int,
+    current_iter: float,
+    learning_rate=None,
+) -> float:
+    """Linear decay between sigma_start and sigma_end over t training iterations."""
+    sigma = sigma_start * (1 - current_iter / max_iter) + sigma_end * (
+        current_iter / max_iter
+    )
+
+    return sigma
+
+
+def exponential_decay(
+    sigma_start: float,
+    sigma_end: float,
+    max_iter: int,
+    current_iter: float,
+    learning_rate: float,
+) -> float:
+    """Exponential decay between sigma_start and sigma_end with a given learning rate."""
+    sigma = sigma_end + (sigma_start - sigma_end) * np.exp(
+        -learning_rate * current_iter
+    )
+
+    return sigma
