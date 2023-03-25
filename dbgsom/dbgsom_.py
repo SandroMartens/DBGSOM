@@ -929,7 +929,6 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
                 current_iter=1 / self.coarse_training_frac * epoch,
                 learning_rate=self.learning_rate,
             )
-            print(sigma)
         else:
             sigma = sigma_end
 
