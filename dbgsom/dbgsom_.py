@@ -529,22 +529,6 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
             winners=winners, data=data, shape=self.weights_.shape
         )
 
-        # voronoi_set_centers_sum = np.zeros_like(self.weights_)
-        # center_counts = np.zeros(shape=(len(self.weights_),))
-
-        # for sample, winner in zip(data, winners):
-        #     voronoi_set_centers_sum[winner] += sample
-        #     center_counts[winner] += 1
-        # # No div by 0
-        # center_counts = np.maximum(center_counts, 1)
-        # voronoi_set_centers = voronoi_set_centers_sum / center_counts[:, None]
-
-        # old
-        # step 1
-        # voronoi_set_centers = np.zeros_like(self.weights_)
-        # for winner in np.unique(winners):
-        #     voronoi_set_centers[winner] = data[winners == winner].mean(axis=0)
-
         # step 2
         neuron_activations = np.zeros(shape=len(self.neurons_), dtype=np.float32)
         winners, winner_counts = np.unique(winners, return_counts=True)
@@ -597,10 +581,9 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
                 self.som_.nodes[neuron]["error"] = error
 
         else:
-            errors = np.zeros(shape=len(self.weights_))
-            distances = np.linalg.norm(self.weights_[winners] - data, axis=1)
-            for distance, winner in zip(distances, winners):
-                errors[winner] += distance
+            errors = numba_quantization_error(
+                data, winners, lenght=self.weights_.shape[0], weights=self.weights_
+            )
             for i, error in enumerate(errors):
                 neuron = self.neurons_[i]
                 self.som_.nodes[neuron]["error"] = error
@@ -1023,7 +1006,8 @@ def exponential_decay(
 
 
 @nb.njit(
-    parallel=True,
+    # parallel=True,
+    fastmath=True
 )
 def numba_voronoi_set_centers(winners: npt.NDArray, data: npt.NDArray, shape: tuple):
     voronoi_set_centers = np.zeros(shape=shape)
@@ -1038,3 +1022,15 @@ def numba_voronoi_set_centers(winners: npt.NDArray, data: npt.NDArray, shape: tu
     voronoi_set_centers = (voronoi_set_centers_sum.T / center_counts).T
 
     return voronoi_set_centers
+
+
+@nb.njit(fastmath=True)
+def numba_quantization_error(
+    data: npt.NDArray, winners: npt.NDArray, lenght, weights: npt.NDArray
+):
+    errors = np.zeros(shape=lenght)
+    for sample, winner in zip(data, winners):
+        distance = np.linalg.norm(weights[winner] - sample)
+        errors[winner] += distance
+
+    return errors
