@@ -3,13 +3,13 @@ DBGSOM: Directed Batch Growing Self Organizing Map
 """
 
 import sys
-import numba as nb
 from math import log
 from statistics import mode
 from typing import Any
 
 try:
     import networkx as nx
+    import numba as nb
     import numpy as np
     import numpy.typing as npt
     import pandas as pd
@@ -60,6 +60,8 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
 
     learning_rate : int, default = 0.02
         Decay factor if decay function is set to "exponential".
+
+    verbose : bool, default = False
 
     coarse_training_frac : float, default = 0.5
         Fraction of max_iter to use for coarse training.
@@ -141,6 +143,7 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
         vertical_growth: bool = False,
         decay_function: str = "exponential",
         learning_rate: float = 0.02,
+        verbose=False,
         coarse_training_frac: float = 0.5,
         random_state: Any = None,
         convergence_treshold: float = 10**-5,
@@ -157,6 +160,7 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
         self.sigma_end = sigma_end
         self.decay_function = decay_function
         self.learning_rate = learning_rate
+        self.verbose = verbose
         self.coarse_training_frac = coarse_training_frac
         self.random_state = random_state
         self.convergence_treshold = convergence_treshold
@@ -423,6 +427,7 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
         """Second training phase"""
         for current_epoch in tqdm(
             iterable=range(self.max_iter),
+            disable=not self.verbose,
             unit=" epochs",
         ):
             self._current_epoch = current_epoch
@@ -1010,7 +1015,6 @@ def exponential_decay(
     fastmath=True
 )
 def numba_voronoi_set_centers(winners: npt.NDArray, data: npt.NDArray, shape: tuple):
-    voronoi_set_centers = np.zeros(shape=shape)
     voronoi_set_centers_sum = np.zeros(shape=shape)
     center_counts = np.zeros(shape=(shape[0],))
 
