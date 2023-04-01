@@ -264,7 +264,7 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
             self.som_.nodes[node]["hit_count"] = hit_counts[i]
             self.som_.nodes[node]["average_distance"] = average_distances[i]
 
-    def predict(self, X) -> np.ndarray:
+    def predict(self, X: npt.ArrayLike) -> np.ndarray:
         """Predict the closest cluster each sample in X belongs to.
 
         Parameters
@@ -287,16 +287,49 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
             bmus = self._get_winning_neurons(X, n_bmu=1)
             labels = []
             for sample, bmu in zip(X, bmus):
-                if "som" not in self.som_.nodes[self.neurons_[bmu]].keys():
-                    label = self.som_.nodes[self.neurons_[bmu]]["label"]
+                node = self.neurons_[bmu]
+                if "som" not in self.som_.nodes[node].keys():
+                    label = self.som_.nodes[node]["label"]
                 else:
-                    label = self.som_.nodes[self.neurons_[bmu]]["som"].predict(
-                        sample.reshape(1, -1)
-                    )[0]
+                    label = self.som_.nodes[node]["som"].predict(sample.reshape(1, -1))[
+                        0
+                    ]
 
                 labels.append(label)
 
         return self.classes_[labels]
+
+    def predict_proba(self, X: npt.ArrayLike) -> np.ndarray:
+        """Predict the probability of each class and each sample.
+
+        Parameters
+        ----------
+        X : {array-like, sparse matrix} of shape (n_samples, n_features)
+            New data to predict.
+
+        Returns
+        -------
+        Probabilities: array of shape (n_samples, n_classes)
+
+        Returns the probability of the sample for each class in the model, where classes are ordered as they are in self.classes_.
+        """
+        check_is_fitted(self)
+        X = check_array(X)
+        bmus = self._get_winning_neurons(X, n_bmu=1)
+        probabilities_rows = []
+        for sample, bmu in zip(X, bmus):
+            node = self.neurons_[bmu]
+            if "som" not in self.som_.nodes:
+                labels = self.som_.nodes[node]["labels"]
+                probabilities = np.zeros_like(self.classes_)
+                for class_name, count in labels.items():
+                    class_index = np.where(self.classes_ == class_name)[0][0]
+                    probabilities[class_index] += count
+
+                probabilities = probabilities / self.som_.nodes[node]["hit_count"]
+            probabilities_rows.append(probabilities)
+
+        return np.array(probabilities_rows)
 
     def transform(self, X: npt.ArrayLike, y=None) -> np.ndarray:
         """Calculate a non negative least squares mixture model of prototypes that
@@ -510,7 +543,11 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
                     label_winner = -1
                 else:
                     label_winner = mode(labels)
+                    labels, counts = np.unique(labels, return_counts=True)
                 self.som_.nodes[neuron]["label"] = int(label_winner)
+                self.som_.nodes[neuron]["labels"] = {
+                    int(label): count for label, count in zip(labels, counts)
+                }
         else:
             for i, neuron in enumerate(self.som_):
                 self.som_.nodes[neuron]["label"] = i
