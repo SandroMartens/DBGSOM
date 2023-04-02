@@ -534,6 +534,7 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
         return winners
 
     def _label_prototypes(self, X, y):
+        """Write the labels and hits each protype represents to the graph."""
         if self._y_is_fitted:
             winners = self._get_winning_neurons(X, n_bmu=1)
             for winner_index, neuron in enumerate(self.neurons_):
@@ -541,6 +542,8 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
                 # dead neuron
                 if len(labels) == 0:
                     label_winner = -1
+                    labels = [-1]
+                    counts = [0]
                 else:
                     label_winner = mode(labels)
                     labels, counts = np.unique(labels, return_counts=True)
