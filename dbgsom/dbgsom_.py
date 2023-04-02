@@ -200,7 +200,7 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
             # So self.classes_[-1] returns -1
             classes_with_none = list(classes)
             classes_with_none.append(-1)
-            self.classes_ = np.array(classes_with_none)
+            self.classes_ = np.array(classes_with_none, dtype="object")
         self.random_state_ = check_random_state(self.random_state)
         self._initialization(X)
         self._grow(X, y)
@@ -315,16 +315,15 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
         """
         check_is_fitted(self)
         X = check_array(X)
-        bmus = self._get_winning_neurons(X, n_bmu=1)
+        winners = self._get_winning_neurons(X, n_bmu=1)
         probabilities_rows = []
-        for sample, bmu in zip(X, bmus):
-            node = self.neurons_[bmu]
+        for winner in winners:
+            node = self.neurons_[winner]
             if "som" not in self.som_.nodes:
                 labels = self.som_.nodes[node]["labels"]
                 probabilities = np.zeros_like(self.classes_)
-                for class_name, count in labels.items():
-                    class_index = np.where(self.classes_ == class_name)[0][0]
-                    probabilities[class_index] += count
+                for class_id, count in labels.items():
+                    probabilities[class_id] += count
 
                 probabilities = probabilities / self.som_.nodes[node]["hit_count"]
             probabilities_rows.append(probabilities)
