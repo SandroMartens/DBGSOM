@@ -200,7 +200,7 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
             # So self.classes_[-1] returns -1
             classes_with_none = list(classes)
             classes_with_none.append(-1)
-            self.classes_ = np.array(classes_with_none, dtype="object")
+            self.classes_ = np.array(classes_with_none)
         self.random_state_ = check_random_state(self.random_state)
         self._initialization(X)
         self._grow(X, y)
@@ -311,7 +311,8 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
         -------
         Probabilities: array of shape (n_samples, n_classes)
 
-        Returns the probability of the sample for each class in the model, where classes are ordered as they are in self.classes_.
+        Returns the probability of the sample for each class in the model, where
+        classes are ordered as they are in self.classes_.
         """
         check_is_fitted(self)
         X = check_array(X)
@@ -328,7 +329,7 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
                 probabilities = probabilities / self.som_.nodes[node]["hit_count"]
             probabilities_rows.append(probabilities)
 
-        return np.array(probabilities_rows)
+        return np.array(probabilities_rows, dtype="float32")
 
     def transform(self, X: npt.ArrayLike, y=None) -> np.ndarray:
         """Calculate a non negative least squares mixture model of prototypes that
