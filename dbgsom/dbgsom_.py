@@ -227,6 +227,9 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
                         new_som.fit(X_filtered, y_filtered)
                         self.som_.nodes[node]["som"] = new_som
 
+        self.labels_ = self.predict(X)
+        self.n_iter_ = self._current_epoch
+
         return self
 
     def _write_node_statistics(self, X):
@@ -284,18 +287,7 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
         if not self._y_is_fitted:
             labels = self._get_winning_neurons(X, n_bmu=1)
         else:
-            bmus = self._get_winning_neurons(X, n_bmu=1)
-            labels = []
-            for sample, bmu in zip(X, bmus):
-                node = self.neurons_[bmu]
-                if "som" not in self.som_.nodes[node].keys():
-                    label = self.som_.nodes[node]["label"]
-                else:
-                    label = self.som_.nodes[node]["som"].predict(sample.reshape(1, -1))[
-                        0
-                    ]
-
-                labels.append(label)
+            labels = np.argmax(self.predict_proba(X=X), axis=1)
 
         return self.classes_[labels]
 
