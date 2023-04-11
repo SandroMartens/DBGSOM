@@ -24,11 +24,11 @@ try:
         TransformerMixin,
         clone,
     )
+    from sklearn.decomposition import SparseCoder
     from sklearn.metrics import pairwise_distances
+    from sklearn.preprocessing import normalize
     from sklearn.utils import check_array, check_random_state, check_X_y
     from sklearn.utils.validation import check_is_fitted
-    from sklearn.linear_model import LinearRegression
-    from sklearn.preprocessing import normalize
     from tqdm import tqdm
 except ImportError as e:
     print(e)
@@ -337,10 +337,14 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
         """
         check_is_fitted(self)
         X = check_array(X)
-        weights_normalized_transposed = normalize(self.weights_).T
-        transformer = LinearRegression(positive=True)
-        transformer.fit(weights_normalized_transposed, normalize(X).T)
-        return transformer.coef_
+        transformer = SparseCoder(
+            dictionary=normalize(self.weights_),
+            n_jobs=-1,
+            positive_code=True,
+            transform_algorithm="lasso_lars",
+        )
+        coefs = transformer.transform(normalize(X))
+        return coefs
 
     def plot(self, color: None | str = None, palette="magma_r", pointsize=None) -> None:
         """Plot the neurons.
