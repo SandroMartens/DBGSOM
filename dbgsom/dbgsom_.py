@@ -7,6 +7,9 @@ from math import log
 from statistics import mode
 from typing import Any
 
+# from matplotlib import pyplot as plt
+# import matplotlib
+
 try:
     import networkx as nx
     import numba as nb
@@ -197,19 +200,16 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
             X, y = check_X_y(X=X, y=y, ensure_min_samples=4)
             self._y_is_fitted = True
             classes, y = np.unique(y, return_inverse=True)
-            # So self.classes_[-1] returns -1
-            classes_with_none = list(classes)
-            classes_with_none.append(-1)
-            self.classes_ = np.array(classes_with_none)
+            self.classes_ = np.array(classes)
         self.random_state_ = check_random_state(self.random_state)
         self._initialization(X)
         self._grow(X, y)
         # self.rep = self._calculate_rep(X)
-        self._label_prototypes(X, y)
         self.topographic_error_ = self._topographic_error_func(X)
         self.quantization_error_ = self.calculate_quantization_error(X)
         self.n_features_in_ = X.shape[1]
         self._write_node_statistics(X)
+        self._label_prototypes(X, y)
 
         # Vertical growing phase
         if self.vertical_growth:
@@ -310,15 +310,13 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
         X = check_array(X)
         winners = self._get_winning_neurons(X, n_bmu=1)
         probabilities_rows = []
-        for winner in winners:
+        for sample, winner in zip(X, winners):
             node = self.neurons_[winner]
             if "som" not in self.som_.nodes:
-                labels = self.som_.nodes[node]["labels"]
-                probabilities = np.zeros_like(self.classes_)
-                for class_id, count in labels.items():
-                    probabilities[class_id] += count
+                probabilities = self.som_.nodes[node]["probabilities"]
+            else:
+                probabilities = self.som_.nodes[node]["som"].predict_proba(sample)
 
-                probabilities = probabilities / self.som_.nodes[node]["hit_count"]
             probabilities_rows.append(probabilities)
 
         return np.array(probabilities_rows, dtype="float32")
@@ -341,7 +339,7 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
         X = check_array(X)
         weights_normalized_transposed = normalize(self.weights_).T
         transformer = LinearRegression(positive=True)
-        transformer.fit(weights_normalized_transposed, X.T)
+        transformer.fit(weights_normalized_transposed, normalize(X).T)
         return transformer.coef_
 
     def plot(self, color: None | str = None, palette="magma_r", pointsize=None) -> None:
@@ -383,10 +381,16 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
         data["average_distance"] = pd.to_numeric(data["average_distance"])
         coordinates = pd.DataFrame(np.array(self.neurons_), columns=["x", "y"])
         dots = pd.concat([coordinates, data], axis=1)
-
+        # matplotlib.use("nbAgg")
+        # f = plt.figure()
         so.Plot(dots, x="x", y="y", color=color, pointsize=pointsize).add(
             so.Dot()
-        ).scale(color=palette).label(x="", y="").show()
+        ).scale(color=palette).label(
+            x="", y=""
+        ).show()  # .on(f)
+        # f
+        # f.show()
+        # plt.show()
 
     def _get_u_matrix(self) -> np.ndarray:
         """Calculate the average distance from each neuron to it's neighbors."""
@@ -539,10 +543,17 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
                 else:
                     label_winner = mode(labels)
                     labels, counts = np.unique(labels, return_counts=True)
-                self.som_.nodes[neuron]["label"] = int(label_winner)
-                self.som_.nodes[neuron]["labels"] = {
-                    int(label): count for label, count in zip(labels, counts)
-                }
+                self.som_.nodes[neuron]["label"] = label_winner
+
+                self.som_.nodes[neuron]["probabilities"] = np.zeros(
+                    shape=self.classes_.shape
+                )
+                hit_count = self.som_.nodes[neuron]["hit_count"]
+                for class_id, count in zip(labels, counts):
+                    self.som_.nodes[neuron]["probabilities"][class_id] = (
+                        count / hit_count if hit_count > 0 else 1
+                    )
+
         else:
             for i, neuron in enumerate(self.som_):
                 self.som_.nodes[neuron]["label"] = i
