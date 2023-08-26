@@ -637,7 +637,7 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
 
         else:
             errors = numba_quantization_error(
-                data, winners, lenght=self.weights_.shape[0], weights=self.weights_
+                data, winners, length=self.weights_.shape[0], weights=self.weights_
             )
             for i, error in enumerate(errors):
                 neuron = self.neurons_[i]
@@ -1065,6 +1065,17 @@ def exponential_decay(
     fastmath=True
 )
 def numba_voronoi_set_centers(winners: npt.NDArray, data: npt.NDArray, shape: tuple):
+    """
+    Calculates the centers of the Voronoi regions based on the winners and data arrays.
+
+    Args:
+        winners (numpy.ndarray): An array of integers representing the winning neuron index for each sample.
+        data (numpy.ndarray): An array of shape (n_samples, n_features) containing the input data.
+        shape (tuple): A tuple specifying the shape of the output array, which is the number of neurons by the number of features.
+
+    Returns:
+        numpy.ndarray: An array of shape `shape` containing the calculated centers of the Voronoi regions. Each row represents the center of a Voronoi region, corresponding to a neuron in the SOM.
+    """
     voronoi_set_centers_sum = np.zeros(shape=shape)
     center_counts = np.zeros(shape=(shape[0],))
 
@@ -1080,9 +1091,21 @@ def numba_voronoi_set_centers(winners: npt.NDArray, data: npt.NDArray, shape: tu
 
 @nb.njit(fastmath=True)
 def numba_quantization_error(
-    data: npt.NDArray, winners: npt.NDArray, lenght, weights: npt.NDArray
+    data: npt.NDArray, winners: npt.NDArray, length, weights: npt.NDArray
 ):
-    errors = np.zeros(shape=lenght)
+    """
+    Calculates the quantization error for each neuron in the self-organizing map (SOM) based on the distances between the neuron's weight vector and the input samples.
+
+    Args:
+        data (array-like): An array-like object representing the input samples.
+        winners (array-like): An array-like object representing the index of the winning neuron for each input sample.
+        length (int): An integer representing the length of the `errors` array.
+        weights (array-like): An array-like object representing the weight vectors of the neurons in the SOM.
+
+    Returns:
+        array: An array of shape `(length,)` representing the quantization error for each neuron in the SOM.
+    """
+    errors = np.zeros(shape=length)
     for sample, winner in zip(data, winners):
         distance = np.linalg.norm(weights[winner] - sample)
         errors[winner] += distance
