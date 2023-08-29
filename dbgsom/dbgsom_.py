@@ -205,7 +205,7 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
         self._initialization(X)
         self._grow(X, y)
         # self.rep = self._calculate_rep(X)
-        self.topographic_error_ = self._topographic_error_func(X)
+        self.topographic_error_ = self._calculate_topographic_error(X)
         self.quantization_error_ = self.calculate_quantization_error(X)
         self.n_features_in_ = X.shape[1]
         self._write_node_statistics(X)
@@ -434,7 +434,6 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
         self._current_epoch = 0
         self.converged_ = False
         self._training_phase = "coarse"
-        data = data.astype(np.float32)
         self.growing_threshold_ = self._calculate_growing_threshold(data)
 
         self.som_ = self._create_som(data)
@@ -615,8 +614,8 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
     def _gaussian_neighborhood(self) -> np.ndarray:
         """Calculate the gaussian neighborhood function for all neuron
         pairs using the distance matrix."""
-        sigma = self._sigma()
-        h = np.exp(-(self._distance_matrix**2 / (2 * sigma**2))).astype(np.float32)
+        sigma = self._calculate_current_sigma()
+        h = np.exp(-(self._distance_matrix**2 / (2 * sigma**2)))
 
         return h
 
@@ -933,7 +932,7 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
             if nbr in self.som_.nodes:
                 self.som_.add_edge(node, nbr)
 
-    def _sigma(self) -> float:
+    def _calculate_current_sigma(self) -> float:
         """Return the neighborhood bandwidth for each epoch.
         If no sigma is given, the starting bandwidth is set to
         0.2 * sqrt(n_neurons) and the ending bandwidth is set to
@@ -999,7 +998,7 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
         error = np.mean(np.linalg.norm(self.weights_[winners] - X, axis=1))
         return error
 
-    def _topographic_error_func(self, X: npt.ArrayLike) -> float:
+    def _calculate_topographic_error(self, X: npt.ArrayLike) -> float:
         """Return the topographic error of the training data.
 
         The topographic error is a measure for the topology preservation of
