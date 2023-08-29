@@ -5,24 +5,37 @@ One of the mayor features of a SOM is the ability to project the high dimensiona
 
 Each neuron has a 2d coordinate, which allows us to visualize the graph as a simple scatter plot. Note that this visualization does not show any distances in the input space.
 
+We need a trained `som` object. We then call the `plot` function on that object:
+
+.. code-block:: python
+    from dbgsom.dbgsom_ import DBGSOM
+    from sklearn.datasets import load_digits
+    digits_X, digits_y = load_digits(return_X_y=True)
+
+    som = DBGSOM()
+    som.fit(digits_X)
+    som.plot()
+
+
 Additional attributes
 ---------
 
 We can use the `color` and `size` parameters to enhance the basic visualization. During computation, different data are computed for each neuron, which can be coded als color or size of the scatter plot. In `DBGSOM` six attributes are currently implemented:
 
-- Label
+- `label`
     Label of the prototype when trained supervised.
-- Epoch created
+- `epoch_created`
     Training epoch in which a neuron was added.
-- error
+- `error`
     Quantization error or entropy, depending on the growth criterion used.
-- average distance
+- `average_distance`
     Distance to neighboring neurons in the input space. The creates a U matrix.
-- density
+- `density`
     A local density estimate around each neuron.
-- hit_count
+- `hit_count`
     Number of samples the prototype represents.
 
-We can plot two attributes at the same time by using one value for the color and one for the size of each node.
+We can plot two attributes at the same time by using one value for the color and one for the size of each node. The `palette` parameter accepts all valid seaborn/matplotlib color scales.
 
-ToDo: Examples
+.. code-block::python
+    som.plot(color="density", size="error", palette="viridis")
