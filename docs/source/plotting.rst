@@ -8,6 +8,7 @@ Each neuron has a 2d coordinate, which allows us to visualize the graph as a sim
 We need a trained `som` object. We then call the `plot` function on that object:
 
 .. code-block:: python
+
     from dbgsom.dbgsom_ import DBGSOM
     from sklearn.datasets import load_digits
     digits_X, digits_y = load_digits(return_X_y=True)
@@ -38,4 +39,5 @@ We can use the `color` and `size` parameters to enhance the basic visualization.
 We can plot two attributes at the same time by using one value for the color and one for the size of each node. The `palette` parameter accepts all valid seaborn/matplotlib color scales.
 
 .. code-block::python
+
     som.plot(color="density", size="error", palette="viridis")
