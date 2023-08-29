@@ -38,6 +38,6 @@ We can use the `color` and `size` parameters to enhance the basic visualization.
 
 We can plot two attributes at the same time by using one value for the color and one for the size of each node. The `palette` parameter accepts all valid seaborn/matplotlib color scales.
 
-.. code-block::python
+.. code-block:: python
 
     som.plot(color="density", size="error", palette="viridis")
