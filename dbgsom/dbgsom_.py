@@ -194,10 +194,14 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
         """
         # Horizontal growing phase
         if y is None:
-            X = check_array(array=X, ensure_min_samples=4)
+            X = check_array(
+                array=X, ensure_min_samples=4, dtype=[np.float64, np.float32]
+            )
             self._y_is_fitted = False
         else:
-            X, y = check_X_y(X=X, y=y, ensure_min_samples=4)
+            X, y = check_X_y(
+                X=X, y=y, ensure_min_samples=4, dtype=[np.float64, np.float32]
+            )
             self._y_is_fitted = True
             classes, y = np.unique(y, return_inverse=True)
             self.classes_ = np.array(classes)
@@ -274,7 +278,7 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
             self.som_.nodes[node]["average_distance"] = average_distances[i]
 
     def predict(self, X: npt.ArrayLike) -> np.ndarray:
-        """Predict the closest cluster each sample in X belongs to.
+        """Predict the closest neuron each sample in X belongs to.
 
         Parameters
         ----------
