@@ -232,7 +232,7 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
 
         return self
 
-    def _write_node_statistics(self, X):
+    def _calculate_node_statistics(self, X) -> tuple[npt.NDArray, npt.NDArray, npt.NDArray]:
         """Write the following statistics as attributes to the graph:
 
         1. local density. Use a gaussian kernel to estimate the local density around
@@ -261,13 +261,17 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
                 d = 0
             densities[winner] = d
             hit_counts[winner] = len(samples)
+        return average_distances,densities,hit_counts
+
+    def _write_node_statistics(self, X) -> None:
+        average_distances, densities, hit_counts = self._calculate_node_statistics(X)
 
         for i, node in enumerate(self.som_.nodes):
             self.som_.nodes[node]["density"] = densities[i]
             self.som_.nodes[node]["hit_count"] = hit_counts[i]
             self.som_.nodes[node]["average_distance"] = average_distances[i]
 
-    def predict(self, X: npt.ArrayLike) -> np.ndarray:
+     def predict(self, X: npt.ArrayLike) -> np.ndarray:
         """Predict the closest cluster each sample in X belongs to.
 
         Parameters
@@ -319,7 +323,7 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
 
             probabilities_rows.append(probabilities)
 
-        return np.array(probabilities_rows, dtype="float32")
+        return np.array(probabilities_rows)
 
     def transform(self, X: npt.ArrayLike, y=None) -> np.ndarray:
         """Calculate a non negative least squares mixture model of prototypes that
@@ -584,13 +588,13 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
         )
 
         # step 2
-        neuron_activations = np.zeros(shape=len(self.neurons_), dtype=np.float32)
+        neuron_activations = np.zeros(shape=len(self.neurons_))
         winners, winner_counts = np.unique(winners, return_counts=True)
         for winner, count in zip(winners, winner_counts):
             neuron_activations[winner] = count
 
         # Step 3
-        gaussian_kernel = self._gaussian_neighborhood()
+        gaussian_kernel = self._calculate_gaussian_neighborhood()
 
         # Step 4
         new_weights = np.sum(
@@ -611,7 +615,7 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
             self.converged_ = True
         nx.set_node_attributes(G=self.som_, values=new_weights_dict, name="weight")
 
-    def _gaussian_neighborhood(self) -> np.ndarray:
+    def _calculate_gaussian_neighborhood(self) -> np.ndarray:
         """Calculate the gaussian neighborhood function for all neuron
         pairs using the distance matrix."""
         sigma = self._calculate_current_sigma()
