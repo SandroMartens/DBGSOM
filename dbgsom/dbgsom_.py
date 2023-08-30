@@ -232,7 +232,9 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
 
         return self
 
-    def _calculate_node_statistics(self, X) -> tuple[npt.NDArray, npt.NDArray, npt.NDArray]:
+    def _calculate_node_statistics(
+        self, X
+    ) -> tuple[npt.NDArray, npt.NDArray, npt.NDArray]:
         """Write the following statistics as attributes to the graph:
 
         1. local density. Use a gaussian kernel to estimate the local density around
@@ -261,7 +263,7 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
                 d = 0
             densities[winner] = d
             hit_counts[winner] = len(samples)
-        return average_distances,densities,hit_counts
+        return average_distances, densities, hit_counts
 
     def _write_node_statistics(self, X) -> None:
         average_distances, densities, hit_counts = self._calculate_node_statistics(X)
@@ -271,7 +273,7 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
             self.som_.nodes[node]["hit_count"] = hit_counts[i]
             self.som_.nodes[node]["average_distance"] = average_distances[i]
 
-     def predict(self, X: npt.ArrayLike) -> np.ndarray:
+    def predict(self, X: npt.ArrayLike) -> np.ndarray:
         """Predict the closest cluster each sample in X belongs to.
 
         Parameters
