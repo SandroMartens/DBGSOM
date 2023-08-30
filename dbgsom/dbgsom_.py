@@ -346,7 +346,7 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
             Coefficients of the linear regression model.
         """
         check_is_fitted(self)
-        X = check_array(X)
+        X = check_array(X, dtype=[np.float64, np.float32])
         transformer = SparseCoder(
             dictionary=normalize(self.weights_),
             n_jobs=-1,
