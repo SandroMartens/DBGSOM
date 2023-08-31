@@ -371,7 +371,7 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
             dictionary=normalize(self.weights_),
             n_jobs=-1,
             positive_code=True,
-            transform_alpha=0.1,
+            transform_alpha=0,
             transform_algorithm="lasso_lars",
         )
         coefs = transformer.transform(normalize(X))
