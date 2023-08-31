@@ -2,6 +2,7 @@
 DBGSOM: Directed Batch Growing Self Organizing Map
 """
 
+import copy
 import sys
 from math import log
 from statistics import mode
@@ -214,6 +215,7 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
         self.n_features_in_ = X.shape[1]
         self._write_node_statistics(X)
         self._label_prototypes(X, y)
+        self._remove_dead_neurons(X)
 
         # Vertical growing phase
         if self.vertical_growth:
@@ -277,6 +279,15 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
             self.som_.nodes[node]["hit_count"] = hit_counts[i]
             self.som_.nodes[node]["average_distance"] = average_distances[i]
 
+    def _remove_dead_neurons(self, X: npt.ArrayLike) -> None:
+        """Delete all neurons which represet zero samples from the training set."""
+        som_copy = copy.deepcopy(self.som_)
+        for node in self.som_.nodes:
+            if "hit_count" not in self.som_.nodes[node].keys():
+                som_copy.remove_node(node)
+        self.som_ = som_copy
+        self.neurons_ = list(self.som_.nodes)
+
     def predict(self, X: npt.ArrayLike) -> np.ndarray:
         """Predict the closest neuron each sample in X belongs to.
 
@@ -296,9 +307,9 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
         X = check_array(X)
         if not self._y_is_fitted:
             labels = self._get_winning_neurons(X, n_bmu=1)
+            self.classes_ = labels
         else:
             labels = np.argmax(self.predict_proba(X=X), axis=1)
-
         return self.classes_[labels]
 
     def predict_proba(self, X: npt.ArrayLike) -> np.ndarray:
@@ -351,6 +362,7 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
             dictionary=normalize(self.weights_),
             n_jobs=-1,
             positive_code=True,
+            transform_alpha=0.1,
             transform_algorithm="lasso_lars",
         )
         coefs = transformer.transform(normalize(X))
