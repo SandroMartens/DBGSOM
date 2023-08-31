@@ -330,6 +330,7 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
         check_is_fitted(self)
         X = check_array(X)
         winners = self._get_winning_neurons(X, n_bmu=1)
+        X_transformed = self.transform(X)
         probabilities_rows = []
         for sample, winner in zip(X, winners):
             node = self.neurons_[winner]
@@ -340,7 +341,14 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
 
             probabilities_rows.append(probabilities)
 
-        return np.array(probabilities_rows)
+        probabilities_rows = np.array(probabilities_rows)
+
+        z = X_transformed @ np.array(
+            list(dict(self.som_.nodes.data("probabilities")).values())
+        )
+
+        # return probabilities_rows
+        return z
 
     def transform(self, X: npt.ArrayLike, y=None) -> np.ndarray:
         """Calculate a non negative least squares mixture model of prototypes that
