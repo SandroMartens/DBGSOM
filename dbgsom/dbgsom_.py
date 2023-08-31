@@ -343,12 +343,13 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
 
         probabilities_rows = np.array(probabilities_rows)
 
-        z = X_transformed @ np.array(
-            list(dict(self.som_.nodes.data("probabilities")).values())
-        )
+        z = X_transformed @ self._extract_values_from_graph("probabilities")
 
         # return probabilities_rows
         return z
+
+    def _extract_values_from_graph(self, attribute: str) -> np.ndarray:
+        return np.array(list(dict(self.som_.nodes.data(attribute)).values()))
 
     def transform(self, X: npt.ArrayLike, y=None) -> np.ndarray:
         """Calculate a non negative least squares mixture model of prototypes that
@@ -468,7 +469,7 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
 
         self.som_ = self._create_som(data)
         self._distance_matrix = nx.floyd_warshall_numpy(self.som_)
-        self.weights_ = np.array(list(dict(self.som_.nodes.data("weight")).values()))
+        self.weights_ = self._extract_values_from_graph("weight")
         self.neurons_ = list(self.som_.nodes)
 
     def _calculate_growing_threshold(self, data):
@@ -498,9 +499,7 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
             self._current_epoch = current_epoch
             if current_epoch > self.coarse_training_frac * self.max_iter:
                 self._training_phase = "fine"
-            self.weights_ = np.array(
-                list(dict(self.som_.nodes.data("weight")).values())
-            )
+            self.weights_ = self._extract_values_from_graph("weight")
             # check if new neurons were inserted
             if len(self.som_.nodes) > len(self.neurons_) or current_epoch == 0:
                 self.neurons_ = list(self.som_.nodes)
@@ -702,9 +701,7 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
         the growing threshold. Begin with the neuron with the largest
         error.
         """
-        sorted_indices = np.flip(
-            np.argsort(list(dict(self.som_.nodes.data("error")).values()))
-        )
+        sorted_indices = np.flip(np.argsort(self._extract_values_from_graph("error")))
         for i in sorted_indices:
             node = list(dict(self.som_.nodes))[i]
             node_degree = nx.degree(self.som_, node)
