@@ -1120,16 +1120,21 @@ def numba_quantization_error(
     data: npt.NDArray, winners: npt.NDArray, length, weights: npt.NDArray
 ):
     """
-    Calculates the quantization error for each neuron in the self-organizing map (SOM) based on the distances between the neuron's weight vector and the input samples.
+    Calculates the quantization error for each neuron in the self-organizing map (SOM)
+    based on the distances between the neuron's weight vector and the input samples.
 
     Args:
         data (array-like): An array-like object representing the input samples.
-        winners (array-like): An array-like object representing the index of the winning neuron for each input sample.
+        winners (array-like): An array-like object representing the index of the
+        winning neuron for each input sample.
+
         length (int): An integer representing the length of the `errors` array.
-        weights (array-like): An array-like object representing the weight vectors of the neurons in the SOM.
+        weights (array-like): An array-like object representing the weight
+        vectors of the neurons in the SOM.
 
     Returns:
-        array: An array of shape `(length,)` representing the quantization error for each neuron in the SOM.
+        array: An array of shape `(length,)` representing the quantization error for
+        each neuron in the SOM.
     """
     errors = np.zeros(shape=length)
     for sample, winner in zip(data, winners):
