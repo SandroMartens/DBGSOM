@@ -349,6 +349,8 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
         return z
 
     def _extract_values_from_graph(self, attribute: str) -> np.ndarray:
+        """Return an array of shape (n_nodes, 1) with some given attribute of the 
+        nodes."""
         return np.array(list(dict(self.som_.nodes.data(attribute)).values()))
 
     def transform(self, X: npt.ArrayLike, y=None) -> np.ndarray:
@@ -428,7 +430,8 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
         # plt.show()
 
     def _get_u_matrix(self) -> np.ndarray:
-        """Calculate the average distance from each neuron to it's neighbors."""
+        """Calculate the average distance from each neuron to it's neighbors in the
+        input space."""
 
         g = self.som_
         distances = []
