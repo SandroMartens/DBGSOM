@@ -219,24 +219,33 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
 
         # Vertical growing phase
         if self.vertical_growth:
-            self.vertical_growing_threshold_ = 1.5 * self.growing_threshold_
-            winners = self._get_winning_neurons(X, n_bmu=1)
-            for i, (node, error) in enumerate(self.som_.nodes(data="error")):
-                if error > self.vertical_growing_threshold_:
-                    new_som = clone(self)
-                    X_filtered = X[winners == i]
-                    if y is not None:
-                        y_filtered = y[winners == i]
-                    else:
-                        y_filtered = None
-                    if X_filtered.shape[0] > self.min_samples_vertical_growth:
-                        new_som.fit(X_filtered, y_filtered)
-                        self.som_.nodes[node]["som"] = new_som
+            self._grow_vertical(X, y)
 
         self.labels_ = self.predict(X)
         self.n_iter_ = self._current_epoch
 
         return self
+
+    def _grow_vertical(self, X: npt.ArrayLike, y: None | npt.ArrayLike = None) -> None:
+        """
+        Triggers vertical growth in the SOM by creating new instances of the DBGSOM class and fitting them with filtered data.
+        Modifies:
+        The som_ attribute of the DBGSOM instance by adding new SOM instances to the neurons that meet the vertical growing criteria.
+        """
+
+        self.vertical_growing_threshold_ = 1.5 * self.growing_threshold_
+        winners = self._get_winning_neurons(X, n_bmu=1)
+        for i, (node, error) in enumerate(self.som_.nodes(data="error")):
+            if error > self.vertical_growing_threshold_:
+                new_som = clone(self)
+                X_filtered = X[winners == i]
+                if y is not None:
+                    y_filtered = y[winners == i]
+                else:
+                    y_filtered = None
+                if X_filtered.shape[0] > self.min_samples_vertical_growth:
+                    new_som.fit(X_filtered, y_filtered)
+                    self.som_.nodes[node]["som"] = new_som
 
     def _calculate_node_statistics(
         self, X
@@ -429,7 +438,7 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
         # f.show()
         # plt.show()
 
-    def _get_u_matrix(self) -> np.ndarray:
+    def _get_u_matrix(self) -> np.ndarray[Any, np.dtype[np.float64]]:
         """Calculate the average distance from each neuron to it's neighbors in the
         input space."""
 
