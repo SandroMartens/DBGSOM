@@ -349,7 +349,7 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
         return z
 
     def _extract_values_from_graph(self, attribute: str) -> np.ndarray:
-        """Return an array of shape (n_nodes, 1) with some given attribute of the 
+        """Return an array of shape (n_nodes, 1) with some given attribute of the
         nodes."""
         return np.array(list(dict(self.som_.nodes.data(attribute)).values()))
 
@@ -475,7 +475,7 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
         self.weights_ = self._extract_values_from_graph("weight")
         self.neurons_ = list(self.som_.nodes)
 
-    def _calculate_growing_threshold(self, data):
+    def _calculate_growing_threshold(self, data) -> float:
         if self.growth_criterion == "entropy":
             growing_threshold = self.spreading_factor
         else:
@@ -564,7 +564,7 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
 
         return winners
 
-    def _label_prototypes(self, X, y):
+    def _label_prototypes(self, X, y) -> None:
         """Write the labels and hits each protype represents to the graph."""
         if self._y_is_fitted:
             winners = self._get_winning_neurons(X, n_bmu=1)
