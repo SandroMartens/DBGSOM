@@ -7,6 +7,8 @@ import sys
 from math import log
 from statistics import mode
 from typing import Any
+from typing_extensions import Self
+
 
 # from matplotlib import pyplot as plt
 # import matplotlib
@@ -177,7 +179,7 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
         self.min_samples_vertical_growth = min_samples_vertical_growth
         self.vertical_growth = vertical_growth
 
-    def fit(self, X: npt.ArrayLike, y: None | npt.ArrayLike = None):
+    def fit(self, X: npt.ArrayLike, y: None | npt.ArrayLike = None) -> Self:
         """Train SOM on training data.
 
         Parameters
@@ -190,7 +192,7 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
 
         Returns
         -------
-        self : dbgsom
+        self : DBGSOM
             Trained estimator
         """
         # Horizontal growing phase
