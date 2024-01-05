@@ -7,8 +7,8 @@ import sys
 from math import log
 from statistics import mode
 from typing import Any
-from typing_extensions import Self
 
+from typing_extensions import Self
 
 # from matplotlib import pyplot as plt
 # import matplotlib
@@ -338,26 +338,31 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
         Returns the probability of the sample for each class in the model, where
         classes are ordered as they are in self.classes_.
         """
-        check_is_fitted(self)
+        check_is_fitted(self, attributes="_y_is_fitted")
         X = check_array(X)
-        winners = self._get_winning_neurons(X, n_bmu=1)
-        X_transformed = self.transform(X)
-        probabilities_rows = []
-        for sample, winner in zip(X, winners):
-            node = self.neurons_[winner]
-            if "som" not in self.som_.nodes:
-                probabilities = self.som_.nodes[node]["probabilities"]
-            else:
-                probabilities = self.som_.nodes[node]["som"].predict_proba(sample)
+        if self.vertical_growth:
+            winners = self._get_winning_neurons(X, n_bmu=1)
+            probabilities_rows = []
+            for sample, winner in zip(X, winners):
+                node = self.neurons_[winner]
+                if "som" not in self.som_.nodes:
+                    probabilities_sample = self.som_.nodes[node]["probabilities"]
+                else:
+                    probabilities_sample = self.som_.nodes[node]["som"].predict_proba(
+                        sample
+                    )
 
-            probabilities_rows.append(probabilities)
+                probabilities_rows.append(probabilities_sample)
 
-        probabilities_rows = np.array(probabilities_rows)
+            probabilities = np.array(probabilities_rows)
 
-        z = X_transformed @ self._extract_values_from_graph("probabilities")
+        else:
+            X_transformed = self.transform(X)
+            probabilities = X_transformed @ self._extract_values_from_graph(
+                "probabilities"
+            )
 
-        # return probabilities_rows
-        return z
+        return probabilities
 
     def _extract_values_from_graph(self, attribute: str) -> np.ndarray:
         """Return an array of shape (n_nodes, 1) with some given attribute of the
