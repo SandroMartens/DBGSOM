@@ -160,6 +160,7 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
         threshold_method: str = "se",
         growth_criterion: str = "quantization_error",
         min_samples_vertical_growth: int = 100,
+        n_jobs: int = 1,
     ) -> None:
         self.spreading_factor = spreading_factor
         self.max_iter = max_iter
@@ -178,6 +179,7 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
         self.growth_criterion = growth_criterion
         self.min_samples_vertical_growth = min_samples_vertical_growth
         self.vertical_growth = vertical_growth
+        self.n_jobs = n_jobs
 
     def fit(self, X: npt.ArrayLike, y: None | npt.ArrayLike = None) -> Self:
         """Train SOM on training data.
@@ -387,7 +389,7 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
         X = check_array(X, dtype=[np.float64, np.float32])
         transformer = SparseCoder(
             dictionary=normalize(self.weights_),
-            n_jobs=-1,
+            n_jobs=self.n_jobs,
             positive_code=True,
             transform_alpha=0,
             transform_algorithm="lasso_lars",
@@ -572,7 +574,9 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
         sample.
         """
         weights = self.weights_
-        distances = pairwise_distances(X=weights, Y=data, metric=self.metric, n_jobs=-1)
+        distances = pairwise_distances(
+            X=weights, Y=data, metric=self.metric, n_jobs=self.n_jobs
+        )
         if n_bmu == 1:
             winners = np.argmin(distances, axis=0)
         else:
