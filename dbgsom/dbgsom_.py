@@ -293,12 +293,16 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
             self.som_.nodes[node]["average_distance"] = average_distances[i]
 
     def _remove_dead_neurons(self, X: npt.ArrayLike) -> None:
-        """Delete all neurons which represet zero samples from the training set."""
-        som_copy = copy.deepcopy(self.som_)
+        """Delete all neurons which represent zero samples from the training set."""
+        # som_copy = copy.deepcopy(self.som_)
+        # for node in self.som_.nodes:
+        #     if "hit_count" not in self.som_.nodes[node].keys():
+        #         som_copy.remove_node(node)
+        # self.som_ = som_copy
+
         for node in self.som_.nodes:
             if "hit_count" not in self.som_.nodes[node].keys():
-                som_copy.remove_node(node)
-        self.som_ = som_copy
+                self.som_.remove_node(node)
         self.neurons_ = list(self.som_.nodes)
 
     def predict(self, X: npt.ArrayLike) -> np.ndarray:
@@ -342,27 +346,27 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
         """
         check_is_fitted(self, attributes="_y_is_fitted")
         X = check_array(X)
-        if self.vertical_growth:
-            winners = self._get_winning_neurons(X, n_bmu=1)
-            probabilities_rows = []
-            for sample, winner in zip(X, winners):
-                node = self.neurons_[winner]
-                if "som" not in self.som_.nodes:
-                    probabilities_sample = self.som_.nodes[node]["probabilities"]
-                else:
-                    probabilities_sample = self.som_.nodes[node]["som"].predict_proba(
-                        sample
-                    )
+        # if self.vertical_growth:
+        winners = self._get_winning_neurons(X, n_bmu=1)
+        probabilities_rows = []
+        for sample, winner in zip(X, winners):
+            node = self.neurons_[winner]
+            if "som" not in self.som_.nodes:
+                probabilities_sample = self.som_.nodes[node]["probabilities"]
+            else:
+                probabilities_sample = self.som_.nodes[node]["som"].predict_proba(
+                    sample
+                )
 
-                probabilities_rows.append(probabilities_sample)
+            probabilities_rows.append(probabilities_sample)
 
-            probabilities = np.array(probabilities_rows)
+        probabilities = np.array(probabilities_rows)
 
-        else:
-            X_transformed = self.transform(X)
-            probabilities = X_transformed @ self._extract_values_from_graph(
-                "probabilities"
-            )
+        # else:
+        #     X_transformed = self.transform(X)
+        #     probabilities = (
+        #         X_transformed @ self._extract_values_from_graph("probabilities") / 50
+        #     )
 
         return probabilities
 
