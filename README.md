@@ -59,6 +59,7 @@ Here are a few example use cases for dbgsom (WiP)
 
 ## Dependencies
 
+- Python > 3.7
 - Numpy
 - NetworkX
 - tqdm
