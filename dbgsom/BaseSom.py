@@ -39,7 +39,7 @@ except ImportError as e:
 
 
 # pylint:  disable= attribute-defined-outside-init
-class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
+class BaseSom(BaseEstimator):
     """A Directed Batch Growing Self-Organizing Map.
 
     Parameters
