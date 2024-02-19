@@ -3,9 +3,9 @@ requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "dbgsom"
+name = "DBGSOM"
 authors = [
-  { name="Sandro Martens", email="Sandro.martens@web.de" },
+  { name="Sandro Martens", email="sandro.martens@web.de" },
 ]
 description = "A directed batch growing self organizing map"
 readme = "README.md"
