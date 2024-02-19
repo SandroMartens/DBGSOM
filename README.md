@@ -24,12 +24,8 @@ The DBGSOM algorithm works by constructing a two-dimensional map of prototypes (
 
 ## How to install
 
-(WiP)
-
 ```Powershell
-git clone https://github.com/SandroMartens/DBGSOM.git
-cd dbgsom
-pip install -e .
+pip install DBGSOM
 ```
 
 ## Usage
