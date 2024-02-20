@@ -2,8 +2,6 @@
 This class handles the core SOM functionality.
 """
 
-from abc import ABCMeta, abstractmethod
-import abc
 import copy
 import sys
 from math import log
@@ -24,9 +22,6 @@ try:
     import seaborn.objects as so
     from sklearn.base import (
         BaseEstimator,
-        # ClassifierMixin,
-        # ClusterMixin,
-        # TransformerMixin,
         clone,
     )
     from sklearn.decomposition import SparseCoder
@@ -183,8 +178,6 @@ class BaseSom(BaseEstimator):
         self.vertical_growth = vertical_growth
         self.n_jobs = n_jobs
 
-    # __metaclass__ = ABCMeta
-
     def fit(self, X: npt.ArrayLike, y: None | npt.ArrayLike = None):
         """Train SOM on training data.
 
@@ -236,7 +229,6 @@ class BaseSom(BaseEstimator):
 
         return self
 
-    # @abstractmethod
     def prepare_inputs(self, X, y):
         raise NotImplementedError
 
@@ -307,7 +299,6 @@ class BaseSom(BaseEstimator):
         som_copy = copy.deepcopy(self.som_)
         for node in self.som_.nodes:
             if self.som_.nodes[node]["hit_count"] == 0:
-            # if "hit_count" not in self.som_.nodes[node].keys():
                 som_copy.remove_node(node)
         self.som_ = som_copy
 
