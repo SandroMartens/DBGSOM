@@ -196,19 +196,7 @@ class BaseSom(BaseEstimator):
         """
         # Horizontal growing phase
 
-        # if y is None:
-        #     X = check_array(
-        #         array=X, ensure_min_samples=4, dtype=[np.float64, np.float32]
-        #     )
-        #     self._y_is_fitted = False
-        # else:
-        #     X, y = check_X_y(
-        #         X=X, y=y, ensure_min_samples=4, dtype=[np.float64, np.float32]
-        #     )
-        #     self._y_is_fitted = True
-        #     classes, y = np.unique(y, return_inverse=True)
-        #     self.classes_ = np.array(classes)
-        X, y = self.prepare_inputs(X, y)
+        X, y = self._prepare_inputs(X, y)
         self.random_state_ = check_random_state(self.random_state)
         self._initialization(X)
         self._grow(X, y)
@@ -229,7 +217,7 @@ class BaseSom(BaseEstimator):
 
         return self
 
-    def prepare_inputs(self, X, y):
+    def _prepare_inputs(self, X, y):
         raise NotImplementedError
 
     def _grow_vertical(self, X: npt.ArrayLike, y: None | npt.ArrayLike = None) -> None:

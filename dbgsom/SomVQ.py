@@ -11,13 +11,9 @@ from sklearn.base import (
 )
 
 
-class SomVQ(
-    BaseSom,
-    ClusterMixin,
-    TransformerMixin,
-):
+class SomVQ(BaseSom, ClusterMixin, TransformerMixin):
 
-    def prepare_inputs(self, X: npt.ArrayLike, y=None) -> tuple[npt.NDArray, None]:
+    def _prepare_inputs(self, X: npt.ArrayLike, y=None) -> tuple[npt.NDArray, None]:
         X = check_array(array=X, ensure_min_samples=4, dtype=[np.float64, np.float32])
         return X, y
 
