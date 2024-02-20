@@ -16,16 +16,15 @@ class SomVQ(
     ClusterMixin,
     TransformerMixin,
 ):
-    def prepare_inputs(self, X, y):
+    def prepare_inputs(self, X, y) -> tuple[np.ndarray, np.ndarray]:
         X = check_array(array=X, ensure_min_samples=4, dtype=[np.float64, np.float32])
 
         return X, y
 
-    def _predict(self, X: npt.ArrayLike):
+    def _predict(self, X: npt.ArrayLike) -> npt.NDArray:
         labels = self._get_winning_neurons(X, n_bmu=1)
-        # labels, idx = np.unique(labels, return_inverse=True)
         return labels
 
-    def _label_prototypes(self, X, y):
+    def _label_prototypes(self, X, y) -> None:
         for i, neuron in enumerate(self.som_):
             self.som_.nodes[neuron]["label"] = i
