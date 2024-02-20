@@ -1,8 +1,9 @@
 """
-DBGSOM: Directed Batch Growing Self Organizing Map
+This class handles the core SOM functionality.
 """
 
-# import copy
+from abc import ABCMeta, abstractmethod
+import abc
 import sys
 from math import log
 from statistics import mode
@@ -22,9 +23,9 @@ try:
     import seaborn.objects as so
     from sklearn.base import (
         BaseEstimator,
-        ClassifierMixin,
-        ClusterMixin,
-        TransformerMixin,
+        # ClassifierMixin,
+        # ClusterMixin,
+        # TransformerMixin,
         clone,
     )
     from sklearn.decomposition import SparseCoder
@@ -181,7 +182,9 @@ class BaseSom(BaseEstimator):
         self.vertical_growth = vertical_growth
         self.n_jobs = n_jobs
 
-    def fit(self, X: npt.ArrayLike, y: None | npt.ArrayLike = None) -> Self:
+    # __metaclass__ = ABCMeta
+
+    def fit(self, X: npt.ArrayLike, y: None | npt.ArrayLike = None):
         """Train SOM on training data.
 
         Parameters
@@ -198,18 +201,20 @@ class BaseSom(BaseEstimator):
             Trained estimator
         """
         # Horizontal growing phase
-        if y is None:
-            X = check_array(
-                array=X, ensure_min_samples=4, dtype=[np.float64, np.float32]
-            )
-            self._y_is_fitted = False
-        else:
-            X, y = check_X_y(
-                X=X, y=y, ensure_min_samples=4, dtype=[np.float64, np.float32]
-            )
-            self._y_is_fitted = True
-            classes, y = np.unique(y, return_inverse=True)
-            self.classes_ = np.array(classes)
+
+        # if y is None:
+        #     X = check_array(
+        #         array=X, ensure_min_samples=4, dtype=[np.float64, np.float32]
+        #     )
+        #     self._y_is_fitted = False
+        # else:
+        #     X, y = check_X_y(
+        #         X=X, y=y, ensure_min_samples=4, dtype=[np.float64, np.float32]
+        #     )
+        #     self._y_is_fitted = True
+        #     classes, y = np.unique(y, return_inverse=True)
+        #     self.classes_ = np.array(classes)
+        X, y = self.prepare_inputs(X, y)
         self.random_state_ = check_random_state(self.random_state)
         self._initialization(X)
         self._grow(X, y)
@@ -229,6 +234,10 @@ class BaseSom(BaseEstimator):
         self.n_iter_ = self._current_epoch
 
         return self
+
+    # @abstractmethod
+    def prepare_inputs(self, X, y):
+        raise NotImplementedError
 
     def _grow_vertical(self, X: npt.ArrayLike, y: None | npt.ArrayLike = None) -> None:
         """
@@ -322,45 +331,51 @@ class BaseSom(BaseEstimator):
         """
         check_is_fitted(self)
         X = check_array(X)
-        if not self._y_is_fitted:
-            labels = self._get_winning_neurons(X, n_bmu=1)
-            self.classes_ = labels
-        else:
-            labels = np.argmax(self.predict_proba(X=X), axis=1)
-        return self.classes_[labels]
+        id = self._predict(X)
 
-    def predict_proba(self, X: npt.ArrayLike) -> np.ndarray:
-        """Predict the probability of each class and each sample.
+        # if not self._y_is_fitted:
+        #     labels = self._get_winning_neurons(X, n_bmu=1)
+        #     self.classes_ = labels
+        # else:
+        #     labels = np.argmax(self.predict_proba(X=X), axis=1)
+        return id
 
-        Parameters
-        ----------
-        X : {array-like, sparse matrix} of shape (n_samples, n_features)
-            New data to predict.
+    def _predict(self, X):
+        raise NotImplementedError
 
-        Returns
-        -------
-        Probabilities: array of shape (n_samples, n_classes)
+    # def predict_proba(self, X: npt.ArrayLike) -> np.ndarray:
+    #     """Predict the probability of each class and each sample.
 
-        Returns the probability of the sample for each class in the model, where
-        classes are ordered as they are in self.classes_.
-        """
-        check_is_fitted(self, attributes="_y_is_fitted")
-        X = check_array(X)
-        # if self.vertical_growth:
-        winners = self._get_winning_neurons(X, n_bmu=1)
-        probabilities_rows = []
-        for sample, winner in zip(X, winners):
-            node = self.neurons_[winner]
-            if "som" not in self.som_.nodes:
-                probabilities_sample = self.som_.nodes[node]["probabilities"]
-            else:
-                probabilities_sample = self.som_.nodes[node]["som"].predict_proba(
-                    sample
-                )
+    #     Parameters
+    #     ----------
+    #     X : {array-like, sparse matrix} of shape (n_samples, n_features)
+    #         New data to predict.
 
-            probabilities_rows.append(probabilities_sample)
+    #     Returns
+    #     -------
+    #     Probabilities: array of shape (n_samples, n_classes)
 
-        probabilities = np.array(probabilities_rows)
+    #     Returns the probability of the sample for each class in the model, where
+    #     classes are ordered as they are in self.classes_.
+    #     """
+    #     # check_is_fitted(self, attributes="_y_is_fitted")
+    #     check_is_fitted(self)
+    #     X = check_array(X)
+    #     # if self.vertical_growth:
+    #     winners = self._get_winning_neurons(X, n_bmu=1)
+    #     probabilities_rows = []
+    #     for sample, winner in zip(X, winners):
+    #         node = self.neurons_[winner]
+    #         if "som" not in self.som_.nodes:
+    #             probabilities_sample = self.som_.nodes[node]["probabilities"]
+    #         else:
+    #             probabilities_sample = self.som_.nodes[node]["som"].predict_proba(
+    #                 sample
+    #             )
+
+    #         probabilities_rows.append(probabilities_sample)
+
+    #     probabilities = np.array(probabilities_rows)
 
         # else:
         #     X_transformed = self.transform(X)
@@ -588,34 +603,37 @@ class BaseSom(BaseEstimator):
 
         return winners
 
+    # def _label_prototypes(self, X, y) -> None:
+    #     """Write the labels and hits each protype represents to the graph."""
+    #     if self._y_is_fitted:
+    #         winners = self._get_winning_neurons(X, n_bmu=1)
+    #         for winner_index, neuron in enumerate(self.neurons_):
+    #             labels = y[winners == winner_index]
+    #             # dead neuron
+    #             if len(labels) == 0:
+    #                 label_winner = -1
+    #                 labels = [-1]
+    #                 counts = [0]
+    #             else:
+    #                 label_winner = mode(labels)
+    #                 labels, counts = np.unique(labels, return_counts=True)
+    #             self.som_.nodes[neuron]["label"] = label_winner
+
+    #             self.som_.nodes[neuron]["probabilities"] = np.zeros(
+    #                 shape=self.classes_.shape
+    #             )
+    #             hit_count = self.som_.nodes[neuron]["hit_count"]
+    #             for class_id, count in zip(labels, counts):
+    #                 self.som_.nodes[neuron]["probabilities"][class_id] = (
+    #                     count / hit_count if hit_count > 0 else 1
+    #                 )
+
+    #     else:
+    #         for i, neuron in enumerate(self.som_):
+    #             self.som_.nodes[neuron]["label"] = i
+
     def _label_prototypes(self, X, y) -> None:
-        """Write the labels and hits each protype represents to the graph."""
-        if self._y_is_fitted:
-            winners = self._get_winning_neurons(X, n_bmu=1)
-            for winner_index, neuron in enumerate(self.neurons_):
-                labels = y[winners == winner_index]
-                # dead neuron
-                if len(labels) == 0:
-                    label_winner = -1
-                    labels = [-1]
-                    counts = [0]
-                else:
-                    label_winner = mode(labels)
-                    labels, counts = np.unique(labels, return_counts=True)
-                self.som_.nodes[neuron]["label"] = label_winner
-
-                self.som_.nodes[neuron]["probabilities"] = np.zeros(
-                    shape=self.classes_.shape
-                )
-                hit_count = self.som_.nodes[neuron]["hit_count"]
-                for class_id, count in zip(labels, counts):
-                    self.som_.nodes[neuron]["probabilities"][class_id] = (
-                        count / hit_count if hit_count > 0 else 1
-                    )
-
-        else:
-            for i, neuron in enumerate(self.som_):
-                self.som_.nodes[neuron]["label"] = i
+        raise NotImplementedError
 
     # @profile
     def _update_weights(self, winners: np.ndarray, data: npt.NDArray) -> None:
