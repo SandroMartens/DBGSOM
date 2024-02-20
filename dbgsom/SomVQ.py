@@ -8,7 +8,6 @@ from sklearn.base import (
     ClusterMixin,
     TransformerMixin,
     check_array,
-    check_is_fitted,
 )
 
 
@@ -24,7 +23,7 @@ class SomVQ(
 
     def _predict(self, X: npt.ArrayLike):
         labels = self._get_winning_neurons(X, n_bmu=1)
-        labels, idx = np.unique(labels, return_inverse=True)
+        # labels, idx = np.unique(labels, return_inverse=True)
         return labels
 
     def _label_prototypes(self, X, y):

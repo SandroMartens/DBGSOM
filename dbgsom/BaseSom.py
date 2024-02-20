@@ -4,6 +4,7 @@ This class handles the core SOM functionality.
 
 from abc import ABCMeta, abstractmethod
 import abc
+import copy
 import sys
 from math import log
 from statistics import mode
@@ -223,8 +224,8 @@ class BaseSom(BaseEstimator):
         self.quantization_error_ = self.calculate_quantization_error(X)
         self.n_features_in_ = X.shape[1]
         self._write_node_statistics(X)
-        self._label_prototypes(X, y)
         self._remove_dead_neurons(X)
+        self._label_prototypes(X, y)
 
         # Vertical growing phase
         if self.vertical_growth:
@@ -303,15 +304,15 @@ class BaseSom(BaseEstimator):
 
     def _remove_dead_neurons(self, X: npt.ArrayLike) -> None:
         """Delete all neurons which represent zero samples from the training set."""
-        # som_copy = copy.deepcopy(self.som_)
-        # for node in self.som_.nodes:
-        #     if "hit_count" not in self.som_.nodes[node].keys():
-        #         som_copy.remove_node(node)
-        # self.som_ = som_copy
-
+        som_copy = copy.deepcopy(self.som_)
         for node in self.som_.nodes:
-            if "hit_count" not in self.som_.nodes[node].keys():
-                self.som_.remove_node(node)
+            if self.som_.nodes[node]["hit_count"] == 0:
+            # if "hit_count" not in self.som_.nodes[node].keys():
+                som_copy.remove_node(node)
+        self.som_ = som_copy
+
+        # for node in self.som_.nodes:
+        #         self.som_.remove_node(node)
         self.neurons_ = list(self.som_.nodes)
 
     def predict(self, X: npt.ArrayLike) -> np.ndarray:
@@ -343,39 +344,39 @@ class BaseSom(BaseEstimator):
     def _predict(self, X):
         raise NotImplementedError
 
-    # def predict_proba(self, X: npt.ArrayLike) -> np.ndarray:
-    #     """Predict the probability of each class and each sample.
+        # def predict_proba(self, X: npt.ArrayLike) -> np.ndarray:
+        #     """Predict the probability of each class and each sample.
 
-    #     Parameters
-    #     ----------
-    #     X : {array-like, sparse matrix} of shape (n_samples, n_features)
-    #         New data to predict.
+        #     Parameters
+        #     ----------
+        #     X : {array-like, sparse matrix} of shape (n_samples, n_features)
+        #         New data to predict.
 
-    #     Returns
-    #     -------
-    #     Probabilities: array of shape (n_samples, n_classes)
+        #     Returns
+        #     -------
+        #     Probabilities: array of shape (n_samples, n_classes)
 
-    #     Returns the probability of the sample for each class in the model, where
-    #     classes are ordered as they are in self.classes_.
-    #     """
-    #     # check_is_fitted(self, attributes="_y_is_fitted")
-    #     check_is_fitted(self)
-    #     X = check_array(X)
-    #     # if self.vertical_growth:
-    #     winners = self._get_winning_neurons(X, n_bmu=1)
-    #     probabilities_rows = []
-    #     for sample, winner in zip(X, winners):
-    #         node = self.neurons_[winner]
-    #         if "som" not in self.som_.nodes:
-    #             probabilities_sample = self.som_.nodes[node]["probabilities"]
-    #         else:
-    #             probabilities_sample = self.som_.nodes[node]["som"].predict_proba(
-    #                 sample
-    #             )
+        #     Returns the probability of the sample for each class in the model, where
+        #     classes are ordered as they are in self.classes_.
+        #     """
+        #     # check_is_fitted(self, attributes="_y_is_fitted")
+        #     check_is_fitted(self)
+        #     X = check_array(X)
+        #     # if self.vertical_growth:
+        #     winners = self._get_winning_neurons(X, n_bmu=1)
+        #     probabilities_rows = []
+        #     for sample, winner in zip(X, winners):
+        #         node = self.neurons_[winner]
+        #         if "som" not in self.som_.nodes:
+        #             probabilities_sample = self.som_.nodes[node]["probabilities"]
+        #         else:
+        #             probabilities_sample = self.som_.nodes[node]["som"].predict_proba(
+        #                 sample
+        #             )
 
-    #         probabilities_rows.append(probabilities_sample)
+        #         probabilities_rows.append(probabilities_sample)
 
-    #     probabilities = np.array(probabilities_rows)
+        #     probabilities = np.array(probabilities_rows)
 
         # else:
         #     X_transformed = self.transform(X)
