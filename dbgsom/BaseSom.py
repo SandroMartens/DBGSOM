@@ -5,7 +5,6 @@ This class handles the core SOM functionality.
 import copy
 import sys
 from math import log
-from statistics import mode
 from typing import Any
 
 from typing_extensions import Self
