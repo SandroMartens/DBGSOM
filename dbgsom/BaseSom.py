@@ -14,6 +14,7 @@ from typing_extensions import Self
 
 try:
     import networkx as nx
+    import scipy.spatial.distance
     import numba as nb
     import numpy as np
     import numpy.typing as npt
@@ -26,7 +27,7 @@ try:
     from sklearn.decomposition import SparseCoder
     from sklearn.metrics import pairwise_distances
     from sklearn.preprocessing import normalize
-    from sklearn.utils import check_array, check_random_state, check_X_y
+    from sklearn.utils import check_array, check_random_state
     from sklearn.utils.validation import check_is_fitted
     from tqdm import tqdm
 except ImportError as e:
@@ -121,6 +122,8 @@ class BaseSom(BaseEstimator):
 
     Attributes
     ----------
+    labels_ : Labels of each point.
+
     som_ : NetworkX.graph
         Graph object containing the neurons with attributes
 
@@ -289,8 +292,6 @@ class BaseSom(BaseEstimator):
                 som_copy.remove_node(node)
         self.som_ = som_copy
 
-        # for node in self.som_.nodes:
-        #         self.som_.remove_node(node)
         self.neurons_ = list(self.som_.nodes)
 
     def predict(self, X: npt.ArrayLike) -> np.ndarray:
@@ -398,18 +399,13 @@ class BaseSom(BaseEstimator):
         # plt.show()
 
     def _get_u_matrix(self) -> np.ndarray[Any, np.dtype[np.float64]]:
-        """Calculate the average distance from each neuron to it's neighbors in the
+        """Calculate the average distance from each neuron to its neighbors in the
         input space."""
 
         g = self.som_
-        distances = []
-        for node, neighbors in g.adj.items():
-            node_weight = g.nodes[node]["weight"]
-            distance = 0
-            for neighbor in neighbors:
-                nbr_weight = g.nodes[neighbor]["weight"]
-                distance += np.linalg.norm(node_weight - nbr_weight)
-            distances.append(distance / len(neighbors))
+        node_weights = np.array([g.nodes[node]["weight"] for node in g.nodes])
+        neighbor_weights = np.array([g.nodes[neighbor]["weight"] for neighbors in g.adj.values() for neighbor in neighbors])
+        distances = scipy.spatial.distance.cdist(node_weights, neighbor_weights).mean(axis=1)
 
         return np.array(distances)
 

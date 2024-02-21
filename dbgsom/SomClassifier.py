@@ -12,8 +12,6 @@ from sklearn.base import (
     check_array,
     check_is_fitted,
 )
-
-
 class SomClassifier(BaseSom, TransformerMixin, ClassifierMixin):
 
     def _prepare_inputs(
