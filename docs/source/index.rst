@@ -6,7 +6,7 @@
 Welcome to DBGSOM's documentation!
 ==================================
 
-DBGSOM an implementation of the directed batch growing self organizing map. SOMs are a type of artificial neural network. They learn prototypes in an high dimensional input space (similar ro kmeans), but also maintain a topological ordering in an lower dimensional output space. If the output space is two dimensional, the SOM can be used to generate 2D-visualizations.
+DBGSOM is short for _Directed Batch Growing Self-Organizing Map_. A SOM is a type of artificial neural network that is used to to produce a low-dimensional representation of a higher dimensional data set while preserving the topological structure of the data. It can be used for supervised and unsupervised vector quantization, classification and many different data visualization tasks. DBGSOM implements the SomClassifier and SomVQ for classification and clustering/vector quantization respectively.
 
 User Guide
 ----------
@@ -15,6 +15,7 @@ User Guide
    :caption: Contents:
 
    user_guide
+   basic_usage
    plotting
    algorithm
    api
