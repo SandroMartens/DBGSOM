@@ -2,16 +2,20 @@
 Implements the SOM Classifier."""
 
 from statistics import mode
+
 import numpy as np
 import numpy.typing as npt
-from dbgsom.BaseSom import BaseSom
 from sklearn.base import (
     ClassifierMixin,
     TransformerMixin,
-    check_X_y,
     check_array,
     check_is_fitted,
+    check_X_y,
 )
+
+from dbgsom.BaseSom import BaseSom
+
+
 class SomClassifier(BaseSom, TransformerMixin, ClassifierMixin):
 
     def _prepare_inputs(

@@ -14,16 +14,13 @@ from typing_extensions import Self
 
 try:
     import networkx as nx
-    import scipy.spatial.distance
     import numba as nb
     import numpy as np
     import numpy.typing as npt
     import pandas as pd
+    import scipy.spatial.distance
     import seaborn.objects as so
-    from sklearn.base import (
-        BaseEstimator,
-        clone,
-    )
+    from sklearn.base import BaseEstimator, clone
     from sklearn.decomposition import SparseCoder
     from sklearn.metrics import pairwise_distances
     from sklearn.preprocessing import normalize
