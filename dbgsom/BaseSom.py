@@ -244,11 +244,11 @@ class BaseSom(BaseEstimator):
                     self.som_.nodes[node]["som"] = new_som
 
     def _calculate_node_statistics(
-        self, X
+        self, X:npt.ArrayLike
     ) -> tuple[npt.NDArray, npt.NDArray, npt.NDArray]:
         """Write the following statistics as attributes to the graph:
 
-        1. local density. Use a gaussian kernel to estimate the local density around
+        1. Local density: Use a Gaussian kernel to estimate the local density around
         each prototype. Use the average distance from all prototype to their neighbors
         as bandwith sigma.
 
@@ -276,13 +276,15 @@ class BaseSom(BaseEstimator):
             hit_counts[winner] = len(samples)
         return average_distances, densities, hit_counts
 
-    def _write_node_statistics(self, X) -> None:
+    def _write_node_statistics(self, X: npt.ArrayLike) -> None:
         average_distances, densities, hit_counts = self._calculate_node_statistics(X)
 
-        for i, node in enumerate(self.som_.nodes):
-            self.som_.nodes[node]["density"] = densities[i]
-            self.som_.nodes[node]["hit_count"] = hit_counts[i]
-            self.som_.nodes[node]["average_distance"] = average_distances[i]
+        for density, hit_count, average_distance, node in zip(
+            densities, hit_counts, average_distances, self.som_.nodes
+        ):
+            self.som_.nodes[node]["density"] = density
+            self.som_.nodes[node]["hit_count"] = hit_count
+            self.som_.nodes[node]["average_distance"] = average_distance
 
     def _remove_dead_neurons(self, X: npt.ArrayLike) -> None:
         """Delete all neurons which represent zero samples from the training set."""
@@ -404,8 +406,16 @@ class BaseSom(BaseEstimator):
 
         g = self.som_
         node_weights = np.array([g.nodes[node]["weight"] for node in g.nodes])
-        neighbor_weights = np.array([g.nodes[neighbor]["weight"] for neighbors in g.adj.values() for neighbor in neighbors])
-        distances = scipy.spatial.distance.cdist(node_weights, neighbor_weights).mean(axis=1)
+        neighbor_weights = np.array(
+            [
+                g.nodes[neighbor]["weight"]
+                for neighbors in g.adj.values()
+                for neighbor in neighbors
+            ]
+        )
+        distances = scipy.spatial.distance.cdist(node_weights, neighbor_weights).mean(
+            axis=1
+        )
 
         return np.array(distances)
 
