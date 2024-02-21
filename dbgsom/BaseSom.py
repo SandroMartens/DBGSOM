@@ -987,7 +987,7 @@ class BaseSom(BaseEstimator):
                 sigma_end=sigma_end,
                 sigma_start=sigma_start,
                 max_iter=self.max_iter,
-                current_iter=1 / self.coarse_training_frac * epoch,
+                current_iter=epoch / self.coarse_training_frac,
                 learning_rate=self.learning_rate,
             )
         else:
