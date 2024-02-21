@@ -337,6 +337,9 @@ class BaseSom(BaseEstimator):
         X : {array-like, sparse matrix} of shape (n_samples, n_features)
             Data to transform
 
+        y : Ignored.
+            Not used, present here for API consistency by convention.
+
         Returns
         -------
         coefficients : np.ndarray of shape (n_samples, n_protoypes)
