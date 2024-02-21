@@ -611,15 +611,13 @@ class BaseSom(BaseEstimator):
         gaussian_kernel = self._calculate_gaussian_neighborhood()
 
         # Step 4
-        new_weights = np.sum(
-            voronoi_set_centers
-            * neuron_activations[:, np.newaxis]
-            * gaussian_kernel[:, :, np.newaxis],
-            axis=1,
-        ) / np.sum(
-            gaussian_kernel[:, :, np.newaxis] * neuron_activations[:, np.newaxis],
-            axis=1,
+        intermediate_calculation = (
+            gaussian_kernel[:, :, np.newaxis] * neuron_activations[:, np.newaxis]
         )
+        new_weights = np.sum(
+            voronoi_set_centers * intermediate_calculation,
+            axis=1,
+        ) / np.sum(intermediate_calculation, axis=1)
 
         # Step 5
         new_weights_dict = dict(zip(self.neurons_, new_weights))
@@ -930,9 +928,12 @@ class BaseSom(BaseEstimator):
 
     def _add_node_to_graph(self, node: tuple[int, int], weight: np.ndarray) -> None:
         self.som_.add_node(node)
-        self.som_.nodes[node]["weight"] = weight
-        self.som_.nodes[node]["error"] = 0
-        self.som_.nodes[node]["epoch_created"] = self._current_epoch
+        attributes = {
+            "weight": weight,
+            "error": 0,
+            "epoch_created": self._current_epoch,
+        }
+        self.som_.nodes[node].update(attributes)
         self._add_new_connections(node)
 
     def _add_new_connections(self, node: tuple[int, int]) -> None:
