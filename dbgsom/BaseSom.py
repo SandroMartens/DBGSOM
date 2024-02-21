@@ -231,20 +231,24 @@ class BaseSom(BaseEstimator):
 
         self.vertical_growing_threshold_ = 1.5 * self.growing_threshold_
         winners = self._get_winning_neurons(X, n_bmu=1)
-        for i, (node, error) in enumerate(self.som_.nodes(data="error")):
-            if error > self.vertical_growing_threshold_:
-                new_som = clone(self)
-                X_filtered = X[winners == i]
-                if y is not None:
-                    y_filtered = y[winners == i]
-                else:
-                    y_filtered = None
-                if X_filtered.shape[0] > self.min_samples_vertical_growth:
-                    new_som.fit(X_filtered, y_filtered)
-                    self.som_.nodes[node]["som"] = new_som
+        relevant_nodes = [
+            node
+            for (node, error) in enumerate(self.som_.nodes(data="error"))
+            if error > self.vertical_growing_threshold_
+        ]
+        for node in relevant_nodes:
+            new_som = clone(self)
+            X_filtered = X[winners == node]
+            if y is not None:
+                y_filtered = y[winners == node]
+            else:
+                y_filtered = None
+            if X_filtered.shape[0] > self.min_samples_vertical_growth:
+                new_som.fit(X_filtered, y_filtered)
+                self.som_.nodes[node]["som"] = new_som
 
     def _calculate_node_statistics(
-        self, X:npt.ArrayLike
+        self, X: npt.ArrayLike
     ) -> tuple[npt.NDArray, npt.NDArray, npt.NDArray]:
         """Write the following statistics as attributes to the graph:
 
