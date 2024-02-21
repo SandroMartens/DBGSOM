@@ -19,7 +19,7 @@ We need a trained `som` object. We then call the `plot` function on that object:
 
 
 Additional attributes
----------
+---------------------
 
 We can use the `color` and `size` parameters to enhance the basic visualization. During computation, different data are computed for each neuron, which can be coded als color or size of the scatter plot. In `DBGSOM` six attributes are currently implemented:
 
