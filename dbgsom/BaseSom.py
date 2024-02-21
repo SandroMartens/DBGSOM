@@ -122,7 +122,8 @@ class BaseSom(BaseEstimator):
 
     Attributes
     ----------
-    labels_ : Labels of each point.
+    labels_ : ndarray of shape (n_samples,)
+        Labels of each point.
 
     som_ : NetworkX.graph
         Graph object containing the neurons with attributes
@@ -199,6 +200,7 @@ class BaseSom(BaseEstimator):
         # Horizontal growing phase
 
         X, y = self._prepare_inputs(X, y)
+        self._set_sigma()
         self.random_state_ = check_random_state(self.random_state)
         self._initialization(X)
         self._grow(X, y)
@@ -221,6 +223,9 @@ class BaseSom(BaseEstimator):
 
     def _prepare_inputs(self, X, y):
         raise NotImplementedError
+    
+    def _set_sigma(self):
+
 
     def _grow_vertical(self, X: npt.ArrayLike, y: None | npt.ArrayLike = None) -> None:
         """
