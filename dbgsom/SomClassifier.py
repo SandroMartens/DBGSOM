@@ -49,9 +49,12 @@ class SomClassifier(BaseSom, TransformerMixin, ClassifierMixin):
                     count / hit_count if hit_count > 0 else 1
                 )
 
+    def _fit(self, X: npt.ArrayLike, y: None | npt.ArrayLike = None):
+        self.classes_, y = np.unique(y, return_inverse=True)
+
     def _predict(self, X: npt.ArrayLike) -> np.ndarray:
         labels = np.argmax(self.predict_proba(X=X), axis=1)
-        return labels
+        return self.classes_[np.argmax(labels, axis=1)]
 
     def predict_proba(self, X: npt.ArrayLike) -> np.ndarray:
         """Predict the probability of each class and each sample.

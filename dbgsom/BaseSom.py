@@ -216,10 +216,15 @@ class BaseSom(BaseEstimator):
         self.labels_ = self.predict(X)
         self.n_iter_ = self._current_epoch
 
+        self._fit(X, y)
+
         return self
 
     def _prepare_inputs(self, X, y):
         raise NotImplementedError
+
+    def _fit(self, X, y):
+        pass
 
     def _check_arguments(self):
         if self.decay_function not in ["linear", "exponential"]:

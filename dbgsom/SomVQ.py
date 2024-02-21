@@ -5,7 +5,7 @@ import numpy as np
 import numpy.typing as npt
 from sklearn.base import ClusterMixin, TransformerMixin, check_array
 
-from dbgsom.BaseSom import BaseSom
+from .BaseSom import BaseSom
 
 
 class SomVQ(BaseSom, ClusterMixin, TransformerMixin):
