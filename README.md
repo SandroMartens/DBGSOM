@@ -6,9 +6,7 @@
 
 # DBGSOM
 
-DBGSOM is short for _Directed batch growing self-organizing map_. A SOM is a type of artificial neural network that is used to to produce a low-dimensional  representation of a higher dimensional data set while preserving the topological structure of the data.  It can be used for unsupervised vector quantization, classification and many different data visualization tasks.
-
-This project was inspired by the great [MiniSom](https://github.com/JustGlowing/minisom).
+DBGSOM is short for _Directed Batch Growing Self-Organizing Map_. A SOM is a type of artificial neural network that is used to to produce a low-dimensional  representation of a higher dimensional data set while preserving the topological structure of the data. It can be used for supervised and unsupervised vector quantization, classification and many different data visualization tasks.
 
 ## Features
 
@@ -24,27 +22,33 @@ The DBGSOM algorithm works by constructing a two-dimensional map of prototypes (
 
 ## How to install
 
-```PowerShell
+DBGSOM can be installed from PyPi via pip.
+
+```Bash
 pip install DBGSOM
 ```
 
 ## Usage
 
-dbgsom implements the scikit-learn API.
+dbgsom implements the scikit-learn API. We have the SomClassifier and SomVQ for classification and clustering/vector quantization.
 
 ```Python
-from dbgsom import DBGSOM
+from dbgsom import SomVQ, SomClassifier
+from sklearn.datasets import load_digits
 
-quantizer = DBGSOM()
-quantizer.fit(X=data_train)
-labels_train = quantizer.labels_
-labels_test = quantizer.predict(X=data_test)
+digits_X, digits_y = load_digits(return_X_y=True)
+
+quantizer = SomVQ()
+classifier = SomClassifier()
+
+quantizer.fit_predict(X=digits_X)
+classifier.fit_predict(X=digits_X, y=digits_y)
 
 ```
 
 ## Examples
 
-Here are a few example use cases for dbgsom (WiP)
+Here are a few example use cases for DBGSOM.
 
 |Example|Description|
 |-|-|

@@ -7,7 +7,7 @@ name = "DBGSOM"
 authors = [
   { name="Sandro Martens", email="sandro.martens@web.de" },
 ]
-description = "A directed batch growing self organizing map"
+description = "A Python implementation of the Directed Batch Growing Self-Organizing Map"
 readme = "README.md"
 requires-python = ">=3.9"
 classifiers = [

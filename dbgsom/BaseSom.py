@@ -1,11 +1,10 @@
 """
-DBGSOM: Directed Batch Growing Self Organizing Map
+This class handles the core SOM functionality.
 """
 
-# import copy
+import copy
 import sys
 from math import log
-from statistics import mode
 from typing import Any
 
 from typing_extensions import Self
@@ -19,18 +18,13 @@ try:
     import numpy as np
     import numpy.typing as npt
     import pandas as pd
+    import scipy.spatial.distance
     import seaborn.objects as so
-    from sklearn.base import (
-        BaseEstimator,
-        ClassifierMixin,
-        ClusterMixin,
-        TransformerMixin,
-        clone,
-    )
+    from sklearn.base import BaseEstimator, clone
     from sklearn.decomposition import SparseCoder
     from sklearn.metrics import pairwise_distances
     from sklearn.preprocessing import normalize
-    from sklearn.utils import check_array, check_random_state, check_X_y
+    from sklearn.utils import check_array, check_random_state
     from sklearn.utils.validation import check_is_fitted
     from tqdm import tqdm
 except ImportError as e:
@@ -39,111 +33,11 @@ except ImportError as e:
 
 
 # pylint:  disable= attribute-defined-outside-init
-class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
-    """A Directed Batch Growing Self-Organizing Map.
-
-    Parameters
-    ----------
-    spreading_factor : float, default = 0.5
-        Spreading factor to calculate the treshold for neuron insertion.
-
-        0 < spreading_factor < 1.
-
-        0 means no growth, 1 means unlimited growth
-
-    max_iter : int, default = 200
-        Maximum Number of training epochs.
-
-    convergence_iter : int, default = 1
-        How many training iterations run until new neurons are added.
-
-    max_neurons : int, default = 100
-        Maximum number of neurons in the som.
-
-    vertical_growth : bool, default = False
-        Wether to trigger hierarchical growth.
-
-    decay_function : {'exponential', 'linear'}, default = 'exponential'
-        Decay function to use for neighborhood bandwith sigma.
-
-    learning_rate : int, default = 0.02
-        Decay factor if decay function is set to "exponential".
-
-    verbose : bool, default = False
-
-    coarse_training_frac : float, default = 0.5
-        Fraction of max_iter to use for coarse training.
-
-        Training happens in two phases, coarse and fine training. In coarse training,
-        the neighborhood bandwidth is decreased from sigma_start to sigma_end and
-        the network grows according to the growing rules. In fine training, the
-        bandwidth is constant at sigma_end and no new neurons are added.
-
-    growth_criterion : {"quantization_error", "entropy"}, default = "quantization_error"
-        Method for calculating the error of neurons and samples.
-
-        "quantization_error" : Use the quantization error of the prototypes.
-        The cumulative error is the sum of individual errors of all samples.
-
-        "entropy": For supervised learning we can use the entropy
-        of labels of the samples represented by each prototype as error.
-
-    metric : str, default = "euclidean"
-        The metric to use for computing distances between prototypes and samples. Must
-        be supported by sci-kit learn or scipy.
-
-    random_state : any (optional), default = None
-        Random state for weight initialization.
-
-    convergence_treshold : float, default = 10 ** -5
-        If the sum of all weight changes is smaller than the threshold,
-        convergence is assumed and the training is stopped.
-
-    threshold_method : {"classical", "se"}, default = "se"
-        Method to calculate the growing threshold.
-
-        "classical" : Threshold is only dependent on the dimension of the input data.
-
-        `gt =  -log(spreading_factor) * n_dim`
-
-        "se" : Statistics enhanced formula, which uses the standard
-        deviation of features in X.
-
-        `gt = 150 * -log(spreading_factor) * np.sqrt(np.sum(np.std(X, axis=0) ** 2))`
-
-    min_samples_vertical_growth : int, default = 100
-        Minimum samples represented by a prototpye to trigger a vertical growth
-
-    sigma_start, sigma_end : {None, numeric}, default = None
-        Start and end value for the neighborhood bandwidth.
-
-        If `None`, it is calculated dynamically in each epoch as
-
-        `sigma_start = 0.2 * sqrt(n_neurons)`
-
-        `sigma_end = max(0.7, 0.05 * sqrt(n_neurons))`
-
-    Attributes
-    ----------
-    som_ : NetworkX.graph
-        Graph object containing the neurons with attributes
-
-    weights_ : ndarray of shape (n_prototypes, n_features)
-        Learned weights of the neurons
-
-    topographic_error_ : float
-        Fraction of training samples where the first and second best matching
-        prototype are not neighbors on the SOM
-
-    quantization_error_ : float
-        Average distance from all training samples to their nearest prototypes
-
-
-    """
+class BaseSom(BaseEstimator):
 
     def __init__(
         self,
-        max_iter: int = 200,
+        n_iter: int = 200,
         convergence_iter: int = 1,
         spreading_factor: float = 0.5,
         sigma_start: float | None = None,
@@ -163,7 +57,7 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
         n_jobs: int = 1,
     ) -> None:
         self.spreading_factor = spreading_factor
-        self.max_iter = max_iter
+        self.n_iter = n_iter
         self.convergence_iter = convergence_iter
         self.sigma_start = sigma_start
         self.sigma_end = sigma_end
@@ -181,7 +75,7 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
         self.vertical_growth = vertical_growth
         self.n_jobs = n_jobs
 
-    def fit(self, X: npt.ArrayLike, y: None | npt.ArrayLike = None) -> Self:
+    def fit(self, X: npt.ArrayLike, y: None | npt.ArrayLike = None):
         """Train SOM on training data.
 
         Parameters
@@ -198,18 +92,9 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
             Trained estimator
         """
         # Horizontal growing phase
-        if y is None:
-            X = check_array(
-                array=X, ensure_min_samples=4, dtype=[np.float64, np.float32]
-            )
-            self._y_is_fitted = False
-        else:
-            X, y = check_X_y(
-                X=X, y=y, ensure_min_samples=4, dtype=[np.float64, np.float32]
-            )
-            self._y_is_fitted = True
-            classes, y = np.unique(y, return_inverse=True)
-            self.classes_ = np.array(classes)
+
+        X, y = self._prepare_inputs(X, y)
+        self._check_arguments()
         self.random_state_ = check_random_state(self.random_state)
         self._initialization(X)
         self._grow(X, y)
@@ -218,8 +103,8 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
         self.quantization_error_ = self.calculate_quantization_error(X)
         self.n_features_in_ = X.shape[1]
         self._write_node_statistics(X)
-        self._label_prototypes(X, y)
         self._remove_dead_neurons(X)
+        self._label_prototypes(X, y)
 
         # Vertical growing phase
         if self.vertical_growth:
@@ -228,7 +113,29 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
         self.labels_ = self.predict(X)
         self.n_iter_ = self._current_epoch
 
+        self._fit(X, y)
+
         return self
+
+    def _prepare_inputs(self, X, y):
+        raise NotImplementedError
+
+    def _fit(self, X, y):
+        pass
+
+    def _check_arguments(self):
+        if self.decay_function not in ["linear", "exponential"]:
+            raise ValueError(
+                "Decay function not supported. Must be 'linear' or 'exponential'."
+            )
+        if self.threshold_method not in ["se", "classical"]:
+            raise ValueError(
+                "threshold_method not supported. Must be 'se' or 'classical'."
+            )
+        if self.growth_criterion not in ["quantization_error", "entropy"]:
+            raise ValueError(
+                "growth_criterion not supported. Must be 'quantization_error' or 'entropy'."
+            )
 
     def _grow_vertical(self, X: npt.ArrayLike, y: None | npt.ArrayLike = None) -> None:
         """
@@ -239,24 +146,28 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
 
         self.vertical_growing_threshold_ = 1.5 * self.growing_threshold_
         winners = self._get_winning_neurons(X, n_bmu=1)
-        for i, (node, error) in enumerate(self.som_.nodes(data="error")):
-            if error > self.vertical_growing_threshold_:
-                new_som = clone(self)
-                X_filtered = X[winners == i]
-                if y is not None:
-                    y_filtered = y[winners == i]
-                else:
-                    y_filtered = None
-                if X_filtered.shape[0] > self.min_samples_vertical_growth:
-                    new_som.fit(X_filtered, y_filtered)
-                    self.som_.nodes[node]["som"] = new_som
+        relevant_nodes = [
+            node
+            for (node, error) in enumerate(self.som_.nodes(data="error"))
+            if error > self.vertical_growing_threshold_
+        ]
+        for node in relevant_nodes:
+            new_som = clone(self)
+            X_filtered = X[winners == node]
+            if y is not None:
+                y_filtered = y[winners == node]
+            else:
+                y_filtered = None
+            if X_filtered.shape[0] > self.min_samples_vertical_growth:
+                new_som.fit(X_filtered, y_filtered)
+                self.som_.nodes[node]["som"] = new_som
 
     def _calculate_node_statistics(
-        self, X
+        self, X: npt.ArrayLike
     ) -> tuple[npt.NDArray, npt.NDArray, npt.NDArray]:
         """Write the following statistics as attributes to the graph:
 
-        1. local density. Use a gaussian kernel to estimate the local density around
+        1. Local density: Use a Gaussian kernel to estimate the local density around
         each prototype. Use the average distance from all prototype to their neighbors
         as bandwith sigma.
 
@@ -284,25 +195,24 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
             hit_counts[winner] = len(samples)
         return average_distances, densities, hit_counts
 
-    def _write_node_statistics(self, X) -> None:
+    def _write_node_statistics(self, X: npt.ArrayLike) -> None:
         average_distances, densities, hit_counts = self._calculate_node_statistics(X)
 
-        for i, node in enumerate(self.som_.nodes):
-            self.som_.nodes[node]["density"] = densities[i]
-            self.som_.nodes[node]["hit_count"] = hit_counts[i]
-            self.som_.nodes[node]["average_distance"] = average_distances[i]
+        for density, hit_count, average_distance, node in zip(
+            densities, hit_counts, average_distances, self.som_.nodes
+        ):
+            self.som_.nodes[node]["density"] = density
+            self.som_.nodes[node]["hit_count"] = hit_count
+            self.som_.nodes[node]["average_distance"] = average_distance
 
     def _remove_dead_neurons(self, X: npt.ArrayLike) -> None:
         """Delete all neurons which represent zero samples from the training set."""
-        # som_copy = copy.deepcopy(self.som_)
-        # for node in self.som_.nodes:
-        #     if "hit_count" not in self.som_.nodes[node].keys():
-        #         som_copy.remove_node(node)
-        # self.som_ = som_copy
-
+        som_copy = copy.deepcopy(self.som_)
         for node in self.som_.nodes:
-            if "hit_count" not in self.som_.nodes[node].keys():
-                self.som_.remove_node(node)
+            if self.som_.nodes[node]["hit_count"] == 0:
+                som_copy.remove_node(node)
+        self.som_ = som_copy
+
         self.neurons_ = list(self.som_.nodes)
 
     def predict(self, X: npt.ArrayLike) -> np.ndarray:
@@ -322,58 +232,16 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
         """
         check_is_fitted(self)
         X = check_array(X)
-        if not self._y_is_fitted:
-            labels = self._get_winning_neurons(X, n_bmu=1)
-            self.classes_ = labels
-        else:
-            labels = np.argmax(self.predict_proba(X=X), axis=1)
-        return self.classes_[labels]
+        id = self._predict(X)
+        return id
 
-    def predict_proba(self, X: npt.ArrayLike) -> np.ndarray:
-        """Predict the probability of each class and each sample.
-
-        Parameters
-        ----------
-        X : {array-like, sparse matrix} of shape (n_samples, n_features)
-            New data to predict.
-
-        Returns
-        -------
-        Probabilities: array of shape (n_samples, n_classes)
-
-        Returns the probability of the sample for each class in the model, where
-        classes are ordered as they are in self.classes_.
-        """
-        check_is_fitted(self, attributes="_y_is_fitted")
-        X = check_array(X)
-        # if self.vertical_growth:
-        winners = self._get_winning_neurons(X, n_bmu=1)
-        probabilities_rows = []
-        for sample, winner in zip(X, winners):
-            node = self.neurons_[winner]
-            if "som" not in self.som_.nodes:
-                probabilities_sample = self.som_.nodes[node]["probabilities"]
-            else:
-                probabilities_sample = self.som_.nodes[node]["som"].predict_proba(
-                    sample
-                )
-
-            probabilities_rows.append(probabilities_sample)
-
-        probabilities = np.array(probabilities_rows)
-
-        # else:
-        #     X_transformed = self.transform(X)
-        #     probabilities = (
-        #         X_transformed @ self._extract_values_from_graph("probabilities") / 50
-        #     )
-
-        return probabilities
+    def _predict(self, X):
+        raise NotImplementedError
 
     def _extract_values_from_graph(self, attribute: str) -> np.ndarray:
         """Return an array of shape (n_nodes, 1) with some given attribute of the
         nodes."""
-        return np.array(list(dict(self.som_.nodes.data(attribute)).values()))
+        return np.array([data[attribute] for _, data in self.som_.nodes.data()])
 
     def transform(self, X: npt.ArrayLike, y=None) -> np.ndarray:
         """Calculate a non negative least squares mixture model of prototypes that
@@ -383,6 +251,9 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
         ----------
         X : {array-like, sparse matrix} of shape (n_samples, n_features)
             Data to transform
+
+        y : Ignored.
+            Not used, present here for API consistency by convention.
 
         Returns
         -------
@@ -452,18 +323,21 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
         # plt.show()
 
     def _get_u_matrix(self) -> np.ndarray[Any, np.dtype[np.float64]]:
-        """Calculate the average distance from each neuron to it's neighbors in the
+        """Calculate the average distance from each neuron to its neighbors in the
         input space."""
 
         g = self.som_
-        distances = []
-        for node, neighbors in g.adj.items():
-            node_weight = g.nodes[node]["weight"]
-            distance = 0
-            for neighbor in neighbors:
-                nbr_weight = g.nodes[neighbor]["weight"]
-                distance += np.linalg.norm(node_weight - nbr_weight)
-            distances.append(distance / len(neighbors))
+        node_weights = np.array([g.nodes[node]["weight"] for node in g.nodes])
+        neighbor_weights = np.array(
+            [
+                g.nodes[neighbor]["weight"]
+                for neighbors in g.adj.values()
+                for neighbor in neighbors
+            ]
+        )
+        distances = scipy.spatial.distance.cdist(node_weights, neighbor_weights).mean(
+            axis=1
+        )
 
         return np.array(distances)
 
@@ -517,12 +391,12 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
     def _grow(self, data: npt.NDArray, y) -> None:
         """Second training phase"""
         for current_epoch in tqdm(
-            iterable=range(self.max_iter),
+            iterable=range(self.n_iter),
             disable=not self.verbose,
             unit=" epochs",
         ):
             self._current_epoch = current_epoch
-            if current_epoch > self.coarse_training_frac * self.max_iter:
+            if current_epoch > self.coarse_training_frac * self.n_iter:
                 self._training_phase = "fine"
             self.weights_ = self._extract_values_from_graph("weight")
             # check if new neurons were inserted
@@ -589,33 +463,7 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
         return winners
 
     def _label_prototypes(self, X, y) -> None:
-        """Write the labels and hits each protype represents to the graph."""
-        if self._y_is_fitted:
-            winners = self._get_winning_neurons(X, n_bmu=1)
-            for winner_index, neuron in enumerate(self.neurons_):
-                labels = y[winners == winner_index]
-                # dead neuron
-                if len(labels) == 0:
-                    label_winner = -1
-                    labels = [-1]
-                    counts = [0]
-                else:
-                    label_winner = mode(labels)
-                    labels, counts = np.unique(labels, return_counts=True)
-                self.som_.nodes[neuron]["label"] = label_winner
-
-                self.som_.nodes[neuron]["probabilities"] = np.zeros(
-                    shape=self.classes_.shape
-                )
-                hit_count = self.som_.nodes[neuron]["hit_count"]
-                for class_id, count in zip(labels, counts):
-                    self.som_.nodes[neuron]["probabilities"][class_id] = (
-                        count / hit_count if hit_count > 0 else 1
-                    )
-
-        else:
-            for i, neuron in enumerate(self.som_):
-                self.som_.nodes[neuron]["label"] = i
+        raise NotImplementedError
 
     # @profile
     def _update_weights(self, winners: np.ndarray, data: npt.NDArray) -> None:
@@ -649,15 +497,13 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
         gaussian_kernel = self._calculate_gaussian_neighborhood()
 
         # Step 4
-        new_weights = np.sum(
-            voronoi_set_centers
-            * neuron_activations[:, np.newaxis]
-            * gaussian_kernel[:, :, np.newaxis],
-            axis=1,
-        ) / np.sum(
-            gaussian_kernel[:, :, np.newaxis] * neuron_activations[:, np.newaxis],
-            axis=1,
+        intermediate_calculation = (
+            gaussian_kernel[:, :, np.newaxis] * neuron_activations[:, np.newaxis]
         )
+        new_weights = np.sum(
+            voronoi_set_centers * intermediate_calculation,
+            axis=1,
+        ) / np.sum(intermediate_calculation, axis=1)
 
         # Step 5
         new_weights_dict = dict(zip(self.neurons_, new_weights))
@@ -968,9 +814,12 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
 
     def _add_node_to_graph(self, node: tuple[int, int], weight: np.ndarray) -> None:
         self.som_.add_node(node)
-        self.som_.nodes[node]["weight"] = weight
-        self.som_.nodes[node]["error"] = 0
-        self.som_.nodes[node]["epoch_created"] = self._current_epoch
+        attributes = {
+            "weight": weight,
+            "error": 0,
+            "epoch_created": self._current_epoch,
+        }
+        self.som_.nodes[node].update(attributes)
         self._add_new_connections(node)
 
     def _add_new_connections(self, node: tuple[int, int]) -> None:
@@ -1015,16 +864,11 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
             elif self.decay_function == "exponential":
                 decay_function = exponential_decay
 
-            else:
-                raise ValueError(
-                    "Decay function not supported. Must be 'linear' or 'exponential'."
-                )
-
             sigma = decay_function(
                 sigma_end=sigma_end,
                 sigma_start=sigma_start,
-                max_iter=self.max_iter,
-                current_iter=1 / self.coarse_training_frac * epoch,
+                max_iter=self.n_iter,
+                current_iter=epoch / self.coarse_training_frac,
                 learning_rate=self.learning_rate,
             )
         else:
