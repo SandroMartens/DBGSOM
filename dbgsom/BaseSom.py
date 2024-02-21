@@ -48,7 +48,7 @@ class BaseSom(BaseEstimator):
 
         0 means no growth, 1 means unlimited growth
 
-    max_iter : int, default = 200
+    n_iter : int, default = 200
         Maximum Number of training epochs.
 
     convergence_iter : int, default = 1
@@ -143,7 +143,7 @@ class BaseSom(BaseEstimator):
 
     def __init__(
         self,
-        max_iter: int = 200,
+        n_iter: int = 200,
         convergence_iter: int = 1,
         spreading_factor: float = 0.5,
         sigma_start: float | None = None,
@@ -163,7 +163,7 @@ class BaseSom(BaseEstimator):
         n_jobs: int = 1,
     ) -> None:
         self.spreading_factor = spreading_factor
-        self.max_iter = max_iter
+        self.n_iter = n_iter
         self.convergence_iter = convergence_iter
         self.sigma_start = sigma_start
         self.sigma_end = sigma_end
@@ -492,12 +492,12 @@ class BaseSom(BaseEstimator):
     def _grow(self, data: npt.NDArray, y) -> None:
         """Second training phase"""
         for current_epoch in tqdm(
-            iterable=range(self.max_iter),
+            iterable=range(self.n_iter),
             disable=not self.verbose,
             unit=" epochs",
         ):
             self._current_epoch = current_epoch
-            if current_epoch > self.coarse_training_frac * self.max_iter:
+            if current_epoch > self.coarse_training_frac * self.n_iter:
                 self._training_phase = "fine"
             self.weights_ = self._extract_values_from_graph("weight")
             # check if new neurons were inserted
@@ -968,7 +968,7 @@ class BaseSom(BaseEstimator):
             sigma = decay_function(
                 sigma_end=sigma_end,
                 sigma_start=sigma_start,
-                max_iter=self.max_iter,
+                max_iter=self.n_iter,
                 current_iter=epoch / self.coarse_training_frac,
                 learning_rate=self.learning_rate,
             )
