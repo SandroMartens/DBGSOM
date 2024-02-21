@@ -200,7 +200,7 @@ class BaseSom(BaseEstimator):
         # Horizontal growing phase
 
         X, y = self._prepare_inputs(X, y)
-        self._set_sigma()
+        self._check_arguments()
         self.random_state_ = check_random_state(self.random_state)
         self._initialization(X)
         self._grow(X, y)
@@ -223,9 +223,20 @@ class BaseSom(BaseEstimator):
 
     def _prepare_inputs(self, X, y):
         raise NotImplementedError
-    
-    def _set_sigma(self):
 
+    def _check_arguments(self):
+        if self.decay_function not in ["linear", "exponential"]:
+            raise ValueError(
+                "Decay function not supported. Must be 'linear' or 'exponential'."
+            )
+        if self.threshold_method not in ["se", "classical"]:
+            raise ValueError(
+                "threshold_method not supported. Must be 'se' or 'classical'."
+            )
+        if self.growth_criterion not in ["quantization_error", "entropy"]:
+            raise ValueError(
+                "growth_criterion not supported. Must be 'quantization_error' or 'entropy'."
+            )
 
     def _grow_vertical(self, X: npt.ArrayLike, y: None | npt.ArrayLike = None) -> None:
         """
@@ -982,11 +993,6 @@ class BaseSom(BaseEstimator):
 
             elif self.decay_function == "exponential":
                 decay_function = exponential_decay
-
-            else:
-                raise ValueError(
-                    "Decay function not supported. Must be 'linear' or 'exponential'."
-                )
 
             sigma = decay_function(
                 sigma_end=sigma_end,
