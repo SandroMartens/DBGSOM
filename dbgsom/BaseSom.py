@@ -322,45 +322,45 @@ class BaseSom(BaseEstimator):
     def _predict(self, X):
         raise NotImplementedError
 
-        # def predict_proba(self, X: npt.ArrayLike) -> np.ndarray:
-        #     """Predict the probability of each class and each sample.
+    def predict_proba(self, X: npt.ArrayLike) -> np.ndarray:
+        """Predict the probability of each class and each sample.
 
-        #     Parameters
-        #     ----------
-        #     X : {array-like, sparse matrix} of shape (n_samples, n_features)
-        #         New data to predict.
+        Parameters
+        ----------
+        X : {array-like, sparse matrix} of shape (n_samples, n_features)
+            New data to predict.
 
-        #     Returns
-        #     -------
-        #     Probabilities: array of shape (n_samples, n_classes)
+        Returns
+        -------
+        Probabilities: array of shape (n_samples, n_classes)
 
-        #     Returns the probability of the sample for each class in the model, where
-        #     classes are ordered as they are in self.classes_.
-        #     """
-        #     # check_is_fitted(self, attributes="_y_is_fitted")
-        #     check_is_fitted(self)
-        #     X = check_array(X)
-        #     # if self.vertical_growth:
-        #     winners = self._get_winning_neurons(X, n_bmu=1)
-        #     probabilities_rows = []
-        #     for sample, winner in zip(X, winners):
-        #         node = self.neurons_[winner]
-        #         if "som" not in self.som_.nodes:
-        #             probabilities_sample = self.som_.nodes[node]["probabilities"]
-        #         else:
-        #             probabilities_sample = self.som_.nodes[node]["som"].predict_proba(
-        #                 sample
-        #             )
+        Returns the probability of the sample for each class in the model, where
+        classes are ordered as they are in self.classes_.
+        """
+        # check_is_fitted(self, attributes="_y_is_fitted")
+        check_is_fitted(self)
+        X = check_array(X)
+        if self.vertical_growth:
+            winners = self._get_winning_neurons(X, n_bmu=1)
+            probabilities_rows = []
+            for sample, winner in zip(X, winners):
+                node = self.neurons_[winner]
+                if "som" not in self.som_.nodes:
+                    probabilities_sample = self.som_.nodes[node]["probabilities"]
+                else:
+                    probabilities_sample = self.som_.nodes[node]["som"].predict_proba(
+                        sample
+                    )
 
-        #         probabilities_rows.append(probabilities_sample)
+                probabilities_rows.append(probabilities_sample)
 
-        #     probabilities = np.array(probabilities_rows)
+            probabilities = np.array(probabilities_rows)
 
-        # else:
-        #     X_transformed = self.transform(X)
-        #     probabilities = (
-        #         X_transformed @ self._extract_values_from_graph("probabilities") / 50
-        #     )
+        else:
+            X_transformed = self.transform(X)
+            probabilities = (
+                X_transformed @ self._extract_values_from_graph("probabilities") / 50
+            )
 
         return probabilities
 

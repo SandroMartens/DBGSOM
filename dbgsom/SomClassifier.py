@@ -44,3 +44,7 @@ class SomClassifier(BaseSom, TransformerMixin, ClassifierMixin):
                 self.som_.nodes[neuron]["probabilities"][class_id] = (
                     count / hit_count if hit_count > 0 else 1
                 )
+
+    def predict(self, X: npt.ArrayLike) -> np.ndarray:
+        labels = np.argmax(self.predict_proba(X=X), axis=1)
+        return labels
