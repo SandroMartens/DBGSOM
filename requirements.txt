@@ -6,3 +6,4 @@ numpydoc
 seaborn
 pandas
 numba
+typing-extensions
