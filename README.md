@@ -30,15 +30,19 @@ pip install DBGSOM
 
 ## Usage
 
-dbgsom implements the scikit-learn API.
+dbgsom implements the scikit-learn API. We have the SomClassifier and SomVQ for classification and clustering/vector quantization.
 
 ```Python
-from dbgsom import DBGSOM
+from dbgsom import SomVQ, SomClassifier
+from sklearn.datasets import load_digits
 
-quantizer = DBGSOM()
-quantizer.fit(X=data_train)
-labels_train = quantizer.labels_
-labels_test = quantizer.predict(X=data_test)
+digits_X, digits_y = load_digits(return_X_y=True)
+
+quantizer = SomVQ()
+classifier = SomClassifier()
+
+quantizer.fit_predict(X=digits_X)
+classifier.fit_predict(X=digits_X, y=digits_y)
 
 ```
 
