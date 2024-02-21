@@ -1,14 +1,14 @@
 API Reference 
 =============
 
-DBGSOM
-------
+Clustering
+---------
 
-.. autoclass:: dbgsom.dbgsom_.DBGSOM
+.. autoclass:: dbgsom.SomVQ.SomVQ
     :members:
 
-.. autoclass:: dbgsom.SomVQ
-    :members:
+Classifier
+----------
 
 .. autoclass:: dbgsom.SomClassifier.SomClassifier
     :members:

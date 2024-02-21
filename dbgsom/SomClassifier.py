@@ -19,6 +19,8 @@ from dbgsom.BaseSom import BaseSom
 class SomClassifier(BaseSom, TransformerMixin, ClassifierMixin):
     """A Directed Batch Growing Self-Organizing Map.
 
+    This class implements the classification functionality of the SOM.
+
     Parameters
     ----------
     spreading_factor : float, default = 0.5

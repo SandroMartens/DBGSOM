@@ -11,6 +11,8 @@ from .BaseSom import BaseSom
 class SomVQ(BaseSom, ClusterMixin, TransformerMixin):
     """A Directed Batch Growing Self-Organizing Map.
 
+    This class implements the vector quantization/clustering functionality of the SOM.
+
     Parameters
     ----------
     spreading_factor : float, default = 0.5
