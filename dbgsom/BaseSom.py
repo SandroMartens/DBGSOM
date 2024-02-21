@@ -326,7 +326,7 @@ class BaseSom(BaseEstimator):
     def _extract_values_from_graph(self, attribute: str) -> np.ndarray:
         """Return an array of shape (n_nodes, 1) with some given attribute of the
         nodes."""
-        return np.array(list(dict(self.som_.nodes.data(attribute)).values()))
+        return np.array([data[attribute] for _, data in self.som_.nodes.data()])
 
     def transform(self, X: npt.ArrayLike, y=None) -> np.ndarray:
         """Calculate a non negative least squares mixture model of prototypes that
