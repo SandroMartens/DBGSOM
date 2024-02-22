@@ -20,7 +20,7 @@ class SomVQ(BaseSom, ClusterMixin, TransformerMixin):
 
         0 < spreading_factor < 1.
 
-        0 means no growth, 1 means unlimited growth
+        0 means no growth, 1 means unlimited growth.
 
     n_iter : int, default = 200
         Maximum Number of training epochs.
@@ -100,17 +100,17 @@ class SomVQ(BaseSom, ClusterMixin, TransformerMixin):
         Labels of each point.
 
     som_ : NetworkX.graph
-        Graph object containing the neurons with attributes
+        Graph object containing the neurons with attributes.
 
     weights_ : ndarray of shape (n_prototypes, n_features)
         Learned weights of the neurons
 
     topographic_error_ : float
         Fraction of training samples where the first and second best matching
-        prototype are not neighbors on the SOM
+        prototype are not neighbors on the SOM.
 
     quantization_error_ : float
-        Average distance from all training samples to their nearest prototypes
+        Average distance from all training samples to their nearest prototype.
     """
 
     def _prepare_inputs(self, X: npt.ArrayLike, y=None) -> tuple[npt.NDArray, None]:

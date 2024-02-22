@@ -84,7 +84,7 @@ class BaseSom(BaseEstimator):
             Training data.
 
         y : array_like of shape (n_samples), optional
-            Class labels of the samples
+            Class labels of the samples.
 
         Returns
         -------
@@ -94,6 +94,9 @@ class BaseSom(BaseEstimator):
         # Horizontal growing phase
 
         X, y = self._prepare_inputs(X, y)
+        if y is not None:
+            classes, y = np.unique(y, return_inverse=True)
+            self.classes_ = np.array(classes)
         self._check_arguments()
         self.random_state_ = check_random_state(self.random_state)
         self._initialization(X)
@@ -122,6 +125,9 @@ class BaseSom(BaseEstimator):
 
     def _fit(self, X, y):
         pass
+
+    def predict(self, X):
+        raise NotImplementedError
 
     def _check_arguments(self):
         if self.decay_function not in ["linear", "exponential"]:
@@ -227,7 +233,7 @@ class BaseSom(BaseEstimator):
         Parameters
         ----------
         X : {array-like, sparse matrix} of shape (n_samples, n_features)
-            Data to transform
+            Data to transform.
 
         y : Ignored.
             Not used, present here for API consistency by convention.
@@ -948,7 +954,8 @@ def numba_voronoi_set_centers(winners: npt.NDArray, data: npt.NDArray, shape: tu
         shape (tuple): A tuple specifying the shape of the output array, which is the number of neurons by the number of features.
 
     Returns:
-        numpy.ndarray: An array of shape `shape` containing the calculated centers of the Voronoi regions. Each row represents the center of a Voronoi region, corresponding to a neuron in the SOM.
+        numpy.ndarray: An array of shape `shape` containing the calculated centers of the Voronoi regions.
+        Each row represents the center of a Voronoi region, corresponding to a neuron in the SOM.
     """
     voronoi_set_centers_sum = np.zeros(shape=shape)
     center_counts = np.zeros(shape=(shape[0],))

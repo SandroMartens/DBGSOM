@@ -111,22 +111,20 @@ class SomClassifier(BaseSom, TransformerMixin, ClassifierMixin):
         Graph object containing the neurons with attributes
 
     weights_ : ndarray of shape (n_prototypes, n_features)
-        Learned weights of the neurons
+        Learned weights of the neurons.
 
     topographic_error_ : float
         Fraction of training samples where the first and second best matching
-        prototype are not neighbors on the SOM
+        prototype are not neighbors on the SOM.
 
     quantization_error_ : float
-        Average distance from all training samples to their nearest prototypes
+        Average distance from all training samples to their nearest prototypes.
     """
 
     def _prepare_inputs(
         self, X: npt.ArrayLike, y=npt.ArrayLike
     ) -> tuple[npt.NDArray, npt.ArrayLike]:
         X, y = check_X_y(X=X, y=y, ensure_min_samples=4, dtype=[np.float64, np.float32])
-        classes, y = np.unique(y, return_inverse=True)
-        self.classes_ = np.array(classes)
         return X, y
 
     def _label_prototypes(self, X, y) -> None:
@@ -156,7 +154,7 @@ class SomClassifier(BaseSom, TransformerMixin, ClassifierMixin):
         self.classes_, y = np.unique(y, return_inverse=True)
 
     def predict(self, X: npt.ArrayLike) -> np.ndarray:
-        """Predict the closest neuron each sample in X belongs to.
+        """Predict class labels for samples in X.
 
         Parameters
         ----------
@@ -166,7 +164,7 @@ class SomClassifier(BaseSom, TransformerMixin, ClassifierMixin):
         Returns
         -------
         labels : ndarray of shape (n_samples,)
-            Predict class labels for samples in X.
+            Predicted class labels for samples in X.
         """
 
         check_is_fitted(self)
