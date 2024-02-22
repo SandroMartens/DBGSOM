@@ -113,7 +113,7 @@ class SomVQ(BaseSom, ClusterMixin, TransformerMixin):
         Average distance from all training samples to their nearest prototype.
     """
 
-    def _prepare_inputs(self, X: npt.ArrayLike, y=None) -> tuple[npt.NDArray, None]:
+    def _check_input_data(self, X: npt.ArrayLike, y=None) -> tuple[npt.NDArray, None]:
         X = check_array(array=X, ensure_min_samples=4, dtype=[np.float64, np.float32])
         return X, y
 

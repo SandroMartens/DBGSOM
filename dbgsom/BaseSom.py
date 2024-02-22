@@ -93,7 +93,8 @@ class BaseSom(BaseEstimator):
         """
         # Horizontal growing phase
 
-        X, y = self._prepare_inputs(X, y)
+        X, y = self._check_input_data(X, y)
+        # self._fit(X, y)
         if y is not None:
             classes, y = np.unique(y, return_inverse=True)
             self.classes_ = np.array(classes)
@@ -116,15 +117,10 @@ class BaseSom(BaseEstimator):
         self.labels_ = self.predict(X)
         self.n_iter_ = self._current_epoch
 
-        self._fit(X, y)
-
         return self
 
-    def _prepare_inputs(self, X, y):
+    def _check_input_data(self, X, y):
         raise NotImplementedError
-
-    def _fit(self, X, y):
-        pass
 
     def predict(self, X):
         raise NotImplementedError
@@ -921,9 +917,8 @@ def linear_decay(
     learning_rate=None,
 ) -> float:
     """Linear decay between sigma_start and sigma_end over t training iterations."""
-    sigma = sigma_start * (1 - current_iter / max_iter) + sigma_end * (
-        current_iter / max_iter
-    )
+    ratio = current_iter / max_iter
+    sigma = sigma_start * (1 - ratio) + sigma_end * ratio
 
     return sigma
 

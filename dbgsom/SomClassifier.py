@@ -12,7 +12,6 @@ from sklearn.base import (
     check_is_fitted,
     check_X_y,
 )
-
 from dbgsom.BaseSom import BaseSom
 
 
@@ -121,7 +120,7 @@ class SomClassifier(BaseSom, TransformerMixin, ClassifierMixin):
         Average distance from all training samples to their nearest prototypes.
     """
 
-    def _prepare_inputs(
+    def _check_input_data(
         self, X: npt.ArrayLike, y=npt.ArrayLike
     ) -> tuple[npt.NDArray, npt.ArrayLike]:
         X, y = check_X_y(X=X, y=y, ensure_min_samples=4, dtype=[np.float64, np.float32])
@@ -151,7 +150,8 @@ class SomClassifier(BaseSom, TransformerMixin, ClassifierMixin):
                 )
 
     def _fit(self, X: npt.ArrayLike, y: None | npt.ArrayLike = None):
-        self.classes_, y = np.unique(y, return_inverse=True)
+        classes, y = np.unique(y, return_inverse=True)
+        self.classes_ = classes
 
     def predict(self, X: npt.ArrayLike) -> np.ndarray:
         """Predict class labels for samples in X.
@@ -208,6 +208,10 @@ class SomClassifier(BaseSom, TransformerMixin, ClassifierMixin):
         else:
             X_transformed = self.transform(X)
             node_probabilities = self._extract_values_from_graph("probabilities")
-            sample_probabilities = X_transformed @ node_probabilities
+            # Sample Probabilities do not sum to 1
+            sample_probabilities_unnormalized = X_transformed @ node_probabilities
+            sample_probabilities = sample_probabilities_unnormalized / (
+                sample_probabilities_unnormalized.sum(axis=1)[np.newaxis].T
+            )
 
         return sample_probabilities
