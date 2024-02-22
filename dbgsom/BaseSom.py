@@ -214,12 +214,15 @@ class BaseSom(BaseEstimator):
     def _remove_dead_neurons(self, X: npt.ArrayLike) -> None:
         """Delete all neurons which represent zero samples from the training set."""
         som_copy = copy.deepcopy(self.som_)
-        for node in self.som_.nodes:
-            if self.som_.nodes[node]["hit_count"] == 0:
-                som_copy.remove_node(node)
+        dead_neurons = [
+            node for node in self.som_.nodes if self.som_.nodes[node]["hit_count"] == 0
+        ]
+        for node in dead_neurons:
+            som_copy.remove_node(node)
         self.som_ = som_copy
 
         self.neurons_ = list(self.som_.nodes)
+        self.weights_ = self._extract_values_from_graph("weight")
 
     def _extract_values_from_graph(self, attribute: str) -> np.ndarray:
         """Return an array of shape (n_nodes, 1) with some given attribute of the
