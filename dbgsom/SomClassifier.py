@@ -203,12 +203,11 @@ class SomClassifier(BaseSom, TransformerMixin, ClassifierMixin):
 
                 probabilities_rows.append(probabilities_sample)
 
-            probabilities = np.array(probabilities_rows)
+            sample_probabilities = np.array(probabilities_rows)
 
         else:
             X_transformed = self.transform(X)
-            probabilities = (
-                X_transformed @ self._extract_values_from_graph("probabilities") / 50
-            )
+            node_probabilities = self._extract_values_from_graph("probabilities")
+            sample_probabilities = X_transformed @ node_probabilities
 
-        return probabilities
+        return sample_probabilities
