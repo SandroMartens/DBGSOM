@@ -215,29 +215,6 @@ class BaseSom(BaseEstimator):
 
         self.neurons_ = list(self.som_.nodes)
 
-    def predict(self, X: npt.ArrayLike) -> np.ndarray:
-        """Predict the closest neuron each sample in X belongs to.
-
-        Parameters
-        ----------
-        X : {array-like, sparse matrix} of shape (n_samples, n_features)
-            New data to predict.
-
-        Returns
-        -------
-        labels : ndarray of shape (n_samples,)
-            If fitted unsupervised: Index of best matching prototype.
-
-            If fitted supervised: Label of the predicted class.
-        """
-        check_is_fitted(self)
-        X = check_array(X)
-        id = self._predict(X)
-        return id
-
-    def _predict(self, X):
-        raise NotImplementedError
-
     def _extract_values_from_graph(self, attribute: str) -> np.ndarray:
         """Return an array of shape (n_nodes, 1) with some given attribute of the
         nodes."""

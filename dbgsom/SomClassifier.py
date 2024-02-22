@@ -155,7 +155,22 @@ class SomClassifier(BaseSom, TransformerMixin, ClassifierMixin):
     def _fit(self, X: npt.ArrayLike, y: None | npt.ArrayLike = None):
         self.classes_, y = np.unique(y, return_inverse=True)
 
-    def _predict(self, X: npt.ArrayLike) -> np.ndarray:
+    def predict(self, X: npt.ArrayLike) -> np.ndarray:
+        """Predict the closest neuron each sample in X belongs to.
+
+        Parameters
+        ----------
+        X : {array-like, sparse matrix} of shape (n_samples, n_features)
+            New data to predict.
+
+        Returns
+        -------
+        labels : ndarray of shape (n_samples,)
+            Predict class labels for samples in X.
+        """
+
+        check_is_fitted(self)
+        X = check_array(X)
         labels = np.argmax(self.predict_proba(X=X), axis=1)
         return self.classes_[labels]
 
