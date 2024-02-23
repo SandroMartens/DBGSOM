@@ -4,12 +4,11 @@ This class handles the core SOM functionality.
 
 import copy
 import sys
-from math import log
+from math import exp, log
 from typing import Any
 
+# from line_profiler import profile
 from typing_extensions import Self
-
-from line_profiler import profile
 
 # from matplotlib import pyplot as plt
 # import matplotlib
@@ -933,18 +932,16 @@ def exponential_decay(
     learning_rate: float,
 ) -> float:
     """Exponential decay between sigma_start and sigma_end with a given learning rate."""
-    sigma = sigma_end + (sigma_start - sigma_end) * np.exp(
-        -learning_rate * current_iter
-    )
+    sigma = sigma_end + (sigma_start - sigma_end) * exp(-learning_rate * current_iter)
 
     return sigma
 
 
-# @nb.njit(
-#     # parallel=True,
-#     fastmath=True
-# )
-@profile
+@nb.njit(
+    # parallel=True,
+    fastmath=True
+)
+# @profile
 def numba_voronoi_set_centers(winners: npt.NDArray, data: npt.NDArray, shape: tuple):
     """
     Calculates the centers of the Voronoi regions based on the winners and data arrays.
@@ -971,9 +968,10 @@ def numba_voronoi_set_centers(winners: npt.NDArray, data: npt.NDArray, shape: tu
     return voronoi_set_centers
 
 
-@nb.njit(fastmath=True, 
-        #  parallel=True,
-    )
+@nb.njit(
+    fastmath=True,
+    #  parallel=True,
+)
 def numba_quantization_error(
     data: npt.NDArray, winners: npt.NDArray, length, weights: npt.NDArray
 ):
