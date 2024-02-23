@@ -12,7 +12,7 @@ from sklearn.base import (
     check_is_fitted,
     check_X_y,
 )
-from dbgsom.BaseSom import BaseSom
+from .BaseSom import BaseSom
 
 
 class SomClassifier(BaseSom, TransformerMixin, ClassifierMixin):
@@ -206,12 +206,13 @@ class SomClassifier(BaseSom, TransformerMixin, ClassifierMixin):
             sample_probabilities = np.array(probabilities_rows)
 
         else:
-            X_transformed = self.transform(X)
-            node_probabilities = self._extract_values_from_graph("probabilities")
-            # Sample Probabilities do not sum to 1
-            sample_probabilities_unnormalized = X_transformed @ node_probabilities
-            sample_probabilities = sample_probabilities_unnormalized / (
-                sample_probabilities_unnormalized.sum(axis=1)[np.newaxis].T
-            )
+            pass
+            # X_transformed = self.transform(X)
+            # node_probabilities = self._extract_values_from_graph("probabilities")
+            # # Sample Probabilities do not sum to 1
+            # sample_probabilities_unnormalized = X_transformed @ node_probabilities
+            # sample_probabilities = sample_probabilities_unnormalized / (
+            #     sample_probabilities_unnormalized.sum(axis=1)[np.newaxis].T
+            # )
 
         return sample_probabilities

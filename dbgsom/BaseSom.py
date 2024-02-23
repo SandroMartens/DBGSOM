@@ -9,6 +9,8 @@ from typing import Any
 
 from typing_extensions import Self
 
+from line_profiler import profile
+
 # from matplotlib import pyplot as plt
 # import matplotlib
 
@@ -938,10 +940,11 @@ def exponential_decay(
     return sigma
 
 
-@nb.njit(
-    # parallel=True,
-    fastmath=True
-)
+# @nb.njit(
+#     # parallel=True,
+#     fastmath=True
+# )
+@profile
 def numba_voronoi_set_centers(winners: npt.NDArray, data: npt.NDArray, shape: tuple):
     """
     Calculates the centers of the Voronoi regions based on the winners and data arrays.
@@ -968,7 +971,9 @@ def numba_voronoi_set_centers(winners: npt.NDArray, data: npt.NDArray, shape: tu
     return voronoi_set_centers
 
 
-@nb.njit(fastmath=True)
+@nb.njit(fastmath=True, 
+        #  parallel=True,
+    )
 def numba_quantization_error(
     data: npt.NDArray, winners: npt.NDArray, length, weights: npt.NDArray
 ):
