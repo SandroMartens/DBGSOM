@@ -3,6 +3,7 @@
 ![readthedocs](https://img.shields.io/readthedocs/dbgsom)
 ![AppVeyor](https://img.shields.io/appveyor/build/SandroMartens/DBGSOM?label=Appveyor)
 [![Python package](https://github.com/SandroMartens/DBGSOM/actions/workflows/python-package.yml/badge.svg)](https://github.com/SandroMartens/DBGSOM/actions/workflows/python-package.yml)
+[![Upload Python Package](https://github.com/SandroMartens/DBGSOM/actions/workflows/python-publish.yml/badge.svg)](https://github.com/SandroMartens/DBGSOM/actions/workflows/python-publish.yml)
 
 # DBGSOM
 
