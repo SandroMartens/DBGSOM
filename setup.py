@@ -4,7 +4,7 @@ with open("README.md", "r") as f:
     long_description = f.read()
 
 setup(
-    name="DBGSOM",
+    name="dbgsom",
     version="1.1.0",
     description="A Python implementation of the Directed Batch Growing Self-Organizing Map.",
     long_description=long_description,
