@@ -6,12 +6,12 @@ with open("README.md", "r") as f:
 setup(
     name="DBGSOM",
     version="1.1.0",
-    description="A directed batch growing approach to enhance the topology preservation of self-organizing maps ",
+    description="A Python implementation of the Directed Batch Growing Self-Organizing Map.",
     long_description=long_description,
     author="Sandro Martens",
     author_email="sandro.martens@web.de",
     license="MIT",
-    packages=["DBGSOM"],
+    packages=["dbgsom"],
     install_requires=[
         "numpy",
         "networkx",
@@ -21,4 +21,5 @@ setup(
         "scikit-learn",
         "numpydoc",
     ],
+    url="https://github.com/SandroMartens/DBGSOM"
 )
