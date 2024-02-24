@@ -8,7 +8,6 @@ from math import exp, log
 from typing import Any
 
 # from line_profiler import profile
-from typing_extensions import Self
 
 # from matplotlib import pyplot as plt
 # import matplotlib
@@ -115,7 +114,7 @@ class BaseSom(BaseEstimator):
         if self.vertical_growth:
             self._grow_vertical(X, y)
 
-        self.labels_ = self.predict(X)
+        # self.labels_ = self.predict(X)
         self.n_iter_ = self._current_epoch
 
         return self
@@ -465,10 +464,6 @@ class BaseSom(BaseEstimator):
         # see https://stackoverflow.com/questions/75423927/what-is-the-fastest-way
         # -to-select-multiple-elements-from-a-numpy-array/75424204#75424204
 
-        # new numba
-        # voronoi_set_centers = numba_voronoi_set_centers(
-        #     winners=winners, data=data, shape=self.weights_.shape
-        # )
         index = np.argsort(winners)
         groups, offsets = np.unique(winners[index], return_index=True)
         voronoi_set_centers = numba_voronoi_set_centers(
@@ -950,15 +945,6 @@ def exponential_decay(
 def numba_voronoi_set_centers(data: npt.NDArray, shape: tuple, groups, offsets, index):
     """
     Calculates the centers of the Voronoi regions based on the winners and data arrays.
-
-    Args:
-        winners (numpy.ndarray): An array of integers representing the winning neuron index for each sample.
-        data (numpy.ndarray): An array of shape (n_samples, n_features) containing the input data.
-        shape (tuple): A tuple specifying the shape of the output array, which is the number of neurons by the number of features.
-
-    Returns:
-        numpy.ndarray: An array of shape `shape` containing the calculated centers of the Voronoi regions.
-        Each row represents the center of a Voronoi region, corresponding to a neuron in the SOM.
     """
 
     voronoi_set_centers = np.zeros(shape=shape)
@@ -968,9 +954,8 @@ def numba_voronoi_set_centers(data: npt.NDArray, shape: tuple, groups, offsets, 
         group_index = index[group_start:group_end]
         samples = data[group_index]
         for j in nb.prange(samples.shape[1]):
-            voronoi_set_centers[i, j] = (
-                samples[:, j].mean() if samples[:, j].sum() > 0 else 0
-            )
+            mean_samples = samples[:, j].mean()
+            voronoi_set_centers[i, j] = mean_samples if mean_samples > 0 else 0
 
     return voronoi_set_centers
 
