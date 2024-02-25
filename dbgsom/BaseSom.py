@@ -363,7 +363,7 @@ class BaseSom(BaseEstimator):
                 growing_threshold = (
                     150
                     * -log(self.spreading_factor)
-                    * np.sqrt(np.sum(np.std(data, axis=0, ddof=1) ** 2))
+                    * np.linalg.norm(np.std(data, axis=0, ddof=1))
                 )
 
         return growing_threshold
@@ -434,7 +434,7 @@ class BaseSom(BaseEstimator):
         weights = self.weights_
         distances = scipy.spatial.distance.cdist(weights, data, metric=self.metric)
         if n_bmu == 1:
-            winners = np.argmin(distances, axis=0)[0]
+            winners = np.argmin(distances, axis=0)
         else:
             winners = np.argpartition(distances, kth=np.arange(n_bmu), axis=0)[:n_bmu]
 
