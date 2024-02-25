@@ -386,7 +386,7 @@ class BaseSom(BaseEstimator):
 
             distances, winners = self._get_winning_neurons(data, n_bmu=1)
             self._update_weights(winners, data)
-            self._write_accumulative_error(winners, data, y)
+            self._write_accumulative_error(winners, data, y, distances)
             if self.converged_ and self._training_phase == "fine":
                 break
 
@@ -436,12 +436,11 @@ class BaseSom(BaseEstimator):
         # todo: fix for 2 bmu
         weights = self.weights_
         if n_bmu == 1:
-            nn_tree = NearestNeighbors(n_neighbors=2)
+            nn_tree = NearestNeighbors(n_neighbors=n_bmu)
             nn_tree.fit(weights)
             result = nn_tree.kneighbors(data)
-            # winners1 = nn_tree.kneighbors(data)[1][:, :n_bmu].T[0]
             distances = result[0]
-            winners = result[1][:, :n_bmu].T[0]
+            winners = result[1].T[0]
         else:
             distances = scipy.spatial.distance.cdist(weights, data, metric=self.metric)
             winners = np.argpartition(distances, kth=np.arange(n_bmu), axis=0)[:n_bmu]
@@ -514,7 +513,7 @@ class BaseSom(BaseEstimator):
 
     @profile
     def _write_accumulative_error(
-        self, winners: np.ndarray, data: npt.NDArray, y
+        self, winners: np.ndarray, data: npt.NDArray, y, distances: np.ndarray
     ) -> None:
         """Get the quantization error for each neuron
         and save it as "error" attribute of each node.
@@ -527,7 +526,9 @@ class BaseSom(BaseEstimator):
 
         else:
             errors = numba_quantization_error(
-                data, winners, length=self.weights_.shape[0], weights=self.weights_
+                winners,
+                length=self.weights_.shape[0],
+                distances=distances,
             )
             for i, error in enumerate(errors):
                 neuron = self.neurons_[i]
@@ -883,8 +884,8 @@ class BaseSom(BaseEstimator):
         """
         check_is_fitted(self)
         X = check_array(X)
-        distances, winners = self._get_winning_neurons(X, n_bmu=1)
-        error = np.mean(np.linalg.norm(self.weights_[winners] - X, axis=1))
+        distances, _ = self._get_winning_neurons(X, n_bmu=1)
+        error = np.mean(np.linalg.norm(distances, axis=1))
         return error
 
     def _calculate_topographic_error(self, X: npt.ArrayLike) -> float:
@@ -965,13 +966,11 @@ def numba_voronoi_set_centers(data: npt.NDArray, shape: tuple, groups, offsets, 
     return voronoi_set_centers
 
 
-@nb.njit(
-    fastmath=True,
-    parallel=True,
-)
-def numba_quantization_error(
-    data: npt.NDArray, winners: npt.NDArray, length, weights: npt.NDArray
-):
+# @nb.njit(
+#     fastmath=True,
+#     parallel=True,
+# )
+def numba_quantization_error(winners: npt.NDArray, length, distances):
     """
     Calculates the quantization error for each neuron in the self-organizing map (SOM)
     based on the distances between the neuron's weight vector and the input samples.
@@ -991,8 +990,8 @@ def numba_quantization_error(
     """
     errors = np.zeros(shape=length)
     for i in nb.prange(len(winners)):
-        sample = data[i]
+        # sample = data[i]
         winner = winners[i]
-        distance = np.linalg.norm(weights[winner] - sample)
+        distance = distances[i]
         errors[winner] += distance
     return errors
