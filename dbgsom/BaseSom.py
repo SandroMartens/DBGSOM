@@ -561,11 +561,13 @@ class BaseSom(BaseEstimator):
         the growing threshold. Begin with the neuron with the largest
         error.
         """
-        sorted_indices = np.flip(np.argsort(self._extract_values_from_graph("error")))
+        error_values = self._extract_values_from_graph("error")
+        sorted_indices = np.flip(np.argsort(error_values))
+
         for i in sorted_indices:
-            node = list(dict(self.som_.nodes))[i]
+            node = list(self.som_.nodes)[i]
             node_degree = nx.degree(self.som_, node)
-            if self.som_.nodes[node]["error"] > self.growing_threshold_:
+            if error_values[i] > self.growing_threshold_ and node_degree < 4:
                 if node_degree == 1:
                     new_node, new_weight = self._insert_neuron_3p(node)
                 elif node_degree == 2:
