@@ -22,7 +22,7 @@ try:
     import seaborn.objects as so
     from sklearn.base import BaseEstimator, clone
     from sklearn.decomposition import SparseCoder
-    from sklearn.metrics import pairwise_distances
+    from sklearn.neighbors import NearestNeighbors
     from sklearn.preprocessing import normalize
     from sklearn.utils import check_array, check_random_state
     from sklearn.utils.validation import check_is_fitted
@@ -431,11 +431,14 @@ class BaseSom(BaseEstimator):
         Return index of winning neuron or best matching units(s) for each
         sample.
         """
+        # todo: fix for 2 bmu
         weights = self.weights_
-        distances = scipy.spatial.distance.cdist(weights, data, metric=self.metric)
         if n_bmu == 1:
-            winners = np.argmin(distances, axis=0)
+            nn_tree = NearestNeighbors(n_neighbors=2)
+            nn_tree.fit(weights)
+            winners = nn_tree.kneighbors(data)[1][:, :n_bmu].T[0]
         else:
+            distances = scipy.spatial.distance.cdist(weights, data, metric=self.metric)
             winners = np.argpartition(distances, kth=np.arange(n_bmu), axis=0)[:n_bmu]
 
         return winners
