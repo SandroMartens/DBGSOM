@@ -137,6 +137,6 @@ class SomVQ(BaseSom, ClusterMixin, TransformerMixin):
         """
         check_is_fitted(self)
         X = check_array(X)
-        labels = self._get_winning_neurons(X, n_bmu=1)
+        _, labels = self._get_winning_neurons(X, n_bmu=1)
 
         return labels

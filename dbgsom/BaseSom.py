@@ -146,7 +146,7 @@ class BaseSom(BaseEstimator):
         """
 
         self.vertical_growing_threshold_ = 1.5 * self.growing_threshold_
-        winners = self._get_winning_neurons(X, n_bmu=1)
+        distances, winners = self._get_winning_neurons(X, n_bmu=1)
         relevant_nodes = [
             node
             for (node, error) in enumerate(self.som_.nodes(data="error"))
@@ -176,7 +176,7 @@ class BaseSom(BaseEstimator):
 
         3. average distance: average distance from each prototype to their neighbors.
         used for plotting the u matrix"""
-        winners = self._get_winning_neurons(X, n_bmu=1)
+        distances, winners = self._get_winning_neurons(X, n_bmu=1)
         average_distances = self._get_u_matrix()
         sigma = average_distances.mean()
         weights = self.weights_
@@ -384,7 +384,7 @@ class BaseSom(BaseEstimator):
                 self.neurons_ = list(self.som_.nodes)
                 self._distance_matrix = nx.floyd_warshall_numpy(self.som_)
 
-            winners = self._get_winning_neurons(data, n_bmu=1)
+            distances, winners = self._get_winning_neurons(data, n_bmu=1)
             self._update_weights(winners, data)
             self._write_accumulative_error(winners, data, y)
             if self.converged_ and self._training_phase == "fine":
@@ -883,7 +883,7 @@ class BaseSom(BaseEstimator):
         """
         check_is_fitted(self)
         X = check_array(X)
-        winners = self._get_winning_neurons(X, n_bmu=1)
+        distances, winners = self._get_winning_neurons(X, n_bmu=1)
         error = np.mean(np.linalg.norm(self.weights_[winners] - X, axis=1))
         return error
 
@@ -908,8 +908,10 @@ class BaseSom(BaseEstimator):
         topographic error : float
             Fraction of samples with topographic errors over all samples.
         """
-        bmu_indices = self._get_winning_neurons(X, n_bmu=2).T
-        errors = np.sum(self._distance_matrix[bmu_indices[:, 0], bmu_indices[:, 1]] > 1)
+        distances, bmu_indices = self._get_winning_neurons(X, n_bmu=2)
+        errors = np.sum(
+            self._distance_matrix[bmu_indices.T[:, 0], bmu_indices.T[:, 1]] > 1
+        )
 
         return errors / X.shape[0]
 

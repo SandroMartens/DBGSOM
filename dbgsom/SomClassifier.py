@@ -127,7 +127,7 @@ class SomClassifier(BaseSom, TransformerMixin, ClassifierMixin):
         return X, y
 
     def _label_prototypes(self, X, y) -> None:
-        winners = self._get_winning_neurons(X, n_bmu=1)
+        distances, winners = self._get_winning_neurons(X, n_bmu=1)
         for winner_index, neuron in enumerate(self.neurons_):
             labels = y[winners == winner_index]
             # dead neuron
@@ -190,7 +190,7 @@ class SomClassifier(BaseSom, TransformerMixin, ClassifierMixin):
         check_is_fitted(self)
         X = check_array(X)
         if self.vertical_growth:
-            winners = self._get_winning_neurons(X, n_bmu=1)
+            distances, winners = self._get_winning_neurons(X, n_bmu=1)
             probabilities_rows = []
             for sample, winner in zip(X, winners):
                 node = self.neurons_[winner]
