@@ -907,11 +907,7 @@ class BaseSom(BaseEstimator):
             Fraction of samples with topographic errors over all samples.
         """
         bmu_indices = self._get_winning_neurons(X, n_bmu=2).T
-        errors = 0
-        for bmu_1, bmu_2 in bmu_indices:
-            dist = self._distance_matrix[bmu_1, bmu_2]
-            if dist > 1:
-                errors += 1
+        errors = np.sum(self._distance_matrix[bmu_indices[:, 0], bmu_indices[:, 1]] > 1)
 
         return errors / X.shape[0]
 
