@@ -320,7 +320,7 @@ class BaseSom(BaseEstimator):
 
         return distances
 
-    def _calculate_rep(self, X: npt.ArrayLike):
+    def _calculate_rep(self, X: npt.ArrayLike) -> None:
         """Return the resemble entropy parameter.
 
         1. Calculate histogram of components of each sample.
@@ -350,7 +350,7 @@ class BaseSom(BaseEstimator):
         self.weights_ = self._extract_values_from_graph("weight")
         self.neurons_ = list(self.som_.nodes)
 
-    def _calculate_growing_threshold(self, data) -> float:
+    def _calculate_growing_threshold(self, data: npt.NDArray) -> float:
         if self.growth_criterion == "entropy":
             growing_threshold = self.spreading_factor
         else:
@@ -908,7 +908,7 @@ class BaseSom(BaseEstimator):
         topographic error : float
             Fraction of samples with topographic errors over all samples.
         """
-        distances, bmu_indices = self._get_winning_neurons(X, n_bmu=2)
+        _, bmu_indices = self._get_winning_neurons(X, n_bmu=2)
         errors = np.sum(
             self._distance_matrix[bmu_indices.T[:, 0], bmu_indices.T[:, 1]] > 1
         )
@@ -947,7 +947,13 @@ def exponential_decay(
     parallel=True,
     fastmath=True,
 )
-def numba_voronoi_set_centers(data: npt.NDArray, shape: tuple, groups, offsets, index):
+def numba_voronoi_set_centers(
+    data: npt.NDArray,
+    shape: tuple,
+    groups: npt.NDArray,
+    offsets: npt.NDArray,
+    index: npt.NDArray,
+) -> np.ndarray:
     """
     Calculates the centers of the Voronoi regions based on the winners and data arrays.
     """
@@ -960,7 +966,7 @@ def numba_voronoi_set_centers(data: npt.NDArray, shape: tuple, groups, offsets, 
         samples = data[group_index]
         for j in nb.prange(samples.shape[1]):
             mean_samples = samples[:, j].mean()
-            voronoi_set_centers[i, j] = mean_samples if mean_samples > 0 else 0
+            voronoi_set_centers[i, j] = np.maximum(mean_samples, 0)
 
     return voronoi_set_centers
 
