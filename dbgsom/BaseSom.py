@@ -425,7 +425,9 @@ class BaseSom(BaseEstimator):
 
         return som
 
-    def _get_winning_neurons(self, data: npt.NDArray, n_bmu: int) -> np.ndarray:
+    def _get_winning_neurons(
+        self, data: npt.NDArray, n_bmu: int
+    ) -> tuple[npt.NDArray, npt.NDArray]:
         """Calculate distances from each neuron to each sample.
 
         Return index of winning neuron or best matching units(s) for each
@@ -436,12 +438,15 @@ class BaseSom(BaseEstimator):
         if n_bmu == 1:
             nn_tree = NearestNeighbors(n_neighbors=2)
             nn_tree.fit(weights)
-            winners = nn_tree.kneighbors(data)[1][:, :n_bmu].T[0]
+            result = nn_tree.kneighbors(data)
+            # winners1 = nn_tree.kneighbors(data)[1][:, :n_bmu].T[0]
+            distances = result[0]
+            winners = result[1][:, :n_bmu].T[0]
         else:
             distances = scipy.spatial.distance.cdist(weights, data, metric=self.metric)
             winners = np.argpartition(distances, kth=np.arange(n_bmu), axis=0)[:n_bmu]
 
-        return winners
+        return distances, winners
 
     def _label_prototypes(self, X, y) -> None:
         raise NotImplementedError
