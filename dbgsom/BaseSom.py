@@ -7,7 +7,7 @@ import sys
 from math import exp, log
 from typing import Any
 
-# from line_profiler import profile
+from line_profiler import profile
 
 # from matplotlib import pyplot as plt
 # import matplotlib
@@ -447,7 +447,7 @@ class BaseSom(BaseEstimator):
     def _label_prototypes(self, X, y) -> None:
         raise NotImplementedError
 
-    # @profile
+    @profile
     def _update_weights(self, winners: np.ndarray, data: npt.NDArray) -> None:
         """Update the weight vectors according to the batch learning rule.
 
@@ -508,7 +508,7 @@ class BaseSom(BaseEstimator):
 
         return h
 
-    # @profile
+    @profile
     def _write_accumulative_error(
         self, winners: np.ndarray, data: npt.NDArray, y
     ) -> None:
@@ -941,13 +941,13 @@ def exponential_decay(
     return sigma
 
 
-@nb.njit(parallel=True, fastmath=True)
+@nb.njit(parallel=True, fastmath=True,)
 def numba_voronoi_set_centers(data: npt.NDArray, shape: tuple, groups, offsets, index):
     """
     Calculates the centers of the Voronoi regions based on the winners and data arrays.
     """
 
-    voronoi_set_centers = np.zeros(shape=shape)
+    voronoi_set_centers = np.empty(shape=shape)
     for i in nb.prange(groups.size):
         group_start = offsets[i]
         group_end = offsets[i + 1] if i + 1 < groups.size else index.size
@@ -962,7 +962,7 @@ def numba_voronoi_set_centers(data: npt.NDArray, shape: tuple, groups, offsets, 
 
 @nb.njit(
     fastmath=True,
-    #  parallel=True,
+    parallel=True,
 )
 def numba_quantization_error(
     data: npt.NDArray, winners: npt.NDArray, length, weights: npt.NDArray
@@ -985,8 +985,9 @@ def numba_quantization_error(
         each neuron in the SOM.
     """
     errors = np.zeros(shape=length)
-    for sample, winner in zip(data, winners):
+    for i in nb.prange(len(winners)):
+        sample = data[i]
+        winner = winners[i]
         distance = np.linalg.norm(weights[winner] - sample)
         errors[winner] += distance
-
     return errors
