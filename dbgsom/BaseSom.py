@@ -141,9 +141,8 @@ class BaseSom(BaseEstimator):
 
     def _grow_vertical(self, X: npt.ArrayLike, y: None | npt.ArrayLike = None) -> None:
         """
-        Triggers vertical growth in the SOM by creating new instances of the DBGSOM class and fitting them with filtered data.
-        Modifies:
-        The som_ attribute of the DBGSOM instance by adding new SOM instances to the neurons that meet the vertical growing criteria.
+        Triggers vertical growth in the SOM by creating new instances of the DBGSOM
+        class and fitting them with filtered data.
         """
 
         self.vertical_growing_threshold_ = 1.5 * self.growing_threshold_
@@ -221,8 +220,7 @@ class BaseSom(BaseEstimator):
         self.weights_ = self._extract_values_from_graph("weight")
 
     def _extract_values_from_graph(self, attribute: str) -> np.ndarray:
-        """Return an array of shape (n_nodes, 1) with some given attribute of the
-        nodes."""
+        """Return an array with some given attribute of the nodes."""
         return np.array([data[attribute] for _, data in self.som_.nodes.data()])
 
     def transform(self, X: npt.ArrayLike, y=None) -> np.ndarray:
@@ -321,7 +319,7 @@ class BaseSom(BaseEstimator):
             axis=1
         )
 
-        return np.array(distances)
+        return distances
 
     def _calculate_rep(self, X: npt.ArrayLike):
         """Return the resemble entropy parameter.
@@ -434,13 +432,11 @@ class BaseSom(BaseEstimator):
         sample.
         """
         weights = self.weights_
-        distances = pairwise_distances(
-            X=weights, Y=data, metric=self.metric, n_jobs=self.n_jobs
-        )
+        distances = scipy.spatial.distance.cdist(weights, data, metric=self.metric)
         if n_bmu == 1:
-            winners = np.argmin(distances, axis=0)
+            winners = np.argmin(distances, axis=0)[0]
         else:
-            winners = np.argsort(distances, axis=0)[:n_bmu]
+            winners = np.argpartition(distances, kth=np.arange(n_bmu), axis=0)[:n_bmu]
 
         return winners
 
