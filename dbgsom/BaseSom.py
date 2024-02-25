@@ -516,10 +516,8 @@ class BaseSom(BaseEstimator):
         """
         if self.growth_criterion == "entropy":
             for winner_index, neuron in enumerate(self.neurons_):
-                _, counts = np.unique(y[winners == winner_index], return_counts=True)
-                total = np.sum(counts)
-                counts = counts / total
-                error = np.sum(-counts * np.log2(counts))
+                counts = np.bincount(y[winners == winner_index])
+                error = scipy.stats.entropy(counts, base=2)
                 self.som_.nodes[neuron]["error"] = error
 
         else:
