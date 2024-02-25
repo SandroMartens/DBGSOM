@@ -6,6 +6,7 @@ import copy
 import sys
 from math import exp, log
 from typing import Any
+from numbers import Integral, Real
 
 from line_profiler import profile
 
@@ -26,6 +27,7 @@ try:
     from sklearn.preprocessing import normalize
     from sklearn.utils import check_array, check_random_state
     from sklearn.utils.validation import check_is_fitted
+    from sklearn.utils._param_validation import Interval, StrOptions
     from tqdm import tqdm
 except ImportError as e:
     print(e)
@@ -75,6 +77,12 @@ class BaseSom(BaseEstimator):
         self.vertical_growth = vertical_growth
         self.n_jobs = n_jobs
 
+    _parameter_constraints = {
+        "n_iter": [Interval(Integral, 1, None, closed="left")],
+        "max_neurons": [Interval(Integral, 4, None, closed="left")],
+        "decay_function": [StrOptions({"exponential", "linear"})],
+    }
+
     def fit(self, X: npt.ArrayLike, y: None | npt.ArrayLike = None):
         """Train SOM on training data.
 
@@ -98,7 +106,7 @@ class BaseSom(BaseEstimator):
         if y is not None:
             classes, y = np.unique(y, return_inverse=True)
             self.classes_ = np.array(classes)
-        self._check_arguments()
+        # self._check_arguments()
         self.random_state_ = check_random_state(self.random_state)
         self._initialization(X)
         self._grow(X, y)
