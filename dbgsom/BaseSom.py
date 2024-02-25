@@ -532,28 +532,28 @@ class BaseSom(BaseEstimator):
                 self.som_.nodes[neuron]["error"] = error
 
     def _distribute_errors(self) -> None:
-        """For each neuron i which is not a boundary neuron and E_i > GT,
-        a half value of E_i is equally distributed to the neighboring
-        boundary neurons, if exist.
+        """
+        Distributes the error values of neurons in the SOM which are not boundary
+        neurons to their neighboring boundary neurons. This distribution is done
+        when the error value of a neuron is greater than a predefined threshold.
         """
         for node, neighbors in self.som_.adj.items():
-            if len(neighbors.items()) == 4:
-                is_boundary = False
-            else:
-                is_boundary = True
+            is_boundary = len(neighbors) != 4
             node_error = self.som_.nodes[node]["error"]
 
             if not is_boundary and node_error > self.growing_threshold_:
-                n_boundary_neighbors = 0
-                for neighbor in neighbors.keys():
-                    if len(self.som_.adj[neighbor].items()) < 4:
-                        n_boundary_neighbors += 1
+                boundary_neighbors = [
+                    neighbor
+                    for neighbor in neighbors.keys()
+                    if len(self.som_.adj[neighbor]) < 4
+                ]
+                n_boundary_neighbors = len(boundary_neighbors)
 
-                for neighbor in neighbors.keys():
-                    if len(self.som_.adj[neighbor].items()) < 4:
-                        self.som_.nodes[neighbor]["error"] += (
-                            0.5 * node_error / n_boundary_neighbors
-                        )
+                for neighbor in boundary_neighbors:
+                    self.som_.nodes[neighbor]["error"] += (
+                        0.5 * node_error / n_boundary_neighbors
+                    )
+
                 self.som_.nodes[node]["error"] /= 2
 
     def _add_new_neurons(self) -> None:
@@ -941,7 +941,10 @@ def exponential_decay(
     return sigma
 
 
-@nb.njit(parallel=True, fastmath=True,)
+@nb.njit(
+    parallel=True,
+    fastmath=True,
+)
 def numba_voronoi_set_centers(data: npt.NDArray, shape: tuple, groups, offsets, index):
     """
     Calculates the centers of the Voronoi regions based on the winners and data arrays.
