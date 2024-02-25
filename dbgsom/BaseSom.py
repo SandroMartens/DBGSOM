@@ -184,7 +184,6 @@ class BaseSom(BaseEstimator):
         hit_counts = np.zeros((len(self.neurons_)))
         for winner in np.unique(winners):
             samples = X[winners == winner]
-            distances = np.linalg.norm(samples - weights[winner], axis=1)
             if len(distances) > 0:
                 d = np.mean(
                     (np.exp(-(distances**2) / (2 * sigma**2)))
@@ -885,7 +884,7 @@ class BaseSom(BaseEstimator):
         check_is_fitted(self)
         X = check_array(X)
         distances, _ = self._get_winning_neurons(X, n_bmu=1)
-        error = np.mean(np.linalg.norm(distances, axis=1))
+        error = np.mean(distances, axis=1)
         return error
 
     def _calculate_topographic_error(self, X: npt.ArrayLike) -> float:
@@ -966,32 +965,19 @@ def numba_voronoi_set_centers(data: npt.NDArray, shape: tuple, groups, offsets, 
     return voronoi_set_centers
 
 
-# @nb.njit(
-#     fastmath=True,
-#     parallel=True,
-# )
-def numba_quantization_error(winners: npt.NDArray, length, distances):
+@nb.njit(
+    fastmath=True,
+    parallel=True,
+)
+def numba_quantization_error(
+    winners: npt.NDArray, length: int, distances: npt.NDArray
+) -> np.ndarray:
     """
-    Calculates the quantization error for each neuron in the self-organizing map (SOM)
-    based on the distances between the neuron's weight vector and the input samples.
-
-    Args:
-        data (array-like): An array-like object representing the input samples.
-        winners (array-like): An array-like object representing the index of the
-        winning neuron for each input sample.
-
-        length (int): An integer representing the length of the `errors` array.
-        weights (array-like): An array-like object representing the weight
-        vectors of the neurons in the SOM.
-
-    Returns:
-        array: An array of shape `(length,)` representing the quantization error for
-        each neuron in the SOM.
+    Calculate the quantization error for a given set of winners, distances, and length.
     """
     errors = np.zeros(shape=length)
     for i in nb.prange(len(winners)):
-        # sample = data[i]
         winner = winners[i]
         distance = distances[i]
-        errors[winner] += distance
+        errors[winner] += distance[0]
     return errors
