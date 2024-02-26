@@ -572,18 +572,19 @@ class BaseSom(BaseEstimator):
         error.
         """
         error_values = self._extract_values_from_graph("error")
-        sorted_indices = np.flip(np.argsort(error_values))
+        sorted_indices = np.argsort(-error_values)
 
         for i in sorted_indices:
             node = list(self.som_.nodes)[i]
             node_degree = nx.degree(self.som_, node)
             if error_values[i] > self.growing_threshold_ and node_degree < 4:
-                if node_degree == 1:
-                    new_node, new_weight = self._insert_neuron_3p(node)
-                elif node_degree == 2:
-                    new_node, new_weight = self._insert_neuron_2p(node)
-                elif node_degree == 3:
-                    new_node, new_weight = self._insert_neuron_1p(node)
+                degree_functions = {
+                    1: self._insert_neuron_3p,
+                    2: self._insert_neuron_2p,
+                    3: self._insert_neuron_1p,
+                }
+                if node_degree in degree_functions:
+                    new_node, new_weight = degree_functions[node_degree](node)
                 else:
                     continue
 
@@ -604,21 +605,25 @@ class BaseSom(BaseEstimator):
         """
         node_x, node_y = node
         nbrs = self.som_.adj[node]
-        for p1_candidate in [
+        possible_positions = [
             (node_x, node_y + 1),
             (node_x, node_y - 1),
             (node_x + 1, node_y),
             (node_x - 1, node_y),
-        ]:
-            if p1_candidate not in nbrs:
-                p1 = p1_candidate
-                nb_1 = (2 * node_x - p1[0], 2 * node_y - p1[1])
+        ]
+        for new_position_candidate in possible_positions:
+            if new_position_candidate not in nbrs:
+                new_position = new_position_candidate
+                neighbor_position = (
+                    2 * node_x - new_position[0],
+                    2 * node_y - new_position[1],
+                )
                 new_weight = (
                     2 * self.som_.nodes[node]["weight"]
-                    - self.som_.nodes[nb_1]["weight"]
+                    - self.som_.nodes[neighbor_position]["weight"]
                 )
 
-        return p1, new_weight
+        return new_position, new_weight
 
     def _insert_neuron_2p(
         self, bo: tuple[int, int]
