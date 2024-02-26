@@ -774,15 +774,16 @@ class BaseSom(BaseEstimator):
         nb_2: tuple[int, int],
         nb_3: tuple[int, int],
     ) -> tuple[tuple[int, int], np.ndarray]:
-        if (
-            self.som_.nodes[nb_1]["error"] > self.som_.nodes[nb_2]["error"]
-            and self.som_.nodes[nb_1]["error"] > self.som_.nodes[nb_3]["error"]
-        ):
+        error_nb_1 = self.som_.nodes[nb_1]["error"]
+        error_nb_2 = self.som_.nodes[nb_2]["error"]
+        error_nb_3 = self.som_.nodes[nb_3]["error"]
+
+        if error_nb_1 > error_nb_2 and error_nb_1 > error_nb_3:
             new_node, new_weight = self._3p_case_c(nb_1, bo)
-        elif self.som_.nodes[nb_2]["error"] > self.som_.nodes[nb_3]["error"]:
+        elif error_nb_2 > error_nb_3:
             new_node, new_weight = self._3p_case_b(nb_1, bo, nb_2)
         else:
-            new_node, new_weight = self._3p_case_b(nb_1, bo, nb_2)
+            new_node, new_weight = self._3p_case_b(nb_1, bo, nb_3)
 
         return new_node, new_weight
 
