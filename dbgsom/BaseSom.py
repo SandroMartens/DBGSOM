@@ -187,7 +187,6 @@ class BaseSom(BaseEstimator):
         distances, winners = self._get_winning_neurons(X, n_bmu=1)
         average_distances = self._get_u_matrix()
         sigma = average_distances.mean()
-        weights = self.weights_
         densities = np.zeros((len(self.neurons_)))
         hit_counts = np.zeros((len(self.neurons_)))
         for winner in np.unique(winners):
@@ -392,6 +391,7 @@ class BaseSom(BaseEstimator):
                 self._distance_matrix = nx.floyd_warshall_numpy(self.som_)
 
             distances, winners = self._get_winning_neurons(data, n_bmu=1)
+
             self._update_weights(winners, data)
             self._write_accumulative_error(winners, data, y, distances)
             if self.converged_ and self._training_phase == "fine":
@@ -440,17 +440,14 @@ class BaseSom(BaseEstimator):
         Return index of winning neuron or best matching units(s) for each
         sample.
         """
-        # todo: fix for 2 bmu
         weights = self.weights_
+        nn_tree = NearestNeighbors(n_neighbors=n_bmu)
+        nn_tree.fit(weights)
+        result = nn_tree.kneighbors(data)
+        distances = result[0]
+        winners = result[1].T[0:n_bmu].T
         if n_bmu == 1:
-            nn_tree = NearestNeighbors(n_neighbors=n_bmu)
-            nn_tree.fit(weights)
-            result = nn_tree.kneighbors(data)
-            distances = result[0]
-            winners = result[1].T[0]
-        else:
-            distances = scipy.spatial.distance.cdist(weights, data, metric=self.metric)
-            winners = np.argpartition(distances, kth=np.arange(n_bmu), axis=0)[:n_bmu]
+            winners = winners.reshape(-1)
 
         return distances, winners
 
@@ -971,7 +968,7 @@ def numba_voronoi_set_centers(
     Calculates the centers of the Voronoi regions based on the winners and data arrays.
     """
 
-    voronoi_set_centers = np.empty(shape=shape)
+    voronoi_set_centers = np.zeros(shape=shape)
     for i in nb.prange(groups.size):
         group_start = offsets[i]
         group_end = offsets[i + 1] if i + 1 < groups.size else index.size
@@ -979,7 +976,7 @@ def numba_voronoi_set_centers(
         samples = data[group_index]
         for j in nb.prange(samples.shape[1]):
             mean_samples = samples[:, j].mean()
-            voronoi_set_centers[i, j] = np.maximum(mean_samples, 0)
+            voronoi_set_centers[i, j] = mean_samples
 
     return voronoi_set_centers
 
