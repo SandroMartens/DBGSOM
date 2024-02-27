@@ -106,7 +106,6 @@ class BaseSom(BaseEstimator):
         if y is not None:
             classes, y = np.unique(y, return_inverse=True)
             self.classes_ = np.array(classes)
-        # self._check_arguments()
         self.random_state_ = check_random_state(self.random_state)
         self._initialization(X)
         self._grow(X, y)
@@ -152,9 +151,9 @@ class BaseSom(BaseEstimator):
         Triggers vertical growth in the SOM by creating new instances of the DBGSOM
         class and fitting them with filtered data.
         """
-
+        # todo: refactor in sub classes
         self.vertical_growing_threshold_ = 1.5 * self.growing_threshold_
-        distances, winners = self._get_winning_neurons(X, n_bmu=1)
+        _, winners = self._get_winning_neurons(X, n_bmu=1)
         relevant_nodes = [
             node
             for (node, error) in enumerate(self.som_.nodes(data="error"))
@@ -191,9 +190,10 @@ class BaseSom(BaseEstimator):
         hit_counts = np.zeros((len(self.neurons_)))
         for winner in np.unique(winners):
             samples = X[winners == winner]
-            if len(distances) > 0:
+            distances_per_neuron = distances[winners == winner]
+            if len(distances_per_neuron) > 0:
                 d = np.mean(
-                    (np.exp(-(distances**2) / (2 * sigma**2)))
+                    (np.exp(-(distances_per_neuron**2) / (2 * sigma**2)))
                     / (sigma * np.sqrt(2 * np.pi))
                 )
             else:
@@ -286,9 +286,9 @@ class BaseSom(BaseEstimator):
         data = pd.DataFrame(dict(self.som_.nodes)).T.set_index(
             np.arange(len(self.som_.nodes))
         )
-        if self._y_is_fitted:
-            data["label_index"] = pd.to_numeric(data["label"])
-            data["label"] = self.classes_[data["label_index"]]
+        # if self._y_is_fitted:
+        #     data["label_index"] = pd.to_numeric(data["label"])
+        #     data["label"] = self.classes_[data["label_index"]]
 
         data["epoch_created"] = pd.to_numeric(data["epoch_created"])
         data["error"] = pd.to_numeric(data["error"])
@@ -448,6 +448,7 @@ class BaseSom(BaseEstimator):
         winners = result[1].T[0:n_bmu].T
         if n_bmu == 1:
             winners = winners.reshape(-1)
+            distances = winners.reshape(-1)
 
         return distances, winners
 
@@ -895,7 +896,7 @@ class BaseSom(BaseEstimator):
         check_is_fitted(self)
         X = check_array(X)
         distances, _ = self._get_winning_neurons(X, n_bmu=1)
-        error = np.mean(distances, axis=1)
+        error = np.mean(distances)
         return error
 
     def _calculate_topographic_error(self, X: npt.ArrayLike) -> float:
@@ -996,5 +997,5 @@ def numba_quantization_error(
     for i in nb.prange(len(winners)):
         winner = winners[i]
         distance = distances[i]
-        errors[winner] += distance[0]
+        errors[winner] += distance
     return errors

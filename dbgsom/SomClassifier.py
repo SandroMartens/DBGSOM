@@ -12,6 +12,7 @@ from sklearn.base import (
     check_is_fitted,
     check_X_y,
 )
+
 from .BaseSom import BaseSom
 
 
@@ -126,7 +127,8 @@ class SomClassifier(BaseSom, TransformerMixin, ClassifierMixin):
         X, y = check_X_y(X=X, y=y, ensure_min_samples=4, dtype=[np.float64, np.float32])
         return X, y
 
-    def _label_prototypes(self, X, y) -> None:
+    def _label_prototypes(self, X: npt.ArrayLike, y=npt.ArrayLike) -> None:
+        """This method assigns labels to the prototypes based on the input data."""
         _, winners = self._get_winning_neurons(X, n_bmu=1)
         for winner_index, neuron in enumerate(self.neurons_):
             labels = y[winners == winner_index]
