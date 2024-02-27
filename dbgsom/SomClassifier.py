@@ -152,8 +152,9 @@ class SomClassifier(BaseSom, TransformerMixin, ClassifierMixin):
                 )
 
     def _fit(self, X: npt.ArrayLike, y: None | npt.ArrayLike = None):
-        classes, y = np.unique(y, return_inverse=True)
-        self.classes_ = classes
+        pass
+        # classes, y = np.unique(y, return_inverse=True)
+        # self.classes_ = classes
 
     def predict(self, X: npt.ArrayLike) -> np.ndarray:
         """Predict class labels for samples in X.

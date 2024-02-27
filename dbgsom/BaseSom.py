@@ -443,8 +443,8 @@ class BaseSom(BaseEstimator):
     ) -> tuple[npt.NDArray, npt.NDArray]:
         """Calculate distances from each neuron to each sample.
 
-        Return index of winning neuron or best matching units(s) for each
-        sample.
+        Return distances and index of the winning neuron(s) or
+        best matching units(s) for each sample.
         """
         weights = self.weights_
         nn_tree = NearestNeighbors(n_neighbors=n_bmu)
@@ -927,11 +927,12 @@ class BaseSom(BaseEstimator):
             Fraction of samples with topographic errors over all samples.
         """
         _, bmu_indices = self._get_winning_neurons(X, n_bmu=2)
-        errors = np.sum(
-            self._distance_matrix[bmu_indices.T[:, 0], bmu_indices.T[:, 1]] > 1
-        )
+        distance_matrix = self._distance_matrix
+        topographic_error = 0
+        for node in bmu_indices:
+            topographic_error += 1 if distance_matrix[node[0], node[1]] > 1 else 0
 
-        return errors / X.shape[0]
+        return topographic_error / X.shape[0]
 
 
 def linear_decay(
