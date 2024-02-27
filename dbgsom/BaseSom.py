@@ -286,9 +286,9 @@ class BaseSom(BaseEstimator):
         data = pd.DataFrame(dict(self.som_.nodes)).T.set_index(
             np.arange(len(self.som_.nodes))
         )
-        # if self._y_is_fitted:
-        #     data["label_index"] = pd.to_numeric(data["label"])
-        #     data["label"] = self.classes_[data["label_index"]]
+
+        data["label_index"] = pd.to_numeric(data["label"])
+        data["label"] = self.classes_[data["label_index"]]
 
         data["epoch_created"] = pd.to_numeric(data["epoch_created"])
         data["error"] = pd.to_numeric(data["error"])
