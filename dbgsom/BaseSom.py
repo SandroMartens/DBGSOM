@@ -121,6 +121,7 @@ class BaseSom(BaseEstimator):
         if self.vertical_growth:
             self._grow_vertical(X, y)
 
+        self._fit(X)
         # self.labels_ = self.predict(X)
         self.n_iter_ = self._current_epoch
 
@@ -128,6 +129,10 @@ class BaseSom(BaseEstimator):
 
     def _check_input_data(self, X, y):
         raise NotImplementedError
+
+    def _fit(self, X):
+        # For VQ Subclass specific code
+        pass
 
     def predict(self, X):
         raise NotImplementedError
@@ -224,6 +229,7 @@ class BaseSom(BaseEstimator):
 
         self.neurons_ = list(self.som_.nodes)
         self.weights_ = self._extract_values_from_graph("weight")
+        self._distance_matrix = nx.floyd_warshall_numpy(self.som_)
 
     def _extract_values_from_graph(self, attribute: str) -> np.ndarray:
         """Return an array with some given attribute of the nodes."""
@@ -546,7 +552,7 @@ class BaseSom(BaseEstimator):
         when the error value of a neuron is greater than a predefined threshold.
         """
         for node, neighbors in self.som_.adj.items():
-            is_boundary = len(neighbors) != 4
+            is_boundary = len(neighbors) < 4
             node_error = self.som_.nodes[node]["error"]
 
             if not is_boundary and node_error > self.growing_threshold_:
