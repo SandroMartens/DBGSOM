@@ -11,6 +11,7 @@ from numbers import Integral, Real
 from line_profiler import profile
 
 from sklearn.metrics.pairwise import manhattan_distances, euclidean_distances
+from sklearn.metrics import pairwise_distances
 
 # from matplotlib import pyplot as plt
 # import matplotlib
@@ -949,53 +950,38 @@ class BaseSom(BaseEstimator):
 
         self.euclid_dist_matrix = euclidean_distances(self.neurons_)
         self.manhattan_dist_matrix = manhattan_distances(self.neurons_)
-        self.max_dist_matrix = self._max_dist()
+        self.max_dist_matrix = pairwise_distances(self.neurons_, metric="chebyshev")
         for k in range(-10, 10):
             topographic_errors[k] = self.phi(k)
         return topographic_errors / X.shape[0]
 
-    def _max_dist(self):
-        n_neurons = self.som_.number_of_nodes()
-        max_dist_matrix = np.zeros(shape=(n_neurons, n_neurons))
-        for i in range(n_neurons):
-            for j in range(n_neurons):
-                max_dist_matrix[i, j] = max(
-                    abs(self.neurons_[i][0] - self.neurons_[j][0]),
-                    abs(self.neurons_[i][1] - self.neurons_[i][1]),
-                )
-
-        return max_dist_matrix
-
     def phi(self, k):
-        temp = 0
-        for node_id in range(len(self.neurons_)):
-            temp += self.f(node_id, k)
-
-        return temp
-
-    def f(self, node_id_i, k):
-        tmp2 = 0
         if k > 0:
-            for node_id_j in range(len(self.neurons_)):
-                tmp2 += (
-                    1
-                    if self.max_dist_matrix[node_id_i, node_id_j] > k
-                    and self._delaunay_maxtrix[node_id_i, node_id_j] == 1
-                    else 0
-                )
+            return sum(
+                self.f_positive(node_id, k) for node_id in range(len(self.neurons_))
+            )
         elif k < 0:
-            for node_id_j in range(len(self.neurons_)):
-                tmp2 += (
-                    1
-                    if self.euclid_dist_matrix[node_id_i, node_id_j] == 1
-                    and self._delaunay_maxtrix[node_id_i, node_id_j] > k
-                    else 0
-                )
-
+            return sum(
+                self.f_negative(node_id, k) for node_id in range(len(self.neurons_))
+            )
         else:
-            tmp2 = self.f(node_id_i, -1) + self.f(node_id_i, 1)  # / len(self.neurons_)
+            return self.phi(-1) + self.phi(1)
 
-        return tmp2
+    def f_positive(self, node_id_i, k):
+        return sum(
+            1
+            for node_id_j in range(len(self.neurons_))
+            if self.max_dist_matrix[node_id_i, node_id_j] > k
+            and self._delaunay_maxtrix[node_id_i, node_id_j] == 1
+        )
+
+    def f_negative(self, node_id_i, k):
+        return sum(
+            1
+            for node_id_j in range(len(self.neurons_))
+            if self.euclid_dist_matrix[node_id_i, node_id_j] == 1
+            and self._delaunay_maxtrix[node_id_i, node_id_j] > k
+        )
 
     def _calculate_delaunay_triangulation(self, bmu_indices):
         n_neurons = self.som_.number_of_nodes()
