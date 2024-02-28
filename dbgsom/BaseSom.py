@@ -936,7 +936,7 @@ class BaseSom(BaseEstimator):
         for node in bmu_indices:
             # distance = int(distance_matrix[node[0], node[1]])
             distance = euclid_dist_matrix[node[0], node[1]]
-            topographic_error += 1 if distance > 1.5 else 0
+            topographic_error += 1 if distance > 1 else 0
 
         return topographic_error / X.shape[0]
 
@@ -951,9 +951,18 @@ class BaseSom(BaseEstimator):
         self.euclid_dist_matrix = euclidean_distances(self.neurons_)
         self.manhattan_dist_matrix = manhattan_distances(self.neurons_)
         self.max_dist_matrix = pairwise_distances(self.neurons_, metric="chebyshev")
-        for k in range(-10, 10):
-            topographic_errors[k] = self.phi(k)
-        return topographic_errors / X.shape[0]
+        k_positive = np.arange(15)
+        k_negative = np.arange(15)
+        for k in range(15):
+            k_positive[k] = self.phi(k)
+            k_negative[k] = self.phi(-k)
+            # topographic_errors[k] = self.phi(k)
+
+        return (
+            k_positive / X.shape[0],
+            k_negative / X.shape[0],
+            # topographic_errors / X.shape[0],
+        )
 
     def phi(self, k):
         if k > 0:
@@ -980,7 +989,7 @@ class BaseSom(BaseEstimator):
             1
             for node_id_j in range(len(self.neurons_))
             if self.euclid_dist_matrix[node_id_i, node_id_j] == 1
-            and self._delaunay_maxtrix[node_id_i, node_id_j] > k
+            and self._delaunay_maxtrix[node_id_i, node_id_j] > -k
         )
 
     def _calculate_delaunay_triangulation(self, bmu_indices):
