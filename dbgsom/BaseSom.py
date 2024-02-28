@@ -4,11 +4,13 @@ This class handles the core SOM functionality.
 
 import copy
 import sys
-from math import exp, log
+from math import exp, log, sqrt
 from typing import Any
 from numbers import Integral, Real
 
 from line_profiler import profile
+
+from sklearn.metrics.pairwise import manhattan_distances, euclidean_distances
 
 # from matplotlib import pyplot as plt
 # import matplotlib
@@ -857,12 +859,12 @@ class BaseSom(BaseEstimator):
         epoch = self._current_epoch
         n_neurons = self.som_.number_of_nodes()
         if self.sigma_start is None:
-            sigma_start = 0.2 * np.sqrt(n_neurons)
+            sigma_start = 0.2 * sqrt(n_neurons)
         else:
             sigma_start = self.sigma_start
 
         if self.sigma_end is None:
-            sigma_end = max(0.7, 0.05 * np.sqrt(n_neurons))
+            sigma_end = max(0.7, 0.05 * sqrt(n_neurons))
         else:
             sigma_end = self.sigma_end
 
@@ -928,11 +930,83 @@ class BaseSom(BaseEstimator):
         """
         _, bmu_indices = self._get_winning_neurons(X, n_bmu=2)
         distance_matrix = self._distance_matrix
+        euclid_dist_matrix = euclidean_distances(self.neurons_)
         topographic_error = 0
         for node in bmu_indices:
-            topographic_error += 1 if distance_matrix[node[0], node[1]] > 1 else 0
+            # distance = int(distance_matrix[node[0], node[1]])
+            distance = euclid_dist_matrix[node[0], node[1]]
+            topographic_error += 1 if distance > 1.5 else 0
 
         return topographic_error / X.shape[0]
+
+    def topographic_error_complete(self, X):
+        _, bmu_indices = self._get_winning_neurons(X, n_bmu=2)
+        topographic_errors = np.zeros(shape=(len(self.neurons_)))
+        delaunay_triangulation_graph = self._calculate_delaunay_triangulation(
+            bmu_indices
+        )
+        self._delaunay_maxtrix = nx.floyd_warshall_numpy(delaunay_triangulation_graph)
+
+        self.euclid_dist_matrix = euclidean_distances(self.neurons_)
+        self.manhattan_dist_matrix = manhattan_distances(self.neurons_)
+        self.max_dist_matrix = self._max_dist()
+        for k in range(-10, 10):
+            topographic_errors[k] = self.phi(k)
+        return topographic_errors / X.shape[0]
+
+    def _max_dist(self):
+        n_neurons = self.som_.number_of_nodes()
+        max_dist_matrix = np.zeros(shape=(n_neurons, n_neurons))
+        for i in range(n_neurons):
+            for j in range(n_neurons):
+                max_dist_matrix[i, j] = max(
+                    abs(self.neurons_[i][0] - self.neurons_[j][0]),
+                    abs(self.neurons_[i][1] - self.neurons_[i][1]),
+                )
+
+        return max_dist_matrix
+
+    def phi(self, k):
+        temp = 0
+        for node_id in range(len(self.neurons_)):
+            temp += self.f(node_id, k)
+
+        return temp
+
+    def f(self, node_id_i, k):
+        tmp2 = 0
+        if k > 0:
+            for node_id_j in range(len(self.neurons_)):
+                tmp2 += (
+                    1
+                    if self.max_dist_matrix[node_id_i, node_id_j] > k
+                    and self._delaunay_maxtrix[node_id_i, node_id_j] == 1
+                    else 0
+                )
+        elif k < 0:
+            for node_id_j in range(len(self.neurons_)):
+                tmp2 += (
+                    1
+                    if self.euclid_dist_matrix[node_id_i, node_id_j] == 1
+                    and self._delaunay_maxtrix[node_id_i, node_id_j] > k
+                    else 0
+                )
+
+        else:
+            tmp2 = self.f(node_id_i, -1) + self.f(node_id_i, 1)  # / len(self.neurons_)
+
+        return tmp2
+
+    def _calculate_delaunay_triangulation(self, bmu_indices):
+        n_neurons = self.som_.number_of_nodes()
+        connectivity_matrix = np.zeros(shape=(n_neurons, n_neurons))
+        for node in bmu_indices:
+            connectivity_matrix[node[0], node[1]] = 1
+            connectivity_matrix[node[1], node[0]] = 1
+
+        delaunay_triangulation_graph = nx.from_numpy_array(connectivity_matrix)
+
+        return delaunay_triangulation_graph
 
 
 def linear_decay(
