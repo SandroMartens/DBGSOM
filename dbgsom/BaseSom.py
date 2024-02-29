@@ -930,19 +930,19 @@ class BaseSom(BaseEstimator):
             Fraction of samples with topographic errors over all samples.
         """
         _, bmu_indices = self._get_winning_neurons(X, n_bmu=2)
-        distance_matrix = self._distance_matrix
         euclid_dist_matrix = euclidean_distances(self.neurons_)
         topographic_error = 0
         for node in bmu_indices:
             # distance = int(distance_matrix[node[0], node[1]])
             distance = euclid_dist_matrix[node[0], node[1]]
-            topographic_error += 1 if distance > 1 else 0
+            topographic_error += 1 if distance > 1.5 else 0
 
         return topographic_error / X.shape[0]
 
-    def topographic_error_complete(self, X):
+    def topographic_error_complete(
+        self, X: npt.ArrayLike
+    ) -> tuple[np.ndarray, np.ndarray]:
         _, bmu_indices = self._get_winning_neurons(X, n_bmu=2)
-        topographic_errors = np.zeros(shape=(len(self.neurons_)))
         delaunay_triangulation_graph = self._calculate_delaunay_triangulation(
             bmu_indices
         )
@@ -956,15 +956,13 @@ class BaseSom(BaseEstimator):
         for k in range(15):
             k_positive[k] = self.phi(k)
             k_negative[k] = self.phi(-k)
-            # topographic_errors[k] = self.phi(k)
 
         return (
-            k_positive / X.shape[0],
-            k_negative / X.shape[0],
-            # topographic_errors / X.shape[0],
+            k_positive / len(self.neurons_),
+            k_negative / len(self.neurons_),
         )
 
-    def phi(self, k):
+    def phi(self, k: int) -> int:
         if k > 0:
             return sum(
                 self.f_positive(node_id, k) for node_id in range(len(self.neurons_))
@@ -976,7 +974,7 @@ class BaseSom(BaseEstimator):
         else:
             return self.phi(-1) + self.phi(1)
 
-    def f_positive(self, node_id_i, k):
+    def f_positive(self, node_id_i: int, k: int) -> int:
         return sum(
             1
             for node_id_j in range(len(self.neurons_))
@@ -984,7 +982,7 @@ class BaseSom(BaseEstimator):
             and self._delaunay_maxtrix[node_id_i, node_id_j] == 1
         )
 
-    def f_negative(self, node_id_i, k):
+    def f_negative(self, node_id_i: int, k: int) -> int:
         return sum(
             1
             for node_id_j in range(len(self.neurons_))
@@ -992,7 +990,7 @@ class BaseSom(BaseEstimator):
             and self._delaunay_maxtrix[node_id_i, node_id_j] > -k
         )
 
-    def _calculate_delaunay_triangulation(self, bmu_indices):
+    def _calculate_delaunay_triangulation(self, bmu_indices: np.ndarray) -> nx.Graph:
         n_neurons = self.som_.number_of_nodes()
         connectivity_matrix = np.zeros(shape=(n_neurons, n_neurons))
         for node in bmu_indices:
