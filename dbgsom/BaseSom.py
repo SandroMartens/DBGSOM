@@ -457,7 +457,7 @@ class BaseSom(BaseEstimator):
         winners = result[1].T[0:n_bmu].T
         if n_bmu == 1:
             winners = winners.reshape(-1)
-            distances = winners.reshape(-1)
+            distances = distances.reshape(-1)
 
         return distances, winners
 
@@ -942,12 +942,8 @@ class BaseSom(BaseEstimator):
     def topographic_error_complete(
         self, X: npt.ArrayLike
     ) -> tuple[np.ndarray, np.ndarray]:
-        _, bmu_indices = self._get_winning_neurons(X, n_bmu=2)
-        delaunay_triangulation_graph = self._calculate_delaunay_triangulation(
-            bmu_indices
-        )
-        self._delaunay_maxtrix = nx.floyd_warshall_numpy(delaunay_triangulation_graph)
-
+        X = check_array(X)
+        self._delaunay_maxtrix = self._calculate_delaunay_triangulation(X)
         self.euclid_dist_matrix = euclidean_distances(self.neurons_)
         self.manhattan_dist_matrix = manhattan_distances(self.neurons_)
         self.max_dist_matrix = pairwise_distances(self.neurons_, metric="chebyshev")
@@ -990,7 +986,9 @@ class BaseSom(BaseEstimator):
             and self._delaunay_maxtrix[node_id_i, node_id_j] > -k
         )
 
-    def _calculate_delaunay_triangulation(self, bmu_indices: np.ndarray) -> nx.Graph:
+    def _calculate_delaunay_triangulation(self, X) -> np.ndarray:
+        _, bmu_indices = self._get_winning_neurons(X, n_bmu=2)
+
         n_neurons = self.som_.number_of_nodes()
         connectivity_matrix = np.zeros(shape=(n_neurons, n_neurons))
         for node in bmu_indices:
@@ -998,8 +996,9 @@ class BaseSom(BaseEstimator):
             connectivity_matrix[node[1], node[0]] = 1
 
         delaunay_triangulation_graph = nx.from_numpy_array(connectivity_matrix)
+        distance_matrix = nx.floyd_warshall_numpy(delaunay_triangulation_graph)
 
-        return delaunay_triangulation_graph
+        return distance_matrix
 
 
 def linear_decay(
