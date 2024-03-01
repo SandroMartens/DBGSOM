@@ -584,12 +584,12 @@ class BaseSom(BaseEstimator):
         for i in sorted_indices:
             node = list(self.som_.nodes)[i]
             node_degree = nx.degree(self.som_, node)
+            degree_functions = {
+                1: self._insert_neuron_3p,
+                2: self._insert_neuron_2p,
+                3: self._insert_neuron_1p,
+            }
             if error_values[i] > self.growing_threshold_ and node_degree < 4:
-                degree_functions = {
-                    1: self._insert_neuron_3p,
-                    2: self._insert_neuron_2p,
-                    3: self._insert_neuron_1p,
-                }
                 if node_degree in degree_functions:
                     new_node, new_weight = degree_functions[node_degree](node)
                 else:
@@ -959,31 +959,13 @@ class BaseSom(BaseEstimator):
 
     def phi(self, k: int) -> int:
         if k > 0:
-            return sum(
-                self.f_positive(node_id, k) for node_id in range(len(self.neurons_))
-            )
+            return np.sum((self.max_dist_matrix > k) & (self._delaunay_maxtrix == 1))
         elif k < 0:
-            return sum(
-                self.f_negative(node_id, k) for node_id in range(len(self.neurons_))
+            return np.sum(
+                (self.euclid_dist_matrix == 1) & (self._delaunay_maxtrix > -k)
             )
         else:
             return self.phi(-1) + self.phi(1)
-
-    def f_positive(self, node_id_i: int, k: int) -> int:
-        return sum(
-            1
-            for node_id_j in range(len(self.neurons_))
-            if self.max_dist_matrix[node_id_i, node_id_j] > k
-            and self._delaunay_maxtrix[node_id_i, node_id_j] == 1
-        )
-
-    def f_negative(self, node_id_i: int, k: int) -> int:
-        return sum(
-            1
-            for node_id_j in range(len(self.neurons_))
-            if self.euclid_dist_matrix[node_id_i, node_id_j] == 1
-            and self._delaunay_maxtrix[node_id_i, node_id_j] > -k
-        )
 
     def _calculate_delaunay_triangulation(self, X) -> np.ndarray:
         _, bmu_indices = self._get_winning_neurons(X, n_bmu=2)
