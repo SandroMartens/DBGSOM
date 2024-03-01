@@ -939,17 +939,16 @@ class BaseSom(BaseEstimator):
 
         return topographic_error / X.shape[0]
 
-    def topographic_error_complete(
-        self, X: npt.ArrayLike
-    ) -> tuple[np.ndarray, np.ndarray]:
+    def topographic_function(self, X: npt.ArrayLike) -> tuple[np.ndarray, np.ndarray]:
         X = check_array(X)
         self._delaunay_maxtrix = self._calculate_delaunay_triangulation(X)
         self.euclid_dist_matrix = euclidean_distances(self.neurons_)
         self.manhattan_dist_matrix = manhattan_distances(self.neurons_)
         self.max_dist_matrix = pairwise_distances(self.neurons_, metric="chebyshev")
-        k_positive = np.arange(15)
-        k_negative = np.arange(15)
-        for k in range(15):
+        max_dist = int(self.max_dist_matrix.max())
+        k_positive = np.arange(max_dist)
+        k_negative = np.arange(max_dist)
+        for k in range(max_dist):
             k_positive[k] = self.phi(k)
             k_negative[k] = self.phi(-k)
 
