@@ -5,13 +5,8 @@ This class handles the core SOM functionality.
 import copy
 import sys
 from math import exp, log, sqrt
+from numbers import Integral
 from typing import Any
-from numbers import Integral, Real
-
-from line_profiler import profile
-
-from sklearn.metrics.pairwise import manhattan_distances, euclidean_distances
-from sklearn.metrics import pairwise_distances
 
 # from matplotlib import pyplot as plt
 # import matplotlib
@@ -26,11 +21,15 @@ try:
     import seaborn.objects as so
     from sklearn.base import BaseEstimator, clone
     from sklearn.decomposition import SparseCoder
+    from sklearn.metrics import pairwise_distances
+
+    # from line_profiler import profile
+    from sklearn.metrics.pairwise import euclidean_distances, manhattan_distances
     from sklearn.neighbors import NearestNeighbors
     from sklearn.preprocessing import normalize
     from sklearn.utils import check_array, check_random_state
-    from sklearn.utils.validation import check_is_fitted
     from sklearn.utils._param_validation import Interval, StrOptions
+    from sklearn.utils.validation import check_is_fitted
     from tqdm import tqdm
 except ImportError as e:
     print(e)
@@ -110,14 +109,14 @@ class BaseSom(BaseEstimator):
             classes, y = np.unique(y, return_inverse=True)
             self.classes_ = np.array(classes)
         self.random_state_ = check_random_state(self.random_state)
-        self._initialization(X)
-        self._grow(X, y)
+        self._initialize_som(X)
+        self._grow_som(X, y)
         # self.rep = self._calculate_rep(X)
         self.topographic_error_ = self._calculate_topographic_error(X)
         self.quantization_error_ = self.calculate_quantization_error(X)
         self.n_features_in_ = X.shape[1]
         self._write_node_statistics(X)
-        self._remove_dead_neurons(X)
+        self._delete_dead_neurons_from_graph(X)
         self._label_prototypes(X, y)
 
         # Vertical growing phase
@@ -220,7 +219,7 @@ class BaseSom(BaseEstimator):
             self.som_.nodes[node]["hit_count"] = hit_count
             self.som_.nodes[node]["average_distance"] = average_distance
 
-    def _remove_dead_neurons(self, X: npt.ArrayLike) -> None:
+    def _delete_dead_neurons_from_graph(self, X: npt.ArrayLike) -> None:
         """Delete all neurons which represent zero samples from the training set."""
         som_copy = copy.deepcopy(self.som_)
         dead_neurons = [
@@ -349,7 +348,7 @@ class BaseSom(BaseEstimator):
         for sample in X:
             hists.append(np.histogram(sample, bins=20)[0])
 
-    def _initialization(self, data: npt.NDArray) -> None:
+    def _initialize_som(self, data: npt.NDArray) -> None:
         """First training phase.
 
         Calculate growing threshold according to the argument. Create
@@ -375,7 +374,7 @@ class BaseSom(BaseEstimator):
                 growing_threshold = -n_dim * log(self.spreading_factor)
 
             elif self.threshold_method == "se":
-                growing_threshold = (
+                growing_threshold = float(
                     150
                     * -log(self.spreading_factor)
                     * np.linalg.norm(np.std(data, axis=0, ddof=1))
@@ -383,7 +382,7 @@ class BaseSom(BaseEstimator):
 
         return growing_threshold
 
-    def _grow(self, data: npt.NDArray, y) -> None:
+    def _grow_som(self, data: npt.NDArray, y) -> None:
         """Second training phase"""
         for current_epoch in tqdm(
             iterable=range(self.n_iter),
@@ -464,7 +463,7 @@ class BaseSom(BaseEstimator):
     def _label_prototypes(self, X, y) -> None:
         raise NotImplementedError
 
-    @profile
+    # @profile
     def _update_weights(self, winners: np.ndarray, data: npt.NDArray) -> None:
         """Update the weight vectors according to the batch learning rule.
 
@@ -525,7 +524,7 @@ class BaseSom(BaseEstimator):
 
         return h
 
-    @profile
+    # @profile
     def _write_accumulative_error(
         self, winners: np.ndarray, data: npt.NDArray, y, distances: np.ndarray
     ) -> None:
@@ -905,7 +904,7 @@ class BaseSom(BaseEstimator):
         check_is_fitted(self)
         X = check_array(X)
         distances, _ = self._get_winning_neurons(X, n_bmu=1)
-        error = np.mean(distances)
+        error = float(np.mean(distances))
         return error
 
     def _calculate_topographic_error(self, X: npt.ArrayLike) -> float:

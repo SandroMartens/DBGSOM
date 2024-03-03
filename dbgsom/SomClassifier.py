@@ -209,7 +209,6 @@ class SomClassifier(BaseSom, TransformerMixin, ClassifierMixin):
             sample_probabilities = np.array(probabilities_rows)
 
         else:
-            # pass
             X_transformed = self.transform(X)
             node_probabilities = self._extract_values_from_graph("probabilities")
             # Sample Probabilities do not sum to 1
