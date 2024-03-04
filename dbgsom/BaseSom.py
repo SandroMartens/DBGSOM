@@ -399,8 +399,9 @@ class BaseSom(BaseEstimator):
                 self._distance_matrix = nx.floyd_warshall_numpy(self.som_)
 
             distances, winners = self._get_winning_neurons(data, n_bmu=1)
+            kernel = self._calculate_exp_kernel(distances, data)
 
-            self._update_weights(winners, data)
+            self._update_weights(kernel, winners, data)
             self._write_accumulative_error(winners, data, y, distances)
             if self.converged_ and self._training_phase == "fine":
                 break
@@ -464,7 +465,7 @@ class BaseSom(BaseEstimator):
         raise NotImplementedError
 
     # @profile
-    def _update_weights(self, winners: np.ndarray, data: npt.NDArray) -> None:
+    def _update_weights(self, kernel, winners: np.ndarray, data: npt.NDArray) -> None:
         """Update the weight vectors according to the batch learning rule.
 
         Step 1: Calculate the center of the voronoi set of each neuron.
@@ -483,6 +484,7 @@ class BaseSom(BaseEstimator):
         index = np.argsort(winners)
         groups, offsets = np.unique(winners[index], return_index=True)
         voronoi_set_centers = numba_voronoi_set_centers(
+            kernel=kernel,
             data=data,
             shape=self.weights_.shape,
             groups=groups,
@@ -523,6 +525,13 @@ class BaseSom(BaseEstimator):
         h = np.exp(-(self._distance_matrix**2 / (2 * sigma**2)))
 
         return h
+
+    def _calculate_exp_kernel(self, distances, data) -> np.ndarray:
+        """Calculate the weight of each sample by calculating a exponential kernel
+        for the distance between the sample and the bmu."""
+        gamma = np.var(data, axis=0).sum() ** -1
+        kernel = 1 - (1 - np.exp(-gamma * distances**2)) ** 0.5
+        return kernel
 
     # @profile
     def _write_accumulative_error(
@@ -1013,6 +1022,7 @@ def exponential_decay(
     fastmath=True,
 )
 def numba_voronoi_set_centers(
+    kernel,
     data: npt.NDArray,
     shape: tuple,
     groups: npt.NDArray,
@@ -1029,8 +1039,9 @@ def numba_voronoi_set_centers(
         group_end = offsets[i + 1] if i + 1 < groups.size else index.size
         group_index = index[group_start:group_end]
         samples = data[group_index]
+        weights = kernel[group_index]
         for j in nb.prange(samples.shape[1]):
-            mean_samples = samples[:, j].mean()
+            mean_samples = np.average(samples[:, j], weights=weights)
             voronoi_set_centers[i, j] = mean_samples
 
     return voronoi_set_centers
