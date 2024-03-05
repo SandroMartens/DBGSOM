@@ -399,10 +399,10 @@ class BaseSom(BaseEstimator):
                 self._distance_matrix = nx.floyd_warshall_numpy(self.som_)
 
             distances, winners = self._get_winning_neurons(data, n_bmu=1)
-            kernel = self._calculate_exp_kernel(distances, data)
+            sample_weights = self._calculate_exp_similarity(distances, data)
 
-            self._update_weights(kernel, winners, data)
-            self._write_accumulative_error(winners, data, y, distances)
+            self._update_weights(sample_weights, winners, data)
+            self._write_accumulative_error(winners, y, distances)
             if self.converged_ and self._training_phase == "fine":
                 break
 
@@ -526,7 +526,9 @@ class BaseSom(BaseEstimator):
 
         return h
 
-    def _calculate_exp_kernel(self, distances, data) -> np.ndarray:
+    def _calculate_exp_similarity(
+        self, distances: np.ndarray, data: np.ndarray
+    ) -> np.ndarray:
         """Calculate the weight of each sample by calculating a exponential kernel
         for the distance between the sample and the bmu."""
         gamma = np.var(data, axis=0).sum() ** -1
@@ -535,7 +537,7 @@ class BaseSom(BaseEstimator):
 
     # @profile
     def _write_accumulative_error(
-        self, winners: np.ndarray, data: npt.NDArray, y, distances: np.ndarray
+        self, winners: np.ndarray, y: np.ndarray, distances: np.ndarray
     ) -> None:
         """Get the quantization error for each neuron
         and save it as "error" attribute of each node.
