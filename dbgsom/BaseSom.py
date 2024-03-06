@@ -4,7 +4,7 @@ This class handles the core SOM functionality.
 
 import copy
 import sys
-from math import exp, log, sqrt
+from math import exp, log, sqrt, pi
 from numbers import Integral
 from typing import Any
 
@@ -101,8 +101,7 @@ class BaseSom(BaseEstimator):
         self : DBGSOM
             Trained estimator
         """
-        # Horizontal growing phase
-
+        # Initialization
         X, y = self._check_input_data(X, y)
         # self._fit(X, y)
         if y is not None:
@@ -110,6 +109,8 @@ class BaseSom(BaseEstimator):
             self.classes_ = np.array(classes)
         self.random_state_ = check_random_state(self.random_state)
         self._initialize_som(X)
+
+        # Horizontal growing phase
         self._grow_som(X, y)
         # self.rep = self._calculate_rep(X)
         self.topographic_error_ = self._calculate_topographic_error(X)
@@ -199,13 +200,13 @@ class BaseSom(BaseEstimator):
             samples = X[winners == winner]
             distances_per_neuron = distances[winners == winner]
             if len(distances_per_neuron) > 0:
-                d = np.mean(
+                local_density = np.mean(
                     (np.exp(-(distances_per_neuron**2) / (2 * sigma**2)))
-                    / (sigma * np.sqrt(2 * np.pi))
+                    / (sigma * sqrt(2 * pi))
                 )
             else:
-                d = 0
-            densities[winner] = d
+                local_density = 0
+            densities[winner] = local_density
             hit_counts[winner] = len(samples)
         return average_distances, densities, hit_counts
 
@@ -374,15 +375,14 @@ class BaseSom(BaseEstimator):
                 growing_threshold = -n_dim * log(self.spreading_factor)
 
             elif self.threshold_method == "se":
+                std_data = np.std(data, axis=0, ddof=1)
                 growing_threshold = float(
-                    150
-                    * -log(self.spreading_factor)
-                    * np.linalg.norm(np.std(data, axis=0, ddof=1))
+                    150 * -log(self.spreading_factor) * np.linalg.norm(std_data)
                 )
 
         return growing_threshold
 
-    def _grow_som(self, data: npt.NDArray, y) -> None:
+    def _grow_som(self, data: npt.NDArray, y: np.ndarray) -> None:
         """Second training phase"""
         for current_epoch in tqdm(
             iterable=range(self.n_iter),
@@ -465,7 +465,9 @@ class BaseSom(BaseEstimator):
         raise NotImplementedError
 
     # @profile
-    def _update_weights(self, kernel, winners: np.ndarray, data: npt.NDArray) -> None:
+    def _update_weights(
+        self, sample_weights: np.ndarray, winners: np.ndarray, data: npt.NDArray
+    ) -> None:
         """Update the weight vectors according to the batch learning rule.
 
         Step 1: Calculate the center of the voronoi set of each neuron.
@@ -484,7 +486,7 @@ class BaseSom(BaseEstimator):
         index = np.argsort(winners)
         groups, offsets = np.unique(winners[index], return_index=True)
         voronoi_set_centers = numba_voronoi_set_centers(
-            kernel=kernel,
+            kernel=sample_weights,
             data=data,
             shape=self.weights_.shape,
             groups=groups,
@@ -969,15 +971,18 @@ class BaseSom(BaseEstimator):
 
     def phi(self, k: int) -> int:
         if k > 0:
-            return np.sum((self.max_dist_matrix > k) & (self._delaunay_maxtrix == 1))
+            return np.count_nonzero(
+                (self.max_dist_matrix > k) & (self._delaunay_maxtrix == 1)
+            )
         elif k < 0:
-            return np.sum(
+            return np.count_nonzero(
                 (self.euclid_dist_matrix == 1) & (self._delaunay_maxtrix > -k)
             )
         else:
             return self.phi(-1) + self.phi(1)
 
     def _calculate_delaunay_triangulation(self, X) -> np.ndarray:
+        """Calculate the Delaunay triangulation distance matrix."""
         _, bmu_indices = self._get_winning_neurons(X, n_bmu=2)
 
         n_neurons = self.som_.number_of_nodes()
