@@ -49,7 +49,7 @@ class BaseSom(BaseEstimator):
         vertical_growth: bool = False,
         decay_function: str = "exponential",
         learning_rate: float = 0.02,
-        verbose=False,
+        verbose: bool = False,
         coarse_training_frac: float = 0.5,
         random_state: Any = None,
         convergence_treshold: float = 10**-5,
@@ -360,6 +360,8 @@ class BaseSom(BaseEstimator):
         self.converged_ = False
         self._training_phase = "coarse"
         self.growing_threshold_ = self._calculate_growing_threshold(data)
+        self._total_variance = np.var(data, axis=0).sum()
+        self._neurons_added = True
 
         self.som_ = self._create_som(data)
         self._distance_matrix = nx.floyd_warshall_numpy(self.som_)
@@ -394,12 +396,12 @@ class BaseSom(BaseEstimator):
                 self._training_phase = "fine"
             self.weights_ = self._extract_values_from_graph("weight")
             # check if new neurons were inserted
-            if len(self.som_.nodes) > len(self.neurons_) or current_epoch == 0:
+            if self._neurons_added:
                 self.neurons_ = list(self.som_.nodes)
                 self._distance_matrix = nx.floyd_warshall_numpy(self.som_)
 
             distances, winners = self._get_winning_neurons(data, n_bmu=1)
-            sample_weights = self._calculate_exp_similarity(distances, data)
+            sample_weights = self._calculate_exp_similarity(distances)
 
             self._update_weights(sample_weights, winners, data)
             self._write_accumulative_error(winners, y, distances)
@@ -528,12 +530,10 @@ class BaseSom(BaseEstimator):
 
         return h
 
-    def _calculate_exp_similarity(
-        self, distances: np.ndarray, data: np.ndarray
-    ) -> np.ndarray:
+    def _calculate_exp_similarity(self, distances: np.ndarray) -> np.ndarray:
         """Calculate the weight of each sample by calculating a exponential kernel
         for the distance between the sample and the bmu."""
-        gamma = np.var(data, axis=0).sum() ** -1
+        gamma = self._total_variance**-1
         kernel = 1 - (1 - np.exp(-gamma * distances**2)) ** 0.5
         return kernel
 
@@ -592,6 +592,7 @@ class BaseSom(BaseEstimator):
         """
         error_values = self._extract_values_from_graph("error")
         sorted_indices = np.argsort(-error_values)
+        self._neurons_added = True
 
         for i in sorted_indices:
             node = list(self.som_.nodes)[i]
