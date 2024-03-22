@@ -12,6 +12,7 @@ from sklearn.base import (
     check_is_fitted,
     check_X_y,
 )
+
 from .BaseSom import BaseSom
 
 
@@ -126,8 +127,9 @@ class SomClassifier(BaseSom, TransformerMixin, ClassifierMixin):
         X, y = check_X_y(X=X, y=y, ensure_min_samples=4, dtype=[np.float64, np.float32])
         return X, y
 
-    def _label_prototypes(self, X, y) -> None:
-        winners = self._get_winning_neurons(X, n_bmu=1)
+    def _label_prototypes(self, X: npt.ArrayLike, y=npt.ArrayLike) -> None:
+        """This method assigns labels to the prototypes based on the input data."""
+        _, winners = self._get_winning_neurons(X, n_bmu=1)
         for winner_index, neuron in enumerate(self.neurons_):
             labels = y[winners == winner_index]
             # dead neuron
@@ -150,8 +152,9 @@ class SomClassifier(BaseSom, TransformerMixin, ClassifierMixin):
                 )
 
     def _fit(self, X: npt.ArrayLike, y: None | npt.ArrayLike = None):
-        classes, y = np.unique(y, return_inverse=True)
-        self.classes_ = classes
+        pass
+        # classes, y = np.unique(y, return_inverse=True)
+        # self.classes_ = classes
 
     def predict(self, X: npt.ArrayLike) -> np.ndarray:
         """Predict class labels for samples in X.
@@ -190,7 +193,7 @@ class SomClassifier(BaseSom, TransformerMixin, ClassifierMixin):
         check_is_fitted(self)
         X = check_array(X)
         if self.vertical_growth:
-            winners = self._get_winning_neurons(X, n_bmu=1)
+            _, winners = self._get_winning_neurons(X, n_bmu=1)
             probabilities_rows = []
             for sample, winner in zip(X, winners):
                 node = self.neurons_[winner]
@@ -206,7 +209,6 @@ class SomClassifier(BaseSom, TransformerMixin, ClassifierMixin):
             sample_probabilities = np.array(probabilities_rows)
 
         else:
-            # pass
             X_transformed = self.transform(X)
             node_probabilities = self._extract_values_from_graph("probabilities")
             # Sample Probabilities do not sum to 1

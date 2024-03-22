@@ -4,10 +4,9 @@ This class handles the core SOM functionality.
 
 import copy
 import sys
-from math import exp, log
+from math import exp, log, sqrt, pi
+from numbers import Integral
 from typing import Any
-
-# from line_profiler import profile
 
 # from matplotlib import pyplot as plt
 # import matplotlib
@@ -23,8 +22,13 @@ try:
     from sklearn.base import BaseEstimator, clone
     from sklearn.decomposition import SparseCoder
     from sklearn.metrics import pairwise_distances
+
+    # from line_profiler import profile
+    from sklearn.metrics.pairwise import euclidean_distances, manhattan_distances
+    from sklearn.neighbors import NearestNeighbors
     from sklearn.preprocessing import normalize
     from sklearn.utils import check_array, check_random_state
+    from sklearn.utils._param_validation import Interval, StrOptions
     from sklearn.utils.validation import check_is_fitted
     from tqdm import tqdm
 except ImportError as e:
@@ -45,7 +49,7 @@ class BaseSom(BaseEstimator):
         vertical_growth: bool = False,
         decay_function: str = "exponential",
         learning_rate: float = 0.02,
-        verbose=False,
+        verbose: bool = False,
         coarse_training_frac: float = 0.5,
         random_state: Any = None,
         convergence_treshold: float = 10**-5,
@@ -75,6 +79,12 @@ class BaseSom(BaseEstimator):
         self.vertical_growth = vertical_growth
         self.n_jobs = n_jobs
 
+    _parameter_constraints = {
+        "n_iter": [Interval(Integral, 1, None, closed="left")],
+        "max_neurons": [Interval(Integral, 4, None, closed="left")],
+        "decay_function": [StrOptions({"exponential", "linear"})],
+    }
+
     def fit(self, X: npt.ArrayLike, y: None | npt.ArrayLike = None):
         """Train SOM on training data.
 
@@ -91,29 +101,30 @@ class BaseSom(BaseEstimator):
         self : DBGSOM
             Trained estimator
         """
-        # Horizontal growing phase
-
+        # Initialization
         X, y = self._check_input_data(X, y)
         # self._fit(X, y)
         if y is not None:
             classes, y = np.unique(y, return_inverse=True)
             self.classes_ = np.array(classes)
-        self._check_arguments()
         self.random_state_ = check_random_state(self.random_state)
-        self._initialization(X)
-        self._grow(X, y)
+        self._initialize_som(X)
+
+        # Horizontal growing phase
+        self._grow_som(X, y)
         # self.rep = self._calculate_rep(X)
         self.topographic_error_ = self._calculate_topographic_error(X)
         self.quantization_error_ = self.calculate_quantization_error(X)
         self.n_features_in_ = X.shape[1]
         self._write_node_statistics(X)
-        self._remove_dead_neurons(X)
+        self._delete_dead_neurons_from_graph(X)
         self._label_prototypes(X, y)
 
         # Vertical growing phase
         if self.vertical_growth:
             self._grow_vertical(X, y)
 
+        self._fit(X)
         # self.labels_ = self.predict(X)
         self.n_iter_ = self._current_epoch
 
@@ -121,6 +132,10 @@ class BaseSom(BaseEstimator):
 
     def _check_input_data(self, X, y):
         raise NotImplementedError
+
+    def _fit(self, X):
+        # For VQ Subclass specific code
+        pass
 
     def predict(self, X):
         raise NotImplementedError
@@ -141,13 +156,12 @@ class BaseSom(BaseEstimator):
 
     def _grow_vertical(self, X: npt.ArrayLike, y: None | npt.ArrayLike = None) -> None:
         """
-        Triggers vertical growth in the SOM by creating new instances of the DBGSOM class and fitting them with filtered data.
-        Modifies:
-        The som_ attribute of the DBGSOM instance by adding new SOM instances to the neurons that meet the vertical growing criteria.
+        Triggers vertical growth in the SOM by creating new instances of the DBGSOM
+        class and fitting them with filtered data.
         """
-
+        # todo: refactor in sub classes
         self.vertical_growing_threshold_ = 1.5 * self.growing_threshold_
-        winners = self._get_winning_neurons(X, n_bmu=1)
+        _, winners = self._get_winning_neurons(X, n_bmu=1)
         relevant_nodes = [
             node
             for (node, error) in enumerate(self.som_.nodes(data="error"))
@@ -177,23 +191,22 @@ class BaseSom(BaseEstimator):
 
         3. average distance: average distance from each prototype to their neighbors.
         used for plotting the u matrix"""
-        winners = self._get_winning_neurons(X, n_bmu=1)
+        distances, winners = self._get_winning_neurons(X, n_bmu=1)
         average_distances = self._get_u_matrix()
         sigma = average_distances.mean()
-        weights = self.weights_
         densities = np.zeros((len(self.neurons_)))
         hit_counts = np.zeros((len(self.neurons_)))
         for winner in np.unique(winners):
             samples = X[winners == winner]
-            distances = np.linalg.norm(samples - weights[winner], axis=1)
-            if len(distances) > 0:
-                d = np.mean(
-                    (np.exp(-(distances**2) / (2 * sigma**2)))
-                    / (sigma * np.sqrt(2 * np.pi))
+            distances_per_neuron = distances[winners == winner]
+            if len(distances_per_neuron) > 0:
+                local_density = np.mean(
+                    (np.exp(-(distances_per_neuron**2) / (2 * sigma**2)))
+                    / (sigma * sqrt(2 * pi))
                 )
             else:
-                d = 0
-            densities[winner] = d
+                local_density = 0
+            densities[winner] = local_density
             hit_counts[winner] = len(samples)
         return average_distances, densities, hit_counts
 
@@ -207,7 +220,7 @@ class BaseSom(BaseEstimator):
             self.som_.nodes[node]["hit_count"] = hit_count
             self.som_.nodes[node]["average_distance"] = average_distance
 
-    def _remove_dead_neurons(self, X: npt.ArrayLike) -> None:
+    def _delete_dead_neurons_from_graph(self, X: npt.ArrayLike) -> None:
         """Delete all neurons which represent zero samples from the training set."""
         som_copy = copy.deepcopy(self.som_)
         dead_neurons = [
@@ -219,10 +232,10 @@ class BaseSom(BaseEstimator):
 
         self.neurons_ = list(self.som_.nodes)
         self.weights_ = self._extract_values_from_graph("weight")
+        self._distance_matrix = nx.floyd_warshall_numpy(self.som_)
 
     def _extract_values_from_graph(self, attribute: str) -> np.ndarray:
-        """Return an array of shape (n_nodes, 1) with some given attribute of the
-        nodes."""
+        """Return an array with some given attribute of the nodes."""
         return np.array([data[attribute] for _, data in self.som_.nodes.data()])
 
     def transform(self, X: npt.ArrayLike, y=None) -> np.ndarray:
@@ -282,9 +295,9 @@ class BaseSom(BaseEstimator):
         data = pd.DataFrame(dict(self.som_.nodes)).T.set_index(
             np.arange(len(self.som_.nodes))
         )
-        if self._y_is_fitted:
-            data["label_index"] = pd.to_numeric(data["label"])
-            data["label"] = self.classes_[data["label_index"]]
+
+        data["label_index"] = pd.to_numeric(data["label"])
+        data["label"] = self.classes_[data["label_index"]]
 
         data["epoch_created"] = pd.to_numeric(data["epoch_created"])
         data["error"] = pd.to_numeric(data["error"])
@@ -321,9 +334,9 @@ class BaseSom(BaseEstimator):
             axis=1
         )
 
-        return np.array(distances)
+        return distances
 
-    def _calculate_rep(self, X: npt.ArrayLike):
+    def _calculate_rep(self, X: npt.ArrayLike) -> None:
         """Return the resemble entropy parameter.
 
         1. Calculate histogram of components of each sample.
@@ -336,7 +349,7 @@ class BaseSom(BaseEstimator):
         for sample in X:
             hists.append(np.histogram(sample, bins=20)[0])
 
-    def _initialization(self, data: npt.NDArray) -> None:
+    def _initialize_som(self, data: npt.NDArray) -> None:
         """First training phase.
 
         Calculate growing threshold according to the argument. Create
@@ -347,13 +360,15 @@ class BaseSom(BaseEstimator):
         self.converged_ = False
         self._training_phase = "coarse"
         self.growing_threshold_ = self._calculate_growing_threshold(data)
+        self._total_variance = np.var(data, axis=0).sum()
+        self._neurons_added = True
 
         self.som_ = self._create_som(data)
         self._distance_matrix = nx.floyd_warshall_numpy(self.som_)
         self.weights_ = self._extract_values_from_graph("weight")
         self.neurons_ = list(self.som_.nodes)
 
-    def _calculate_growing_threshold(self, data) -> float:
+    def _calculate_growing_threshold(self, data: npt.NDArray) -> float:
         if self.growth_criterion == "entropy":
             growing_threshold = self.spreading_factor
         else:
@@ -362,15 +377,14 @@ class BaseSom(BaseEstimator):
                 growing_threshold = -n_dim * log(self.spreading_factor)
 
             elif self.threshold_method == "se":
-                growing_threshold = (
-                    150
-                    * -log(self.spreading_factor)
-                    * np.sqrt(np.sum(np.std(data, axis=0, ddof=1) ** 2))
+                std_data = np.std(data, axis=0, ddof=1)
+                growing_threshold = float(
+                    150 * -log(self.spreading_factor) * np.linalg.norm(std_data)
                 )
 
         return growing_threshold
 
-    def _grow(self, data: npt.NDArray, y) -> None:
+    def _grow_som(self, data: npt.NDArray, y: np.ndarray) -> None:
         """Second training phase"""
         for current_epoch in tqdm(
             iterable=range(self.n_iter),
@@ -382,13 +396,15 @@ class BaseSom(BaseEstimator):
                 self._training_phase = "fine"
             self.weights_ = self._extract_values_from_graph("weight")
             # check if new neurons were inserted
-            if len(self.som_.nodes) > len(self.neurons_) or current_epoch == 0:
+            if self._neurons_added:
                 self.neurons_ = list(self.som_.nodes)
                 self._distance_matrix = nx.floyd_warshall_numpy(self.som_)
 
-            winners = self._get_winning_neurons(data, n_bmu=1)
-            self._update_weights(winners, data)
-            self._write_accumulative_error(winners, data, y)
+            distances, winners = self._get_winning_neurons(data, n_bmu=1)
+            sample_weights = self._calculate_exp_similarity(distances)
+
+            self._update_weights(sample_weights, winners, data)
+            self._write_accumulative_error(winners, y, distances)
             if self.converged_ and self._training_phase == "fine":
                 break
 
@@ -427,28 +443,33 @@ class BaseSom(BaseEstimator):
 
         return som
 
-    def _get_winning_neurons(self, data: npt.NDArray, n_bmu: int) -> np.ndarray:
+    def _get_winning_neurons(
+        self, data: npt.NDArray, n_bmu: int
+    ) -> tuple[npt.NDArray, npt.NDArray]:
         """Calculate distances from each neuron to each sample.
 
-        Return index of winning neuron or best matching units(s) for each
-        sample.
+        Return distances and index of the winning neuron(s) or
+        best matching units(s) for each sample.
         """
         weights = self.weights_
-        distances = pairwise_distances(
-            X=weights, Y=data, metric=self.metric, n_jobs=self.n_jobs
-        )
+        nn_tree = NearestNeighbors(n_neighbors=n_bmu)
+        nn_tree.fit(weights)
+        result = nn_tree.kneighbors(data)
+        distances = result[0]
+        winners = result[1].T[0:n_bmu].T
         if n_bmu == 1:
-            winners = np.argmin(distances, axis=0)
-        else:
-            winners = np.argsort(distances, axis=0)[:n_bmu]
+            winners = winners.reshape(-1)
+            distances = distances.reshape(-1)
 
-        return winners
+        return distances, winners
 
     def _label_prototypes(self, X, y) -> None:
         raise NotImplementedError
 
     # @profile
-    def _update_weights(self, winners: np.ndarray, data: npt.NDArray) -> None:
+    def _update_weights(
+        self, sample_weights: np.ndarray, winners: np.ndarray, data: npt.NDArray
+    ) -> None:
         """Update the weight vectors according to the batch learning rule.
 
         Step 1: Calculate the center of the voronoi set of each neuron.
@@ -467,6 +488,7 @@ class BaseSom(BaseEstimator):
         index = np.argsort(winners)
         groups, offsets = np.unique(winners[index], return_index=True)
         voronoi_set_centers = numba_voronoi_set_centers(
+            kernel=sample_weights,
             data=data,
             shape=self.weights_.shape,
             groups=groups,
@@ -508,52 +530,59 @@ class BaseSom(BaseEstimator):
 
         return h
 
+    def _calculate_exp_similarity(self, distances: np.ndarray) -> np.ndarray:
+        """Calculate the weight of each sample by calculating a exponential kernel
+        for the distance between the sample and the bmu."""
+        gamma = self._total_variance**-1
+        kernel = 1 - (1 - np.exp(-gamma * distances**2)) ** 0.5
+        return kernel
+
     # @profile
     def _write_accumulative_error(
-        self, winners: np.ndarray, data: npt.NDArray, y
+        self, winners: np.ndarray, y: np.ndarray, distances: np.ndarray
     ) -> None:
         """Get the quantization error for each neuron
         and save it as "error" attribute of each node.
         """
         if self.growth_criterion == "entropy":
             for winner_index, neuron in enumerate(self.neurons_):
-                _, counts = np.unique(y[winners == winner_index], return_counts=True)
-                total = np.sum(counts)
-                counts = counts / total
-                error = np.sum(-counts * np.log2(counts))
+                counts = np.bincount(y[winners == winner_index])
+                error = scipy.stats.entropy(counts, base=2)
                 self.som_.nodes[neuron]["error"] = error
 
         else:
             errors = numba_quantization_error(
-                data, winners, length=self.weights_.shape[0], weights=self.weights_
+                winners,
+                length=self.weights_.shape[0],
+                distances=distances,
             )
             for i, error in enumerate(errors):
                 neuron = self.neurons_[i]
                 self.som_.nodes[neuron]["error"] = error
 
     def _distribute_errors(self) -> None:
-        """For each neuron i which is not a boundary neuron and E_i > GT,
-        a half value of E_i is equally distributed to the neighboring
-        boundary neurons, if exist.
+        """
+        Distributes the error values of neurons in the SOM which are not boundary
+        neurons to their neighboring boundary neurons. This distribution is done
+        when the error value of a neuron is greater than a predefined threshold.
         """
         for node, neighbors in self.som_.adj.items():
-            if len(neighbors.items()) == 4:
-                is_boundary = False
-            else:
-                is_boundary = True
+            is_boundary = len(neighbors) < 4
             node_error = self.som_.nodes[node]["error"]
 
             if not is_boundary and node_error > self.growing_threshold_:
-                n_boundary_neighbors = 0
-                for neighbor in neighbors.keys():
-                    if len(self.som_.adj[neighbor].items()) < 4:
-                        n_boundary_neighbors += 1
+                boundary_neighbors = [
+                    neighbor
+                    for neighbor in neighbors.keys()
+                    if len(self.som_.adj[neighbor]) < 4
+                ]
+                n_boundary_neighbors = len(boundary_neighbors)
 
-                for neighbor in neighbors.keys():
-                    if len(self.som_.adj[neighbor].items()) < 4:
-                        self.som_.nodes[neighbor]["error"] += (
-                            0.5 * node_error / n_boundary_neighbors
-                        )
+                for neighbor in boundary_neighbors:
+                    self.som_.nodes[neighbor]["error"] += (
+                        0.5 * node_error / n_boundary_neighbors
+                    )
+
                 self.som_.nodes[node]["error"] /= 2
 
     def _add_new_neurons(self) -> None:
@@ -561,17 +590,21 @@ class BaseSom(BaseEstimator):
         the growing threshold. Begin with the neuron with the largest
         error.
         """
-        sorted_indices = np.flip(np.argsort(self._extract_values_from_graph("error")))
+        error_values = self._extract_values_from_graph("error")
+        sorted_indices = np.argsort(-error_values)
+        self._neurons_added = True
+
         for i in sorted_indices:
-            node = list(dict(self.som_.nodes))[i]
+            node = list(self.som_.nodes)[i]
             node_degree = nx.degree(self.som_, node)
-            if self.som_.nodes[node]["error"] > self.growing_threshold_:
-                if node_degree == 1:
-                    new_node, new_weight = self._insert_neuron_3p(node)
-                elif node_degree == 2:
-                    new_node, new_weight = self._insert_neuron_2p(node)
-                elif node_degree == 3:
-                    new_node, new_weight = self._insert_neuron_1p(node)
+            degree_functions = {
+                1: self._insert_neuron_3p,
+                2: self._insert_neuron_2p,
+                3: self._insert_neuron_1p,
+            }
+            if error_values[i] > self.growing_threshold_ and node_degree < 4:
+                if node_degree in degree_functions:
+                    new_node, new_weight = degree_functions[node_degree](node)
                 else:
                     continue
 
@@ -592,21 +625,25 @@ class BaseSom(BaseEstimator):
         """
         node_x, node_y = node
         nbrs = self.som_.adj[node]
-        for p1_candidate in [
+        possible_positions = [
             (node_x, node_y + 1),
             (node_x, node_y - 1),
             (node_x + 1, node_y),
             (node_x - 1, node_y),
-        ]:
-            if p1_candidate not in nbrs:
-                p1 = p1_candidate
-                nb_1 = (2 * node_x - p1[0], 2 * node_y - p1[1])
+        ]
+        for new_position_candidate in possible_positions:
+            if new_position_candidate not in nbrs:
+                new_position = new_position_candidate
+                neighbor_position = (
+                    2 * node_x - new_position[0],
+                    2 * node_y - new_position[1],
+                )
                 new_weight = (
                     2 * self.som_.nodes[node]["weight"]
-                    - self.som_.nodes[nb_1]["weight"]
+                    - self.som_.nodes[neighbor_position]["weight"]
                 )
 
-        return p1, new_weight
+        return new_position, new_weight
 
     def _insert_neuron_2p(
         self, bo: tuple[int, int]
@@ -760,15 +797,16 @@ class BaseSom(BaseEstimator):
         nb_2: tuple[int, int],
         nb_3: tuple[int, int],
     ) -> tuple[tuple[int, int], np.ndarray]:
-        if (
-            self.som_.nodes[nb_1]["error"] > self.som_.nodes[nb_2]["error"]
-            and self.som_.nodes[nb_1]["error"] > self.som_.nodes[nb_3]["error"]
-        ):
+        error_nb_1 = self.som_.nodes[nb_1]["error"]
+        error_nb_2 = self.som_.nodes[nb_2]["error"]
+        error_nb_3 = self.som_.nodes[nb_3]["error"]
+
+        if error_nb_1 > error_nb_2 and error_nb_1 > error_nb_3:
             new_node, new_weight = self._3p_case_c(nb_1, bo)
-        elif self.som_.nodes[nb_2]["error"] > self.som_.nodes[nb_3]["error"]:
+        elif error_nb_2 > error_nb_3:
             new_node, new_weight = self._3p_case_b(nb_1, bo, nb_2)
         else:
-            new_node, new_weight = self._3p_case_b(nb_1, bo, nb_2)
+            new_node, new_weight = self._3p_case_b(nb_1, bo, nb_3)
 
         return new_node, new_weight
 
@@ -835,12 +873,12 @@ class BaseSom(BaseEstimator):
         epoch = self._current_epoch
         n_neurons = self.som_.number_of_nodes()
         if self.sigma_start is None:
-            sigma_start = 0.2 * np.sqrt(n_neurons)
+            sigma_start = 0.2 * sqrt(n_neurons)
         else:
             sigma_start = self.sigma_start
 
         if self.sigma_end is None:
-            sigma_end = max(0.7, 0.05 * np.sqrt(n_neurons))
+            sigma_end = max(0.7, 0.05 * sqrt(n_neurons))
         else:
             sigma_end = self.sigma_end
 
@@ -879,8 +917,8 @@ class BaseSom(BaseEstimator):
         """
         check_is_fitted(self)
         X = check_array(X)
-        winners = self._get_winning_neurons(X, n_bmu=1)
-        error = np.mean(np.linalg.norm(self.weights_[winners] - X, axis=1))
+        distances, _ = self._get_winning_neurons(X, n_bmu=1)
+        error = float(np.mean(distances))
         return error
 
     def _calculate_topographic_error(self, X: npt.ArrayLike) -> float:
@@ -904,14 +942,60 @@ class BaseSom(BaseEstimator):
         topographic error : float
             Fraction of samples with topographic errors over all samples.
         """
-        bmu_indices = self._get_winning_neurons(X, n_bmu=2).T
-        errors = 0
-        for bmu_1, bmu_2 in bmu_indices:
-            dist = self._distance_matrix[bmu_1, bmu_2]
-            if dist > 1:
-                errors += 1
+        _, bmu_indices = self._get_winning_neurons(X, n_bmu=2)
+        euclid_dist_matrix = euclidean_distances(self.neurons_)
+        topographic_error = 0
+        for node in bmu_indices:
+            # distance = int(distance_matrix[node[0], node[1]])
+            distance = euclid_dist_matrix[node[0], node[1]]
+            topographic_error += 1 if distance > 1.5 else 0
 
-        return errors / X.shape[0]
+        return topographic_error / X.shape[0]
+
+    def topographic_function(self, X: npt.ArrayLike) -> tuple[np.ndarray, np.ndarray]:
+        X = check_array(X)
+        self._delaunay_maxtrix = self._calculate_delaunay_triangulation(X)
+        self.euclid_dist_matrix = euclidean_distances(self.neurons_)
+        self.manhattan_dist_matrix = manhattan_distances(self.neurons_)
+        self.max_dist_matrix = pairwise_distances(self.neurons_, metric="chebyshev")
+        max_dist = int(self.max_dist_matrix.max())
+        k_positive = np.arange(max_dist)
+        k_negative = np.arange(max_dist)
+        for k in range(max_dist):
+            k_positive[k] = self.phi(k)
+            k_negative[k] = self.phi(-k)
+
+        return (
+            k_positive / len(self.neurons_),
+            k_negative / len(self.neurons_),
+        )
+
+    def phi(self, k: int) -> int:
+        if k > 0:
+            return np.count_nonzero(
+                (self.max_dist_matrix > k) & (self._delaunay_maxtrix == 1)
+            )
+        elif k < 0:
+            return np.count_nonzero(
+                (self.euclid_dist_matrix == 1) & (self._delaunay_maxtrix > -k)
+            )
+        else:
+            return self.phi(-1) + self.phi(1)
+
+    def _calculate_delaunay_triangulation(self, X) -> np.ndarray:
+        """Calculate the Delaunay triangulation distance matrix."""
+        _, bmu_indices = self._get_winning_neurons(X, n_bmu=2)
+
+        n_neurons = self.som_.number_of_nodes()
+        connectivity_matrix = np.zeros(shape=(n_neurons, n_neurons))
+        for node in bmu_indices:
+            connectivity_matrix[node[0], node[1]] = 1
+            connectivity_matrix[node[1], node[0]] = 1
+
+        delaunay_triangulation_graph = nx.from_numpy_array(connectivity_matrix)
+        distance_matrix = nx.floyd_warshall_numpy(delaunay_triangulation_graph)
+
+        return distance_matrix
 
 
 def linear_decay(
@@ -941,8 +1025,18 @@ def exponential_decay(
     return sigma
 
 
-@nb.njit(parallel=True, fastmath=True)
-def numba_voronoi_set_centers(data: npt.NDArray, shape: tuple, groups, offsets, index):
+@nb.njit(
+    parallel=True,
+    fastmath=True,
+)
+def numba_voronoi_set_centers(
+    kernel,
+    data: npt.NDArray,
+    shape: tuple,
+    groups: npt.NDArray,
+    offsets: npt.NDArray,
+    index: npt.NDArray,
+) -> np.ndarray:
     """
     Calculates the centers of the Voronoi regions based on the winners and data arrays.
     """
@@ -953,40 +1047,27 @@ def numba_voronoi_set_centers(data: npt.NDArray, shape: tuple, groups, offsets, 
         group_end = offsets[i + 1] if i + 1 < groups.size else index.size
         group_index = index[group_start:group_end]
         samples = data[group_index]
+        weights = kernel[group_index]
         for j in nb.prange(samples.shape[1]):
-            mean_samples = samples[:, j].mean()
-            voronoi_set_centers[i, j] = mean_samples if mean_samples > 0 else 0
+            mean_samples = np.average(samples[:, j], weights=weights)
+            voronoi_set_centers[i, j] = mean_samples
 
     return voronoi_set_centers
 
 
 @nb.njit(
     fastmath=True,
-    #  parallel=True,
+    parallel=True,
 )
 def numba_quantization_error(
-    data: npt.NDArray, winners: npt.NDArray, length, weights: npt.NDArray
-):
+    winners: npt.NDArray, length: int, distances: npt.NDArray
+) -> np.ndarray:
     """
-    Calculates the quantization error for each neuron in the self-organizing map (SOM)
-    based on the distances between the neuron's weight vector and the input samples.
-
-    Args:
-        data (array-like): An array-like object representing the input samples.
-        winners (array-like): An array-like object representing the index of the
-        winning neuron for each input sample.
-
-        length (int): An integer representing the length of the `errors` array.
-        weights (array-like): An array-like object representing the weight
-        vectors of the neurons in the SOM.
-
-    Returns:
-        array: An array of shape `(length,)` representing the quantization error for
-        each neuron in the SOM.
+    Calculate the quantization error for a given set of winners, distances, and length.
     """
     errors = np.zeros(shape=length)
-    for sample, winner in zip(data, winners):
-        distance = np.linalg.norm(weights[winner] - sample)
+    for i in nb.prange(len(winners)):
+        winner = winners[i]
+        distance = distances[i]
         errors[winner] += distance
-
     return errors

@@ -3,7 +3,12 @@ Implements the SOM Clusterer."""
 
 import numpy as np
 import numpy.typing as npt
-from sklearn.base import ClusterMixin, TransformerMixin, check_array, check_is_fitted
+from sklearn.base import (
+    ClusterMixin,
+    TransformerMixin,
+    check_array,
+    check_is_fitted,
+)
 
 from .BaseSom import BaseSom
 
@@ -115,7 +120,8 @@ class SomVQ(BaseSom, ClusterMixin, TransformerMixin):
 
     def _check_input_data(self, X: npt.ArrayLike, y=None) -> tuple[npt.NDArray, None]:
         X = check_array(array=X, ensure_min_samples=4, dtype=[np.float64, np.float32])
-        return X, y
+        # throw away any y
+        return X, None
 
     def _label_prototypes(self, X: npt.ArrayLike, y=None) -> None:
         for i, neuron in enumerate(self.som_):
@@ -137,6 +143,10 @@ class SomVQ(BaseSom, ClusterMixin, TransformerMixin):
         """
         check_is_fitted(self)
         X = check_array(X)
-        labels = self._get_winning_neurons(X, n_bmu=1)
+        _, labels = self._get_winning_neurons(X, n_bmu=1)
 
         return labels
+
+    def _fit(self, X: npt.NDArray):
+
+        self.labels_ = self.predict(X)
