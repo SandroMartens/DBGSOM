@@ -161,7 +161,7 @@ class BaseSom(BaseEstimator):
         """
         # todo: refactor in sub classes
         self.vertical_growing_threshold_ = 1.5 * self.growing_threshold_
-        _, winners = self._get_winning_neurons(X, n_bmu=1)
+        _, winners = self._get_winning_neurons(X, n_bmu=1, weights=self.weights_)
         relevant_nodes = [
             node
             for (node, error) in enumerate(self.som_.nodes(data="error"))
@@ -191,7 +191,9 @@ class BaseSom(BaseEstimator):
 
         3. average distance: average distance from each prototype to their neighbors.
         used for plotting the u matrix"""
-        distances, winners = self._get_winning_neurons(X, n_bmu=1)
+        distances, winners = self._get_winning_neurons(
+            X, n_bmu=1, weights=self.weights_
+        )
         average_distances = self._get_u_matrix()
         sigma = average_distances.mean()
         densities = np.zeros((len(self.neurons_)))
@@ -363,6 +365,9 @@ class BaseSom(BaseEstimator):
         self._total_variance = np.var(data, axis=0).sum()
         self._neurons_added = True
 
+        self.min_values = data.min(axis=0)
+        self.max_values = data.max(axis=0)
+
         self.som_ = self._create_som(data)
         self._distance_matrix = nx.floyd_warshall_numpy(self.som_)
         self.weights_ = self._extract_values_from_graph("weight")
@@ -400,7 +405,12 @@ class BaseSom(BaseEstimator):
                 self.neurons_ = list(self.som_.nodes)
                 self._distance_matrix = nx.floyd_warshall_numpy(self.som_)
 
-            distances, winners = self._get_winning_neurons(data, n_bmu=1)
+            opp_weights = self.max_values + self.min_values - self.weights_
+            distances, winners = self._get_winning_neurons(
+                data, n_bmu=1, weights=self.weights_
+            )
+            distances_opp = np.linalg.norm(opp_weights[winners] - data, axis=1)
+            self._check_opposite_neurons(distances, distances_opp)
             sample_weights = self._calculate_exp_similarity(distances)
 
             self._update_weights(sample_weights, winners, data)
@@ -444,14 +454,13 @@ class BaseSom(BaseEstimator):
         return som
 
     def _get_winning_neurons(
-        self, data: npt.NDArray, n_bmu: int
+        self, data: npt.NDArray, n_bmu: int, weights: np.ndarray
     ) -> tuple[npt.NDArray, npt.NDArray]:
         """Calculate distances from each neuron to each sample.
 
         Return distances and index of the winning neuron(s) or
         best matching units(s) for each sample.
         """
-        weights = self.weights_
         nn_tree = NearestNeighbors(n_neighbors=n_bmu)
         nn_tree.fit(weights)
         result = nn_tree.kneighbors(data)
@@ -465,6 +474,13 @@ class BaseSom(BaseEstimator):
 
     def _label_prototypes(self, X, y) -> None:
         raise NotImplementedError
+
+    def _check_opposite_neurons(self, distances: np.ndarray, distances_opp: np.ndarray):
+        # x = distances.sum()
+        # y = distances_opp.sum()
+        x = distances > distances_opp
+        y = x.sum()
+        return
 
     # @profile
     def _update_weights(
@@ -917,7 +933,7 @@ class BaseSom(BaseEstimator):
         """
         check_is_fitted(self)
         X = check_array(X)
-        distances, _ = self._get_winning_neurons(X, n_bmu=1)
+        distances, _ = self._get_winning_neurons(X, n_bmu=1, weights=self.weights_)
         error = float(np.mean(distances))
         return error
 
@@ -942,7 +958,7 @@ class BaseSom(BaseEstimator):
         topographic error : float
             Fraction of samples with topographic errors over all samples.
         """
-        _, bmu_indices = self._get_winning_neurons(X, n_bmu=2)
+        _, bmu_indices = self._get_winning_neurons(X, n_bmu=2, weights=self.weights_)
         euclid_dist_matrix = euclidean_distances(self.neurons_)
         topographic_error = 0
         for node in bmu_indices:
@@ -984,7 +1000,7 @@ class BaseSom(BaseEstimator):
 
     def _calculate_delaunay_triangulation(self, X) -> np.ndarray:
         """Calculate the Delaunay triangulation distance matrix."""
-        _, bmu_indices = self._get_winning_neurons(X, n_bmu=2)
+        _, bmu_indices = self._get_winning_neurons(X, n_bmu=2, weights=self.weights_)
 
         n_neurons = self.som_.number_of_nodes()
         connectivity_matrix = np.zeros(shape=(n_neurons, n_neurons))
