@@ -367,6 +367,7 @@ class BaseSom(BaseEstimator):
 
         self.min_values = data.min(axis=0)
         self.max_values = data.max(axis=0)
+        self.average = data.mean(axis=0)
 
         self.som_ = self._create_som(data)
         self._distance_matrix = nx.floyd_warshall_numpy(self.som_)
@@ -406,14 +407,17 @@ class BaseSom(BaseEstimator):
                 self._distance_matrix = nx.floyd_warshall_numpy(self.som_)
 
             opp_weights = self.max_values + self.min_values - self.weights_
+            opp_weights = 2 * self.average - self.weights_
             distances, winners = self._get_winning_neurons(
                 data, n_bmu=1, weights=self.weights_
             )
-            distances_opp = np.linalg.norm(opp_weights[winners] - data, axis=1)
-            self._check_opposite_neurons(distances, distances_opp)
-            sample_weights = self._calculate_exp_similarity(distances)
+            distances_opp, winners_opp = self._get_winning_neurons(
+                data, n_bmu=1, weights=opp_weights
+            )
+            self._check_opposite_neurons(distances, distances_opp, winners, winners_opp)
+            exp_distances = self._calculate_exp_distance(distances)
 
-            self._update_weights(sample_weights, winners, data)
+            self._update_weights(exp_distances, winners, data)
             self._write_accumulative_error(winners, y, distances)
             if self.converged_ and self._training_phase == "fine":
                 break
@@ -475,11 +479,25 @@ class BaseSom(BaseEstimator):
     def _label_prototypes(self, X, y) -> None:
         raise NotImplementedError
 
-    def _check_opposite_neurons(self, distances: np.ndarray, distances_opp: np.ndarray):
-        # x = distances.sum()
-        # y = distances_opp.sum()
+    def _check_opposite_neurons(
+        self,
+        distances: np.ndarray,
+        distances_opp: np.ndarray,
+        winners: np.ndarray,
+        winners_opp: np.ndarray,
+    ):
         x = distances > distances_opp
+        q_error = distances.sum().round()
+        q_error_opp = distances_opp.sum().round()
         y = x.sum()
+        errors = []
+        # for i in range(len(self.neurons_)):
+        #     n_samples = len(distances[winners == i])
+        #     errors.append(x[winners == i].sum() / n_samples)
+        for i in range(len(self.neurons_)):
+            if distances[winners == i].sum() > distances_opp[winners_opp == i].sum():
+                self.weights_
+                # errors.append(i)
         return
 
     # @profile
@@ -546,12 +564,12 @@ class BaseSom(BaseEstimator):
 
         return h
 
-    def _calculate_exp_similarity(self, distances: np.ndarray) -> np.ndarray:
+    def _calculate_exp_distance(self, distances: np.ndarray) -> np.ndarray:
         """Calculate the weight of each sample by calculating a exponential kernel
         for the distance between the sample and the bmu."""
         gamma = self._total_variance**-1
-        kernel = 1 - (1 - np.exp(-gamma * distances**2)) ** 0.5
-        return kernel
+        exp_distances = 1 - (1 - np.exp(-gamma * distances**2)) ** 0.5
+        return exp_distances
 
     # @profile
     def _write_accumulative_error(
