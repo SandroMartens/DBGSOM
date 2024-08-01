@@ -407,14 +407,16 @@ class BaseSom(BaseEstimator):
                 self._distance_matrix = nx.floyd_warshall_numpy(self.som_)
 
             opp_weights = self.max_values + self.min_values - self.weights_
-            opp_weights = 2 * self.average - self.weights_
+            # opp_weights = 2 * self.average - self.weights_
             distances, winners = self._get_winning_neurons(
                 data, n_bmu=1, weights=self.weights_
             )
             distances_opp, winners_opp = self._get_winning_neurons(
                 data, n_bmu=1, weights=opp_weights
             )
-            self._check_opposite_neurons(distances, distances_opp, winners, winners_opp)
+            errors = self._check_opposite_neurons(
+                distances, distances_opp, winners, winners_opp, opp_weights, data
+            )
             exp_distances = self._calculate_exp_distance(distances)
 
             self._update_weights(exp_distances, winners, data)
@@ -485,20 +487,33 @@ class BaseSom(BaseEstimator):
         distances_opp: np.ndarray,
         winners: np.ndarray,
         winners_opp: np.ndarray,
-    ):
-        x = distances > distances_opp
+        weights_opp: np.ndarray,
+        data,
+    ) -> list:
+        mask = distances > distances_opp
         q_error = distances.sum().round()
         q_error_opp = distances_opp.sum().round()
-        y = x.sum()
+        y = mask.sum()
         errors = []
-        # for i in range(len(self.neurons_)):
-        #     n_samples = len(distances[winners == i])
-        #     errors.append(x[winners == i].sum() / n_samples)
         for i in range(len(self.neurons_)):
             if distances[winners == i].sum() > distances_opp[winners_opp == i].sum():
-                self.weights_
-                # errors.append(i)
-        return
+                # self.weights_[:, i] = weights_opp[:, i]
+                # distances[i]
+                errors.append(i)
+        weights_corrected = []
+        for i in range(len(weights_opp)):
+            if i in errors:
+                weights_corrected.append(weights_opp[i])
+            else:
+                weights_corrected.append(self.weights_[i])
+        weights_corrected = np.array(weights_corrected)
+        distances_new, winners_new = self._get_winning_neurons(
+            weights=weights_corrected,
+            n_bmu=1,
+            data=data,
+        )
+        q_error_corrected = distances_new.sum().round()
+        return errors
 
     # @profile
     def _update_weights(
