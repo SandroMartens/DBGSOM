@@ -76,6 +76,7 @@ Here are a few example use cases for DBGSOM.
 - _Entropy-Defined Direct Batch Growing Hierarchical Self-Organizing Mapping for Efficient Network Anomaly Detection_, Xiaofei Qu et al., 2021 10.1109/ACCESS.2021.3064200
 - _Self-Organizing Maps_, 3rd Edition, Teuvo Kohonen, 2003
 - _MATLAB Implementations and Applications of the Self-Organizing Map_, Teuvo Kohonen, 2014
+- _Smoothed self-organizing map for robust clustering_, P. D’Urso, L. De Giovanni and R. Massari, 2019, <https://doi.org/10.1016/j.ins.2019.06.038>
 
 ## License
 
