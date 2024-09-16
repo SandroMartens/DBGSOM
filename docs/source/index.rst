@@ -18,6 +18,7 @@ User Guide
    basic_usage
    plotting
    algorithm
+   examples
    api
 
 
