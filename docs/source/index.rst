@@ -8,6 +8,11 @@ Welcome to DBGSOM's documentation!
 
 DBGSOM is short for *Directed Batch Growing Self-Organizing Map*. A SOM is a type of artificial neural network that is used to to produce a low-dimensional representation of a higher dimensional data set while preserving the topological structure of the data. It can be used for supervised and unsupervised vector quantization, classification and many different data visualization tasks. DBGSOM implements the SomClassifier and SomVQ for classification and clustering/vector quantization respectively.
 
+Installation
+------------
+DBGSOM can be installed via pip:
+``pip install dbgsom``
+
 User Guide
 ----------
 .. toctree::
