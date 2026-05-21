@@ -9,7 +9,7 @@ authors = [
 ]
 description = "A Python implementation of the Directed Batch Growing Self-Organizing Map"
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.11"
 classifiers = [
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: MIT License",
@@ -22,3 +22,16 @@ dynamic = ["dependencies", "license", "version"]
 "Homepage" = "https://github.com/SandroMartens/DBGSOM"
 "Docmentation" = "https://dbgsom.readthedocs.io/en/latest/"
 
+[tool.ruff.lint]
+select = [
+    "E", "W",    # PEP 8 Fehler und Warnungen
+    "F",         # Pyflakes (Logikfehler)
+    "C90",       # McCabe Cyclomatic Complexity (z. B. Limit hart auf 10 setzen!)
+    "S",         # Bandit (Security-Checks / Verhinderung von eval, unsicheren Libs)
+    "D",         # Pydocstyle (Zwingende Dokumentation aller Funktionen/Klassen)
+    "ANN",       # Flake8-Annotations (Zwingende Type Hints für jede Funktion)
+    "I",         # Isort (Strikte Ordnung bei Imports)
+]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 10  # Alles über Komplexität 10 blockiert den Build

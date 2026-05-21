@@ -1,5 +1,4 @@
-"""
-Implements the SOM Clusterer."""
+"""Implements the SOM Clusterer."""
 
 import numpy as np
 import numpy.typing as npt
@@ -116,10 +115,13 @@ class SomVQ(BaseSom, ClusterMixin, TransformerMixin):
 
     quantization_error_ : float
         Average distance from all training samples to their nearest prototype.
+
     """
 
     def _check_input_data(self, X: npt.ArrayLike, y=None) -> tuple[npt.NDArray, None]:
-        X = check_array(array=X, ensure_min_samples=4, dtype=[np.float64, np.float32])
+        X = np.array(
+            check_array(array=X, ensure_min_samples=4, dtype=[np.float64, np.float32])
+        )
         # throw away any y
         return X, None
 
@@ -127,7 +129,7 @@ class SomVQ(BaseSom, ClusterMixin, TransformerMixin):
         for i, neuron in enumerate(self.som_):
             self.som_.nodes[neuron]["label"] = i
 
-    def predict(self, X: npt.ArrayLike) -> np.ndarray:
+    def predict(self, X: npt.ArrayLike) -> npt.NDArray:
         """Predict the closest neuron each sample in X belongs to.
 
         Parameters
@@ -142,11 +144,11 @@ class SomVQ(BaseSom, ClusterMixin, TransformerMixin):
 
         """
         check_is_fitted(self)
-        X = check_array(X)
+        X = np.array(check_array(X))
         _, labels = self._get_winning_neurons(X, n_bmu=1)
 
         return labels
 
-    def _fit(self, X: npt.NDArray):
+    def _fit(self, X: npt.NDArray) -> None:
 
         self.labels_ = self.predict(X)

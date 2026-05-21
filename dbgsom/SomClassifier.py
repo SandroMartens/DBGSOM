@@ -122,12 +122,12 @@ class SomClassifier(BaseSom, TransformerMixin, ClassifierMixin):
     """
 
     def _check_input_data(
-        self, X: npt.ArrayLike, y=npt.ArrayLike
-    ) -> tuple[npt.NDArray, npt.ArrayLike]:
+        self, X: npt.ArrayLike, y: npt.ArrayLike
+    ) -> tuple[npt.NDArray, npt.NDArray]:
         X, y = check_X_y(X=X, y=y, ensure_min_samples=4, dtype=[np.float64, np.float32])
-        return X, y
+        return np.array(X), np.array(y)
 
-    def _label_prototypes(self, X: npt.ArrayLike, y=npt.ArrayLike) -> None:
+    def _label_prototypes(self, X: npt.NDArray, y: npt.NDArray) -> None:
         """This method assigns labels to the prototypes based on the input data."""
         _, winners = self._get_winning_neurons(X, n_bmu=1)
         for winner_index, neuron in enumerate(self.neurons_):
@@ -175,7 +175,7 @@ class SomClassifier(BaseSom, TransformerMixin, ClassifierMixin):
         labels = np.argmax(self.predict_proba(X=X), axis=1)
         return self.classes_[labels]
 
-    def predict_proba(self, X: npt.ArrayLike) -> np.ndarray:
+    def predict_proba(self, X: npt.ArrayLike) -> npt.NDArray:
         """Predict the probability of each class and each sample.
 
         Parameters
@@ -191,7 +191,7 @@ class SomClassifier(BaseSom, TransformerMixin, ClassifierMixin):
         classes are ordered as they are in self.classes_.
         """
         check_is_fitted(self)
-        X = check_array(X)
+        X = np.array(check_array(X))
         if self.vertical_growth:
             _, winners = self._get_winning_neurons(X, n_bmu=1)
             probabilities_rows = []

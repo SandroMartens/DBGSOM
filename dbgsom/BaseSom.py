@@ -1,12 +1,10 @@
-"""
-This class handles the core SOM functionality.
-"""
+"""This class handles the core SOM functionality."""
 
 import copy
 import sys
-from math import exp, log, sqrt, pi
+from math import exp, log, pi, sqrt
 from numbers import Integral
-from typing import Any
+from typing import Any, Self
 
 # from matplotlib import pyplot as plt
 # import matplotlib
@@ -38,6 +36,69 @@ except ImportError as e:
 
 # pylint:  disable= attribute-defined-outside-init
 class BaseSom(BaseEstimator):
+    """Base Self-Organizing Map (SOM) implementation.
+
+    A Self-Organizing Map is an unsupervised neural network model that maps
+    high-dimensional input data onto a low-dimensional, typically 2D or 3D
+    grid of neurons. The neurons are updated during training to preserve the
+    topological properties of the input space.
+
+    Parameters
+    ----------
+    n_iter : int, default=200
+        Maximum number of iterations for training.
+
+    convergence_iter : int, default=1
+        Number of iterations to check for convergence.
+
+    spreading_factor : float, default=0.5
+        Factor controlling the spread of neuron activation.
+
+    sigma_start : float or None, default=None
+        Initial standard deviation for the neighborhood function.
+
+    sigma_end : float or None, default=None
+        Final standard deviation for the neighborhood function.
+
+    vertical_growth : bool, default=False
+        Whether to allow vertical growth of the map.
+
+    decay_function : str, default="exponential"
+        Decay function for the learning rate and neighborhood. Options: "exponential", "linear".
+
+    learning_rate : float, default=0.02
+        Learning rate for weight updates.
+
+    verbose : bool, default=False
+        Whether to print training progress.
+
+    coarse_training_frac : float, default=0.5
+        Fraction of training data for coarse training phase.
+
+    random_state : int, RandomState instance or None, default=None
+        Random state for reproducibility.
+
+    convergence_treshold : float, default=1e-5
+        Threshold for convergence criterion.
+
+    max_neurons : int, default=100
+        Maximum number of neurons allowed in the map.
+
+    metric : str, default="euclidean"
+        Distance metric used for computations.
+
+    threshold_method : str, default="se"
+        Method for threshold calculation.
+
+    growth_criterion : str, default="quantization_error"
+        Criterion for neuron growth decision.
+
+    min_samples_vertical_growth : int, default=100
+        Minimum number of samples required for vertical growth.
+
+    n_jobs : int, default=1
+        Number of parallel jobs for computation.
+    """
 
     def __init__(
         self,
@@ -80,12 +141,12 @@ class BaseSom(BaseEstimator):
         self.n_jobs = n_jobs
 
     _parameter_constraints = {
-        "n_iter": [Interval(Integral, 1, None, closed="left")],
-        "max_neurons": [Interval(Integral, 4, None, closed="left")],
-        "decay_function": [StrOptions({"exponential", "linear"})],
+        "n_iter": [Interval(Integral, 1, None, closed="left")],  # type: ignore
+        "max_neurons": [Interval(Integral, 4, None, closed="left")],  # type: ignore
+        "decay_function": [StrOptions({"exponential", "linear"})],  # type: ignore
     }
 
-    def fit(self, X: npt.ArrayLike, y: None | npt.ArrayLike = None):
+    def fit(self, X: npt.ArrayLike, y: None | npt.ArrayLike = None) -> Self:
         """Train SOM on training data.
 
         Parameters
@@ -100,10 +161,10 @@ class BaseSom(BaseEstimator):
         -------
         self : DBGSOM
             Trained estimator
+
         """
         # Initialization
         X, y = self._check_input_data(X, y)
-        # self._fit(X, y)
         if y is not None:
             classes, y = np.unique(y, return_inverse=True)
             self.classes_ = np.array(classes)
@@ -130,7 +191,9 @@ class BaseSom(BaseEstimator):
 
         return self
 
-    def _check_input_data(self, X, y):
+    def _check_input_data(
+        self, X: npt.ArrayLike, y: npt.ArrayLike | None
+    ) -> tuple[npt.NDArray, npt.NDArray | None]:
         raise NotImplementedError
 
     def _fit(self, X):
@@ -140,7 +203,7 @@ class BaseSom(BaseEstimator):
     def predict(self, X):
         raise NotImplementedError
 
-    def _check_arguments(self):
+    def _check_arguments(self) -> None:
         if self.decay_function not in ["linear", "exponential"]:
             raise ValueError(
                 "Decay function not supported. Must be 'linear' or 'exponential'."
@@ -154,9 +217,8 @@ class BaseSom(BaseEstimator):
                 "growth_criterion not supported. Must be 'quantization_error' or 'entropy'."
             )
 
-    def _grow_vertical(self, X: npt.ArrayLike, y: None | npt.ArrayLike = None) -> None:
-        """
-        Triggers vertical growth in the SOM by creating new instances of the DBGSOM
+    def _grow_vertical(self, X: npt.NDArray, y: None | npt.NDArray = None) -> None:
+        """Triggers vertical growth in the SOM by creating new instances of the DBGSOM
         class and fitting them with filtered data.
         """
         # todo: refactor in sub classes
@@ -179,7 +241,7 @@ class BaseSom(BaseEstimator):
                 self.som_.nodes[node]["som"] = new_som
 
     def _calculate_node_statistics(
-        self, X: npt.ArrayLike
+        self, X: npt.NDArray
     ) -> tuple[npt.NDArray, npt.NDArray, npt.NDArray]:
         """Write the following statistics as attributes to the graph:
 
@@ -210,7 +272,7 @@ class BaseSom(BaseEstimator):
             hit_counts[winner] = len(samples)
         return average_distances, densities, hit_counts
 
-    def _write_node_statistics(self, X: npt.ArrayLike) -> None:
+    def _write_node_statistics(self, X: npt.NDArray) -> None:
         average_distances, densities, hit_counts = self._calculate_node_statistics(X)
 
         for density, hit_count, average_distance, node in zip(
@@ -254,9 +316,10 @@ class BaseSom(BaseEstimator):
         -------
         coefficients : np.ndarray of shape (n_samples, n_protoypes)
             Coefficients of the linear regression model.
+
         """
         check_is_fitted(self)
-        X = check_array(X, dtype=[np.float64, np.float32])
+        X = np.asarray(check_array(X, dtype=np.float64))
         transformer = SparseCoder(
             dictionary=normalize(self.weights_),
             n_jobs=self.n_jobs,
@@ -267,11 +330,17 @@ class BaseSom(BaseEstimator):
         coefs = transformer.transform(normalize(X))
         return coefs
 
-    def plot(self, color: None | str = None, palette="magma_r", pointsize=None) -> None:
+    def plot(
+        self,
+        color: None | str = None,
+        palette: str = "magma_r",
+        pointsize: float = 1,
+    ) -> None:
         """Plot the neurons.
 
         Parameters
         ----------
+
         color, pointsize : {None, "label", "epoch_created", "error", "average_distance",
         "density", "hit_count"}, default = None
             Attribute which is represented as color.
@@ -310,16 +379,16 @@ class BaseSom(BaseEstimator):
         # f = plt.figure()
         so.Plot(dots, x="x", y="y", color=color, pointsize=pointsize).add(
             so.Dot()
-        ).scale(color=palette).label(
-            x="", y=""
-        ).show()  # .on(f)
+        ).scale(color=palette).label(x="", y="").show()  # .on(f)
         # f
         # f.show()
         # plt.show()
 
     def _get_u_matrix(self) -> np.ndarray[Any, np.dtype[np.float64]]:
         """Calculate the average distance from each neuron to its neighbors in the
-        input space."""
+        input space.
+
+        """
 
         g = self.som_
         node_weights = np.array([g.nodes[node]["weight"] for node in g.nodes])
@@ -343,10 +412,11 @@ class BaseSom(BaseEstimator):
         2. Calculate entropy of each sample from histogram
         3. Save minimum and maximum rep for all classes
 
-        Use 20 bins as default"""
+        Use 20 bins as default
+        """
 
         hists = []
-        for sample in X:
+        for sample in X:  # type: ignore
             hists.append(np.histogram(sample, bins=20)[0])
 
     def _initialize_som(self, data: npt.NDArray) -> None:
@@ -384,8 +454,8 @@ class BaseSom(BaseEstimator):
 
         return growing_threshold
 
-    def _grow_som(self, data: npt.NDArray, y: np.ndarray) -> None:
-        """Second training phase"""
+    def _grow_som(self, data: npt.NDArray, y: npt.NDArray | None) -> None:
+        """Second training phase."""
         for current_epoch in tqdm(
             iterable=range(self.n_iter),
             disable=not self.verbose,
@@ -468,7 +538,7 @@ class BaseSom(BaseEstimator):
 
     # @profile
     def _update_weights(
-        self, sample_weights: np.ndarray, winners: np.ndarray, data: npt.NDArray
+        self, sample_weights: npt.NDArray, winners: npt.NDArray, data: npt.NDArray
     ) -> None:
         """Update the weight vectors according to the batch learning rule.
 
@@ -522,7 +592,7 @@ class BaseSom(BaseEstimator):
             self.converged_ = True
         nx.set_node_attributes(G=self.som_, values=new_weights_dict, name="weight")
 
-    def _calculate_gaussian_neighborhood(self) -> np.ndarray:
+    def _calculate_gaussian_neighborhood(self) -> npt.NDArray:
         """Calculate the gaussian neighborhood function for all neuron
         pairs using the distance matrix."""
         sigma = self._calculate_current_sigma()
@@ -530,7 +600,7 @@ class BaseSom(BaseEstimator):
 
         return h
 
-    def _calculate_exp_similarity(self, distances: np.ndarray) -> np.ndarray:
+    def _calculate_exp_similarity(self, distances: np.ndarray) -> npt.NDArray:
         """Calculate the weight of each sample by calculating a exponential kernel
         for the distance between the sample and the bmu."""
         gamma = self._total_variance**-1
@@ -539,7 +609,7 @@ class BaseSom(BaseEstimator):
 
     # @profile
     def _write_accumulative_error(
-        self, winners: np.ndarray, y: np.ndarray, distances: np.ndarray
+        self, winners: np.ndarray, y: npt.NDArray | None, distances: np.ndarray
     ) -> None:
         """Get the quantization error for each neuron
         and save it as "error" attribute of each node.
@@ -763,6 +833,7 @@ class BaseSom(BaseEstimator):
               P3
         For the case which there is no neuron adjacent to the
         available positions the position P1 is preferable
+
         """
 
         bo_x, bo_y = bo
@@ -869,6 +940,7 @@ class BaseSom(BaseEstimator):
 
         Returns:
             float: The neighborhood bandwidth for each epoch.
+
         """
         epoch = self._current_epoch
         n_neurons = self.som_.number_of_nodes()
@@ -902,8 +974,7 @@ class BaseSom(BaseEstimator):
         return sigma
 
     def calculate_quantization_error(self, X: npt.ArrayLike) -> float:
-        """Return the average distance from each sample to the nearest
-        prototype.
+        """Return the average distance from each sample to the nearest prototype.
 
         Parameters
         ----------
@@ -914,14 +985,15 @@ class BaseSom(BaseEstimator):
         -------
         error : float
             Average distance from each sample to the nearest prototype.
+
         """
         check_is_fitted(self)
-        X = check_array(X)
+        X = np.array(check_array(X))
         distances, _ = self._get_winning_neurons(X, n_bmu=1)
         error = float(np.mean(distances))
         return error
 
-    def _calculate_topographic_error(self, X: npt.ArrayLike) -> float:
+    def _calculate_topographic_error(self, X: npt.NDArray) -> float:
         """Return the topographic error of the training data.
 
         The topographic error is a measure for the topology preservation of
@@ -941,6 +1013,7 @@ class BaseSom(BaseEstimator):
         -------
         topographic error : float
             Fraction of samples with topographic errors over all samples.
+
         """
         _, bmu_indices = self._get_winning_neurons(X, n_bmu=2)
         euclid_dist_matrix = euclidean_distances(self.neurons_)
@@ -1003,7 +1076,7 @@ def linear_decay(
     sigma_end: float,
     max_iter: int,
     current_iter: float,
-    learning_rate=None,
+    learning_rate: None = None,
 ) -> float:
     """Linear decay between sigma_start and sigma_end over t training iterations."""
     ratio = current_iter / max_iter
@@ -1037,10 +1110,7 @@ def numba_voronoi_set_centers(
     offsets: npt.NDArray,
     index: npt.NDArray,
 ) -> np.ndarray:
-    """
-    Calculates the centers of the Voronoi regions based on the winners and data arrays.
-    """
-
+    """Calculate the centers of the Voronoi regions based on the winners and data arrays."""
     voronoi_set_centers = np.zeros(shape=shape)
     for i in nb.prange(groups.size):
         group_start = offsets[i]
@@ -1061,10 +1131,8 @@ def numba_voronoi_set_centers(
 )
 def numba_quantization_error(
     winners: npt.NDArray, length: int, distances: npt.NDArray
-) -> np.ndarray:
-    """
-    Calculate the quantization error for a given set of winners, distances, and length.
-    """
+) -> npt.NDArray:
+    """Calculate the quantization error for a given set of winners, distances, and length."""
     errors = np.zeros(shape=length)
     for i in nb.prange(len(winners)):
         winner = winners[i]
