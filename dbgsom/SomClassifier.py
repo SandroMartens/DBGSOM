@@ -1,5 +1,4 @@
-"""
-Implements the SOM Classifier."""
+"""Implements the SOM Classifier."""
 
 from statistics import mode
 
@@ -10,8 +9,8 @@ from sklearn.base import (
     TransformerMixin,
     check_array,
     check_is_fitted,
-    check_X_y,
 )
+from sklearn.utils import check_X_y
 
 from .BaseSom import BaseSom
 
