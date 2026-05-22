@@ -4,19 +4,27 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "dbgsom"
+version = "1.1.0"
 authors = [
   { name="Sandro Martens", email="sandro.martens@web.de" },
 ]
 description = "A Python implementation of the Directed Batch Growing Self-Organizing Map"
 readme = "README.md"
 requires-python = ">=3.11"
+license = "MIT"
 classifiers = [
     "Programming Language :: Python :: 3",
-    "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
 ]
-
-dynamic = ["dependencies", "license", "version"]
+dependencies = [
+    "networkx>=3.6.1",
+    "numpy>=2.4.6",
+    "numpydoc>=1.10.0",
+    "pandas>=3.0.3",
+    "scikit-learn>=1.8.0",
+    "seaborn>=0.13.2",
+    "tqdm>=4.67.3",
+]
 
 [project.urls]
 "Homepage" = "https://github.com/SandroMartens/DBGSOM"
@@ -35,3 +43,8 @@ select = [
 
 [tool.ruff.lint.mccabe]
 max-complexity = 10  # Alles über Komplexität 10 blockiert den Build
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.3",
+]
