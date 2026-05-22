@@ -7,7 +7,7 @@
 
 # DBGSOM
 
-DBGSOM is short for _Directed Batch Growing Self-Organizing Map_. A SOM is a type of artificial neural network that is used to to produce a low-dimensional  representation of a higher dimensional data set while preserving the topological structure of the data. It can be used for supervised and unsupervised vector quantization, classification and many different data visualization tasks.
+DBGSOM is short for _Directed Batch Growing Self-Organizing Map_. A SOM is a type of artificial neural network that is used to to produce a low-dimensional representation of a higher dimensional data set while preserving the topological structure of the data. It can be used for supervised and unsupervised vector quantization, classification and many different data visualization tasks.
 
 ## Features
 
@@ -51,12 +51,12 @@ classifier.fit_predict(X=digits_X, y=digits_y)
 
 Here are a few example use cases for DBGSOM.
 
-|Example|Description|
-|-|-|
-|![example](examples/2d_example.png)| With a two dimensional input we can clearly see how the protoypes (red) approximate the input distribution (white) while still preserving the square topology to their neighbors.|
-|![The fashion mnist dataset](examples/fashion_mnist.png) | After training the SOM on the fashion mnist dataset we can plot the nearest neighbor of each prototype. We can see that the SOM ordered the prototypes in a way that neighboring prototypes are pairwise similar. |
-|![digits](examples/digits_classes.png) | We can show the majority class each prototype represents. Samples from the same class are clustered together. The SOM was train on mnist digits.|
-|![darknet_pca](examples/darknet_pca.png) | We can use linear transformations like PCA to color code relative distances between prototypes in the input space. See _darknet_ example notebook.
+| Example                                                         | Description                                                                                                                                                                                                       |
+| --------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| ![example](examples/export/2d_example.png)                      | With a two dimensional input we can clearly see how the protoypes (red) approximate the input distribution (white) while still preserving the square topology to their neighbors.                                 |
+| ![The fashion mnist dataset](examples/export/fashion_mnist.png) | After training the SOM on the fashion mnist dataset we can plot the nearest neighbor of each prototype. We can see that the SOM ordered the prototypes in a way that neighboring prototypes are pairwise similar. |
+| ![digits](examples/export/digits_classes.png)                   | We can show the majority class each prototype represents. Samples from the same class are clustered together. The SOM was train on mnist digits.                                                                  |
+| ![darknet_pca](examples/export/darknet_pca.png)                 | We can use linear transformations like PCA to color code relative distances between prototypes in the input space. See _darknet_ example notebook.                                                                |
 
 ## Dependencies
 
