@@ -6,6 +6,8 @@ from math import exp, log, pi, sqrt
 from numbers import Integral
 from typing import Any, Self
 
+from sklearn.utils.validation import validate_data
+
 # from matplotlib import pyplot as plt
 # import matplotlib
 
@@ -170,7 +172,8 @@ class BaseSom(BaseEstimator):
 
         """
         # Initialization
-        X, y = self._check_input_data(X, y)
+        # X, y = self._check_input_data(X, y)
+        X, y = validate_data(self, X, y, ensure_min_samples=4, validate_separately=True)
         if y is not None:
             classes, y = np.unique(y, return_inverse=True)
             self.classes_ = np.array(classes)
@@ -325,7 +328,7 @@ class BaseSom(BaseEstimator):
 
         """
         check_is_fitted(self)
-        X = np.asarray(check_array(X, dtype=np.float64))
+        X, y = validate_data(self, X=X, y=y, dtype=np.float64, reset=False)
         transformer = SparseCoder(
             dictionary=normalize(self.weights_),
             n_jobs=self.n_jobs,

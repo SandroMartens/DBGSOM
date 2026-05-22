@@ -129,7 +129,7 @@ class SomVQ(TransformerMixin, ClusterMixin, BaseSom):
     def _check_input_data(self, X: npt.ArrayLike, y=None) -> tuple[npt.NDArray, None]:
         X = np.array(
             validate_data(
-                self, array=X, ensure_min_samples=4, dtype=[np.float64, np.float32]
+                self, array=X, y=y, ensure_min_samples=4, dtype=[np.float64, np.float32]
             )
         )
         # throw away any y
@@ -154,7 +154,7 @@ class SomVQ(TransformerMixin, ClusterMixin, BaseSom):
 
         """
         check_is_fitted(self)
-        X = np.array(validate_data(self, X))
+        X = np.array(validate_data(self, X=X, reset=False))
         _, labels = self._get_winning_neurons(X, n_bmu=1)
 
         return labels
