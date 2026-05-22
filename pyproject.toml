@@ -47,4 +47,5 @@ max-complexity = 10  # Alles über Komplexität 10 blockiert den Build
 [dependency-groups]
 dev = [
     "pytest>=9.0.3",
+    "ruff>=0.15.14",
 ]
