@@ -118,6 +118,7 @@ class SomClassifier(BaseSom, TransformerMixin, ClassifierMixin):
 
     quantization_error_ : float
         Average distance from all training samples to their nearest prototypes.
+
     """
 
     def _check_input_data(
@@ -157,7 +158,6 @@ class SomClassifier(BaseSom, TransformerMixin, ClassifierMixin):
 
     def predict(self, X: npt.ArrayLike) -> np.ndarray:
         """Predict class labels for samples in X.
-
         Parameters
         ----------
         X : {array-like, sparse matrix} of shape (n_samples, n_features)
@@ -167,6 +167,7 @@ class SomClassifier(BaseSom, TransformerMixin, ClassifierMixin):
         -------
         labels : ndarray of shape (n_samples,)
             Predicted class labels for samples in X.
+
         """
 
         check_is_fitted(self)
@@ -188,6 +189,7 @@ class SomClassifier(BaseSom, TransformerMixin, ClassifierMixin):
 
         Returns the probability of the sample for each class in the model, where
         classes are ordered as they are in self.classes_.
+
         """
         check_is_fitted(self)
         X = np.array(check_array(X))
