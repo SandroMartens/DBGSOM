@@ -6,6 +6,8 @@ from math import exp, log, pi, sqrt
 from numbers import Integral
 from typing import Any, Self
 
+from sklearn.utils.validation import validate_data
+
 # from matplotlib import pyplot as plt
 # import matplotlib
 
@@ -121,6 +123,7 @@ class BaseSom(BaseEstimator):
         min_samples_vertical_growth: int = 100,
         n_jobs: int = 1,
     ) -> None:
+        super().__init__()
         self.spreading_factor = spreading_factor
         self.n_iter = n_iter
         self.convergence_iter = convergence_iter
@@ -146,6 +149,11 @@ class BaseSom(BaseEstimator):
         "decay_function": [StrOptions({"exponential", "linear"})],  # type: ignore
     }
 
+    def __sklearn_tags__(self):
+        tags = super().__sklearn_tags__()
+        return tags
+        # tags.transformer_tags = True
+
     def fit(self, X: npt.ArrayLike, y: None | npt.ArrayLike = None) -> Self:
         """Train SOM on training data.
 
@@ -164,7 +172,8 @@ class BaseSom(BaseEstimator):
 
         """
         # Initialization
-        X, y = self._check_input_data(X, y)
+        # X, y = self._check_input_data(X, y)
+        X, y = validate_data(self, X, y, ensure_min_samples=4, validate_separately=True)
         if y is not None:
             classes, y = np.unique(y, return_inverse=True)
             self.classes_ = np.array(classes)
@@ -319,7 +328,7 @@ class BaseSom(BaseEstimator):
 
         """
         check_is_fitted(self)
-        X = np.asarray(check_array(X, dtype=np.float64))
+        X, y = validate_data(self, X=X, y=y, dtype=np.float64, reset=False)
         transformer = SparseCoder(
             dictionary=normalize(self.weights_),
             n_jobs=self.n_jobs,

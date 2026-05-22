@@ -60,8 +60,9 @@ Here are a few example use cases for DBGSOM.
 
 ## Dependencies
 
-- Python > 3.7
-- Numpy
+- python > 3.11
+- numpy
+- numba
 - NetworkX
 - tqdm
 - scikit-learn

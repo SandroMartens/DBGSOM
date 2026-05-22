@@ -3,16 +3,17 @@
 import numpy as np
 import numpy.typing as npt
 from sklearn.base import (
+    BaseEstimator,
     ClusterMixin,
     TransformerMixin,
-    check_array,
     check_is_fitted,
 )
+from sklearn.utils.validation import validate_data
 
 from .BaseSom import BaseSom
 
 
-class SomVQ(BaseSom, ClusterMixin, TransformerMixin):
+class SomVQ(TransformerMixin, ClusterMixin, BaseSom):
     """A Directed Batch Growing Self-Organizing Map.
 
     This class implements the vector quantization/clustering functionality of the SOM.
@@ -118,9 +119,18 @@ class SomVQ(BaseSom, ClusterMixin, TransformerMixin):
 
     """
 
+    def __init__(self) -> None:
+        super().__init__()
+
+    def __sklearn_tags__(self):
+        tags = super().__sklearn_tags__()
+        return tags
+
     def _check_input_data(self, X: npt.ArrayLike, y=None) -> tuple[npt.NDArray, None]:
         X = np.array(
-            check_array(array=X, ensure_min_samples=4, dtype=[np.float64, np.float32])
+            validate_data(
+                self, array=X, y=y, ensure_min_samples=4, dtype=[np.float64, np.float32]
+            )
         )
         # throw away any y
         return X, None
@@ -144,7 +154,7 @@ class SomVQ(BaseSom, ClusterMixin, TransformerMixin):
 
         """
         check_is_fitted(self)
-        X = np.array(check_array(X))
+        X = np.array(validate_data(self, X=X, reset=False))
         _, labels = self._get_winning_neurons(X, n_bmu=1)
 
         return labels
