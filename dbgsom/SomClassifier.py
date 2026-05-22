@@ -15,7 +15,7 @@ from sklearn.utils import check_X_y
 from .BaseSom import BaseSom
 
 
-class SomClassifier(BaseSom, TransformerMixin, ClassifierMixin):
+class SomClassifier(TransformerMixin, ClassifierMixin, BaseSom):
     """A Directed Batch Growing Self-Organizing Map.
 
     This class implements the classification functionality of the SOM.
@@ -120,6 +120,13 @@ class SomClassifier(BaseSom, TransformerMixin, ClassifierMixin):
         Average distance from all training samples to their nearest prototypes.
 
     """
+
+    def __init__(self):
+        super().__init__()
+
+    def __sklearn_tags__(self):
+        tags = super().__sklearn_tags__()
+        return tags
 
     def _check_input_data(
         self, X: npt.ArrayLike, y: npt.ArrayLike

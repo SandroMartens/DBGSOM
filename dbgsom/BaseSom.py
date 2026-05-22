@@ -121,6 +121,7 @@ class BaseSom(BaseEstimator):
         min_samples_vertical_growth: int = 100,
         n_jobs: int = 1,
     ) -> None:
+        super().__init__()
         self.spreading_factor = spreading_factor
         self.n_iter = n_iter
         self.convergence_iter = convergence_iter
@@ -145,6 +146,11 @@ class BaseSom(BaseEstimator):
         "max_neurons": [Interval(Integral, 4, None, closed="left")],  # type: ignore
         "decay_function": [StrOptions({"exponential", "linear"})],  # type: ignore
     }
+
+    def __sklearn_tags__(self):
+        tags = super().__sklearn_tags__()
+        return tags
+        # tags.transformer_tags = True
 
     def fit(self, X: npt.ArrayLike, y: None | npt.ArrayLike = None) -> Self:
         """Train SOM on training data.
