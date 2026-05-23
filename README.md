@@ -23,10 +23,24 @@ The DBGSOM algorithm works by constructing a two-dimensional map of prototypes (
 
 ## How to install
 
-DBGSOM can be installed from PyPi via pip.
+DBGSOM can be installed from PyPi via pip:
 
 ```Bash
 pip install DBGSOM
+```
+
+Or from the repository with `uv`:
+```Bash
+git clone https://github.com/SandroMartens/DBGSOM.git
+cd DBGSOM
+uv sync --all-groups
+```
+
+Alternatively, with `pip`
+```Bash
+git clone https://github.com/SandroMartens/DBGSOM.git
+cd DBGSOM
+pip install -e .[dev]
 ```
 
 ## Usage
