@@ -27,6 +27,6 @@ formats:
 python:
    install:
    - method: uv
-   command: sync
+     command: sync
    groups:
    - docs
