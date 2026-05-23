@@ -173,8 +173,12 @@ class BaseSom(BaseEstimator):
         """
         # Initialization
         # X, y = self._check_input_data(X, y)
-        X, y = validate_data(self, X, y, ensure_min_samples=4, validate_separately=True)
+
+        if y is None:
+            X = validate_data(self, X, ensure_min_samples=4)
+
         if y is not None:
+            X, y = validate_data(self, X, y, ensure_min_samples=4)
             classes, y = np.unique(y, return_inverse=True)
             self.classes_ = np.array(classes)
         self.random_state_ = check_random_state(self.random_state)
@@ -1042,10 +1046,14 @@ class BaseSom(BaseEstimator):
         self.max_dist_matrix = pairwise_distances(self.neurons_, metric="chebyshev")
         max_dist = int(self.max_dist_matrix.max())
         k_positive = np.arange(max_dist)
-        k_negative = np.arange(max_dist)
+        k_negative = np.arange(-max_dist-1, stop=0)
         for k in range(max_dist):
             k_positive[k] = self.phi(k)
             k_negative[k] = self.phi(-k)
+
+        ks_positive = np.array([k_positive, np.arange(max_dist)])
+        ks_negative = np.array([k_negative, np.arange(max_dist)])
+        return ks_negative.astype(np.float64), ks_positive.astype(np.float64)
 
         return (
             k_positive / len(self.neurons_),
