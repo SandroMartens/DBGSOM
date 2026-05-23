@@ -20,7 +20,7 @@ jobs:
 
     # 1. uv installieren und automatisch Caching für geladene Pakete aktivieren
     - name: Set up uv
-      uses: astral-sh/setup-uv
+      uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b
       with:
         enable-cache: true
         cache-dependency-glob: "pyproject.toml"
