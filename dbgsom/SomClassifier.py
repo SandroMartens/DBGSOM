@@ -129,7 +129,7 @@ class SomClassifier(TransformerMixin, ClassifierMixin, BaseSom):
         return tags
 
     def _check_input_data(
-        self, X: npt.ArrayLike, y: npt.ArrayLike
+        self, X: npt.NDArray, y: npt.NDArray
     ) -> tuple[npt.NDArray, npt.NDArray]:
         X, y = check_X_y(X=X, y=y, ensure_min_samples=4, dtype=[np.float64, np.float32])
         return np.array(X), np.array(y)
@@ -165,6 +165,7 @@ class SomClassifier(TransformerMixin, ClassifierMixin, BaseSom):
 
     def predict(self, X: npt.ArrayLike) -> np.ndarray:
         """Predict class labels for samples in X.
+
         Parameters
         ----------
         X : {array-like, sparse matrix} of shape (n_samples, n_features)
@@ -176,7 +177,6 @@ class SomClassifier(TransformerMixin, ClassifierMixin, BaseSom):
             Predicted class labels for samples in X.
 
         """
-
         check_is_fitted(self)
         X = check_array(X)
         labels = np.argmax(self.predict_proba(X=X), axis=1)

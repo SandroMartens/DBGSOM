@@ -4,6 +4,7 @@
 ![AppVeyor](https://img.shields.io/appveyor/build/SandroMartens/DBGSOM?label=Appveyor)
 [![Python package](https://github.com/SandroMartens/DBGSOM/actions/workflows/python-package.yml/badge.svg)](https://github.com/SandroMartens/DBGSOM/actions/workflows/python-package.yml)
 [![Upload Python Package](https://github.com/SandroMartens/DBGSOM/actions/workflows/python-publish.yml/badge.svg)](https://github.com/SandroMartens/DBGSOM/actions/workflows/python-publish.yml)
+[![CodeQL Advanced](https://github.com/SandroMartens/DBGSOM/actions/workflows/codeql.yml/badge.svg)](https://github.com/SandroMartens/DBGSOM/actions/workflows/codeql.yml)
 
 # DBGSOM
 
@@ -23,10 +24,37 @@ The DBGSOM algorithm works by constructing a two-dimensional map of prototypes (
 
 ## How to install
 
-DBGSOM can be installed from PyPi via pip.
+### Download from PyPi
+
+DBGSOM can be installed from PyPi via `uv` (recommended):
+
+```Bash
+uv add dbgsom
+```
+
+or with pip:
 
 ```Bash
 pip install DBGSOM
+```
+
+### Install from source
+
+You can also install the library from the repository:
+`uv` (recommended):
+
+```Bash
+git clone https://github.com/SandroMartens/DBGSOM.git
+cd DBGSOM
+uv sync --all-groups
+```
+
+Alternatively, with `pip`
+
+```Bash
+git clone https://github.com/SandroMartens/DBGSOM.git
+cd DBGSOM
+pip install -e .[dev]
 ```
 
 ## Usage

@@ -331,6 +331,7 @@ name = "dbgsom"
 version = "1.1.0"
 source = { editable = "." }
 dependencies = [
+    { name = "ipykernel" },
     { name = "networkx" },
     { name = "numba" },
     { name = "numpy" },
@@ -346,12 +347,15 @@ dev = [
     { name = "ipykernel" },
     { name = "pytest" },
     { name = "ruff" },
+]
+docs = [
     { name = "sphinx", version = "9.0.4", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
     { name = "sphinx", version = "9.1.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
 ]
 
 [package.metadata]
 requires-dist = [
+    { name = "ipykernel", specifier = ">=7.2.0" },
     { name = "networkx", specifier = ">=3.6.1" },
     { name = "numba", specifier = ">=0.65.1" },
     { name = "numpy", specifier = ">=2.4.6" },
@@ -367,8 +371,8 @@ dev = [
     { name = "ipykernel", specifier = ">=7.2.0" },
     { name = "pytest", specifier = ">=9.0.3" },
     { name = "ruff", specifier = ">=0.15.14" },
-    { name = "sphinx", specifier = ">=9.0.4" },
 ]
+docs = [{ name = "sphinx", specifier = ">=9.0.4" }]
 
 [[package]]
 name = "debugpy"

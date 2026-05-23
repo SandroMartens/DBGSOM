@@ -100,6 +100,7 @@ class BaseSom(BaseEstimator):
 
     n_jobs : int, default=1
         Number of parallel jobs for computation.
+
     """
 
     def __init__(
@@ -205,7 +206,7 @@ class BaseSom(BaseEstimator):
         return self
 
     def _check_input_data(
-        self, X: npt.ArrayLike, y: npt.ArrayLike | None
+        self, X: npt.NDArray, y: npt.NDArray | None = None
     ) -> tuple[npt.NDArray, npt.NDArray | None]:
         raise NotImplementedError
 
@@ -265,7 +266,8 @@ class BaseSom(BaseEstimator):
         2. Hit count: How many samples each prototype represents.
 
         3. average distance: average distance from each prototype to their neighbors.
-        used for plotting the u matrix"""
+        used for plotting the u matrix
+        """
         distances, winners = self._get_winning_neurons(X, n_bmu=1)
         average_distances = self._get_u_matrix()
         sigma = average_distances.mean()
@@ -353,7 +355,6 @@ class BaseSom(BaseEstimator):
 
         Parameters
         ----------
-
         color, pointsize : {None, "label", "epoch_created", "error", "average_distance",
         "density", "hit_count"}, default = None
             Attribute which is represented as color.
@@ -373,6 +374,7 @@ class BaseSom(BaseEstimator):
 
         palette : matplotlib colormap/seaborn palette, default = "magma_r"
             Name of seaborn palette to color code the values of attribute
+
         """
         data = pd.DataFrame(dict(self.som_.nodes)).T.set_index(
             np.arange(len(self.som_.nodes))
@@ -402,7 +404,6 @@ class BaseSom(BaseEstimator):
         input space.
 
         """
-
         g = self.som_
         node_weights = np.array([g.nodes[node]["weight"] for node in g.nodes])
         neighbor_weights = np.array(
@@ -427,7 +428,6 @@ class BaseSom(BaseEstimator):
 
         Use 20 bins as default
         """
-
         hists = []
         for sample in X:  # type: ignore
             hists.append(np.histogram(sample, bins=20)[0])
@@ -502,7 +502,8 @@ class BaseSom(BaseEstimator):
     def _create_som(self, data: npt.NDArray) -> nx.Graph:
         """Create a graph containing the first four neurons in a square.
         Each neuron has a weight vector randomly chosen from the training
-         samples."""
+         samples.
+        """
         rng = np.random.default_rng(seed=self.random_state)
         init_vectors = rng.choice(a=data, size=4, replace=False)
         neurons = [
@@ -607,7 +608,8 @@ class BaseSom(BaseEstimator):
 
     def _calculate_gaussian_neighborhood(self) -> npt.NDArray:
         """Calculate the gaussian neighborhood function for all neuron
-        pairs using the distance matrix."""
+        pairs using the distance matrix.
+        """
         sigma = self._calculate_current_sigma()
         h = np.exp(-(self._distance_matrix**2 / (2 * sigma**2)))
 
@@ -615,7 +617,8 @@ class BaseSom(BaseEstimator):
 
     def _calculate_exp_similarity(self, distances: np.ndarray) -> npt.NDArray:
         """Calculate the weight of each sample by calculating a exponential kernel
-        for the distance between the sample and the bmu."""
+        for the distance between the sample and the bmu.
+        """
         gamma = self._total_variance**-1
         kernel = 1 - (1 - np.exp(-gamma * distances**2)) ** 0.5
         return kernel
@@ -644,8 +647,7 @@ class BaseSom(BaseEstimator):
                 self.som_.nodes[neuron]["error"] = error
 
     def _distribute_errors(self) -> None:
-        """
-        Distributes the error values of neurons in the SOM which are not boundary
+        """Distributes the error values of neurons in the SOM which are not boundary
         neurons to their neighboring boundary neurons. This distribution is done
         when the error value of a neuron is greater than a predefined threshold.
         """
@@ -848,7 +850,6 @@ class BaseSom(BaseEstimator):
         available positions the position P1 is preferable
 
         """
-
         bo_x, bo_y = bo
         corner_neighbor_positions = {
             (bo_x + 1, bo_y + 1),
@@ -933,7 +934,8 @@ class BaseSom(BaseEstimator):
 
     def _add_new_connections(self, node: tuple[int, int]) -> None:
         """Given a node (x, y), add new connections to the neighbors of the
-        node, if exist."""
+        node, if exist.
+        """
         node_x, node_y = node
         for nbr in [
             (node_x, node_y + 1),
