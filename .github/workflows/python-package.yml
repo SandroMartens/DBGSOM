@@ -40,7 +40,7 @@ jobs:
         # Prüft auf Syntaxfehler und logische Patzer
         uv run ruff check . --exit-zero
         # Prüft, ob der Code sauber formatiert ist
-        uv run ruff format --check . --exit-zero
+        uv run ruff format --check .
 
     # 5. Deine pytest-Tests ausführen (wieder einkommentiert!)
     - name: Test with pytest
