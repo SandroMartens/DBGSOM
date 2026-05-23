@@ -201,7 +201,7 @@ class BaseSom(BaseEstimator):
         return self
 
     def _check_input_data(
-        self, X: npt.ArrayLike, y: npt.ArrayLike | None
+        self, X: npt.NDArray, y: npt.NDArray | None = None
     ) -> tuple[npt.NDArray, npt.NDArray | None]:
         raise NotImplementedError
 

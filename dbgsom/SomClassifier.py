@@ -129,7 +129,7 @@ class SomClassifier(TransformerMixin, ClassifierMixin, BaseSom):
         return tags
 
     def _check_input_data(
-        self, X: npt.ArrayLike, y: npt.ArrayLike
+        self, X: npt.NDArray, y: npt.NDArray
     ) -> tuple[npt.NDArray, npt.NDArray]:
         X, y = check_X_y(X=X, y=y, ensure_min_samples=4, dtype=[np.float64, np.float32])
         return np.array(X), np.array(y)
