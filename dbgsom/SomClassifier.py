@@ -165,6 +165,7 @@ class SomClassifier(TransformerMixin, ClassifierMixin, BaseSom):
 
     def predict(self, X: npt.ArrayLike) -> np.ndarray:
         """Predict class labels for samples in X.
+
         Parameters
         ----------
         X : {array-like, sparse matrix} of shape (n_samples, n_features)
@@ -176,7 +177,6 @@ class SomClassifier(TransformerMixin, ClassifierMixin, BaseSom):
             Predicted class labels for samples in X.
 
         """
-
         check_is_fitted(self)
         X = check_array(X)
         labels = np.argmax(self.predict_proba(X=X), axis=1)

@@ -1,6 +1,4 @@
-"""
-DBGSOM: Directed Batch Growing Self Organizing Map
-"""
+"""DBGSOM: Directed Batch Growing Self Organizing Map"""
 
 # import copy
 import sys
@@ -196,6 +194,7 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
         -------
         self : DBGSOM
             Trained estimator
+
         """
         # Horizontal growing phase
         if y is None:
@@ -231,12 +230,10 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
         return self
 
     def _grow_vertical(self, X: npt.ArrayLike, y: None | npt.ArrayLike = None) -> None:
-        """
-        Triggers vertical growth in the SOM by creating new instances of the DBGSOM class and fitting them with filtered data.
+        """Triggers vertical growth in the SOM by creating new instances of the DBGSOM class and fitting them with filtered data.
         Modifies:
         The som_ attribute of the DBGSOM instance by adding new SOM instances to the neurons that meet the vertical growing criteria.
         """
-
         self.vertical_growing_threshold_ = 1.5 * self.growing_threshold_
         winners = self._get_winning_neurons(X, n_bmu=1)
         for i, (node, error) in enumerate(self.som_.nodes(data="error")):
@@ -263,7 +260,8 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
         2. Hit count: How many samples each prototype represents.
 
         3. average distance: average distance from each prototype to their neighbors.
-        used for plotting the u matrix"""
+        used for plotting the u matrix
+        """
         winners = self._get_winning_neurons(X, n_bmu=1)
         average_distances = self._get_u_matrix()
         sigma = average_distances.mean()
@@ -319,6 +317,7 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
             If fitted unsupervised: Index of best matching prototype.
 
             If fitted supervised: Label of the predicted class.
+
         """
         check_is_fitted(self)
         X = check_array(X)
@@ -343,6 +342,7 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
 
         Returns the probability of the sample for each class in the model, where
         classes are ordered as they are in self.classes_.
+
         """
         check_is_fitted(self, attributes="_y_is_fitted")
         X = check_array(X)
@@ -372,7 +372,8 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
 
     def _extract_values_from_graph(self, attribute: str) -> np.ndarray:
         """Return an array of shape (n_nodes, 1) with some given attribute of the
-        nodes."""
+        nodes.
+        """
         return np.array(list(dict(self.som_.nodes.data(attribute)).values()))
 
     def transform(self, X: npt.ArrayLike, y=None) -> np.ndarray:
@@ -388,6 +389,7 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
         -------
         coefficients : np.ndarray of shape (n_samples, n_protoypes)
             Coefficients of the linear regression model.
+
         """
         check_is_fitted(self)
         X = check_array(X, dtype=[np.float64, np.float32])
@@ -425,6 +427,7 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
 
         palette : matplotlib colormap/seaborn palette, default = "magma_r"
             Name of seaborn palette to color code the values of attribute
+
         """
         data = pd.DataFrame(dict(self.som_.nodes)).T.set_index(
             np.arange(len(self.som_.nodes))
@@ -444,17 +447,15 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
         # f = plt.figure()
         so.Plot(dots, x="x", y="y", color=color, pointsize=pointsize).add(
             so.Dot()
-        ).scale(color=palette).label(
-            x="", y=""
-        ).show()  # .on(f)
+        ).scale(color=palette).label(x="", y="").show()  # .on(f)
         # f
         # f.show()
         # plt.show()
 
     def _get_u_matrix(self) -> np.ndarray[Any, np.dtype[np.float64]]:
         """Calculate the average distance from each neuron to it's neighbors in the
-        input space."""
-
+        input space.
+        """
         g = self.som_
         distances = []
         for node, neighbors in g.adj.items():
@@ -474,8 +475,8 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
         2. Calculate entropy of each sample from histogram
         3. Save minimum and maximum rep for all classes
 
-        Use 20 bins as default"""
-
+        Use 20 bins as default
+        """
         hists = []
         for sample in X:
             hists.append(np.histogram(sample, bins=20)[0])
@@ -547,7 +548,8 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
     def _create_som(self, data: npt.NDArray) -> nx.Graph:
         """Create a graph containing the first four neurons in a square.
         Each neuron has a weight vector randomly chosen from the training
-         samples."""
+         samples.
+        """
         rng = np.random.default_rng(seed=self.random_state)
         init_vectors = rng.choice(a=data, size=4, replace=False)
         neurons = [
@@ -669,7 +671,8 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
 
     def _calculate_gaussian_neighborhood(self) -> np.ndarray:
         """Calculate the gaussian neighborhood function for all neuron
-        pairs using the distance matrix."""
+        pairs using the distance matrix.
+        """
         sigma = self._calculate_current_sigma()
         h = np.exp(-(self._distance_matrix**2 / (2 * sigma**2)))
 
@@ -894,7 +897,6 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
         For the case which there is no neuron adjacent to the
         available positions the position P1 is preferable
         """
-
         bo_x, bo_y = bo
         corner_neighbor_positions = {
             (bo_x + 1, bo_y + 1),
@@ -975,7 +977,8 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
 
     def _add_new_connections(self, node: tuple[int, int]) -> None:
         """Given a node (x, y), add new connections to the neighbors of the
-        node, if exist."""
+        node, if exist.
+        """
         node_x, node_y = node
         for nbr in [
             (node_x, node_y + 1),
@@ -995,6 +998,7 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
 
         Returns:
             float: The neighborhood bandwidth for each epoch.
+
         """
         epoch = self._current_epoch
         n_neurons = self.som_.number_of_nodes()
@@ -1045,6 +1049,7 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
         -------
         error : float
             Average distance from each sample to the nearest prototype.
+
         """
         check_is_fitted(self)
         X = check_array(X)
@@ -1072,6 +1077,7 @@ class DBGSOM(BaseEstimator, ClusterMixin, TransformerMixin, ClassifierMixin):
         -------
         topographic error : float
             Fraction of samples with topographic errors over all samples.
+
         """
         bmu_indices = self._get_winning_neurons(X, n_bmu=2).T
         errors = 0
@@ -1118,8 +1124,7 @@ def exponential_decay(
     fastmath=True
 )
 def numba_voronoi_set_centers(winners: npt.NDArray, data: npt.NDArray, shape: tuple):
-    """
-    Calculates the centers of the Voronoi regions based on the winners and data arrays.
+    """Calculates the centers of the Voronoi regions based on the winners and data arrays.
 
     Args:
         winners (numpy.ndarray): An array of integers representing the winning neuron index for each sample.
@@ -1128,6 +1133,7 @@ def numba_voronoi_set_centers(winners: npt.NDArray, data: npt.NDArray, shape: tu
 
     Returns:
         numpy.ndarray: An array of shape `shape` containing the calculated centers of the Voronoi regions. Each row represents the center of a Voronoi region, corresponding to a neuron in the SOM.
+
     """
     voronoi_set_centers_sum = np.zeros(shape=shape)
     center_counts = np.zeros(shape=(shape[0],))
@@ -1146,8 +1152,7 @@ def numba_voronoi_set_centers(winners: npt.NDArray, data: npt.NDArray, shape: tu
 def numba_quantization_error(
     data: npt.NDArray, winners: npt.NDArray, length, weights: npt.NDArray
 ):
-    """
-    Calculates the quantization error for each neuron in the self-organizing map (SOM)
+    """Calculates the quantization error for each neuron in the self-organizing map (SOM)
     based on the distances between the neuron's weight vector and the input samples.
 
     Args:
@@ -1162,6 +1167,7 @@ def numba_quantization_error(
     Returns:
         array: An array of shape `(length,)` representing the quantization error for
         each neuron in the SOM.
+
     """
     errors = np.zeros(shape=length)
     for sample, winner in zip(data, winners):
