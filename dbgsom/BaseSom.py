@@ -210,10 +210,6 @@ class BaseSom(BaseEstimator):
     ) -> tuple[npt.NDArray, npt.NDArray | None]:
         raise NotImplementedError
 
-    # def _check_input_data(
-    #     self, X: npt.NDArray, y: npt.NDArray | None
-    # ) -> tuple[npt.NDArray, npt.NDArray | None]:
-
     def _fit(self, X):
         # For VQ Subclass specific code
         pass
