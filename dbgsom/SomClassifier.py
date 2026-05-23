@@ -7,10 +7,9 @@ import numpy.typing as npt
 from sklearn.base import (
     ClassifierMixin,
     TransformerMixin,
-    check_array,
     check_is_fitted,
 )
-from sklearn.utils import check_X_y
+from sklearn.utils.validation import validate_data
 
 from .BaseSom import BaseSom
 
@@ -129,10 +128,20 @@ class SomClassifier(TransformerMixin, ClassifierMixin, BaseSom):
         return tags
 
     def _check_input_data(
-        self, X: npt.NDArray, y: npt.NDArray
-    ) -> tuple[npt.NDArray, npt.NDArray]:
-        X, y = check_X_y(X=X, y=y, ensure_min_samples=4, dtype=[np.float64, np.float32])
-        return np.array(X), np.array(y)
+        self, X: npt.NDArray, y: npt.NDArray | None
+    ) -> tuple[npt.NDArray, npt.NDArray | None]:
+        if y is None:
+            # Wenn kein y übergeben wurde (bei predict/transform), validieren wir NUR X
+            X = validate_data(
+                self, X=X, ensure_min_samples=4, dtype=[np.float64, np.float32]
+            )
+            return np.array(X), None
+        else:
+            # Wenn y da ist (beim fit), validieren wir beide zusammen
+            X, y = validate_data(
+                self, X=X, y=y, ensure_min_samples=4, dtype=[np.float64, np.float32]
+            )
+            return np.array(X), np.array(y)
 
     def _label_prototypes(self, X: npt.NDArray, y: npt.NDArray) -> None:
         """This method assigns labels to the prototypes based on the input data."""
@@ -178,11 +187,11 @@ class SomClassifier(TransformerMixin, ClassifierMixin, BaseSom):
 
         """
         check_is_fitted(self)
-        X = check_array(X)
+        X = validate_data(self, X, reset=False)
         labels = np.argmax(self.predict_proba(X=X), axis=1)
         return self.classes_[labels]
 
-    def predict_proba(self, X: npt.ArrayLike) -> npt.NDArray:
+    def predict_proba(self, X: npt.ArrayLike, y=None) -> npt.NDArray:
         """Predict the probability of each class and each sample.
 
         Parameters
@@ -199,7 +208,7 @@ class SomClassifier(TransformerMixin, ClassifierMixin, BaseSom):
 
         """
         check_is_fitted(self)
-        X = np.array(check_array(X))
+        X = np.array(validate_data(self, X, reset=False))
         if self.vertical_growth:
             _, winners = self._get_winning_neurons(X, n_bmu=1)
             probabilities_rows = []
@@ -217,7 +226,7 @@ class SomClassifier(TransformerMixin, ClassifierMixin, BaseSom):
             sample_probabilities = np.array(probabilities_rows)
 
         else:
-            X_transformed = self.transform(X)
+            X_transformed = self.transform(X, y)
             node_probabilities = self._extract_values_from_graph("probabilities")
             # Sample Probabilities do not sum to 1
             sample_probabilities_unnormalized = X_transformed @ node_probabilities

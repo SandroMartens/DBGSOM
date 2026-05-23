@@ -20,7 +20,6 @@ User Guide
    :caption: Contents:
 
    user_guide
-   basic_usage
    plotting
    algorithm
    examples

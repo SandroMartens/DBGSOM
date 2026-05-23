@@ -206,9 +206,13 @@ class BaseSom(BaseEstimator):
         return self
 
     def _check_input_data(
-        self, X: npt.NDArray, y: npt.NDArray | None = None
+        self, X: npt.NDArray, y: npt.NDArray | None
     ) -> tuple[npt.NDArray, npt.NDArray | None]:
         raise NotImplementedError
+
+    # def _check_input_data(
+    #     self, X: npt.NDArray, y: npt.NDArray | None
+    # ) -> tuple[npt.NDArray, npt.NDArray | None]:
 
     def _fit(self, X):
         # For VQ Subclass specific code
@@ -315,7 +319,7 @@ class BaseSom(BaseEstimator):
         """Return an array with some given attribute of the nodes."""
         return np.array([data[attribute] for _, data in self.som_.nodes.data()])
 
-    def transform(self, X: npt.ArrayLike, y=None) -> np.ndarray:
+    def transform(self, X: npt.ArrayLike, y: npt.ArrayLike | None) -> np.ndarray:
         """Calculate a non negative least squares mixture model of prototypes that
         approximate each sample.
 
@@ -334,7 +338,8 @@ class BaseSom(BaseEstimator):
 
         """
         check_is_fitted(self)
-        X, y = validate_data(self, X=X, y=y, dtype=np.float64, reset=False)
+        # X, y = validate_data(self, X=X, y=y, dtype=np.float64, reset=False)
+        X, y = self._check_input_data(X, y)
         transformer = SparseCoder(
             dictionary=normalize(self.weights_),
             n_jobs=self.n_jobs,
@@ -1048,7 +1053,7 @@ class BaseSom(BaseEstimator):
         self.max_dist_matrix = pairwise_distances(self.neurons_, metric="chebyshev")
         max_dist = int(self.max_dist_matrix.max())
         k_positive = np.arange(max_dist)
-        k_negative = np.arange(-max_dist-1, stop=0)
+        k_negative = np.arange(-max_dist - 1, stop=0)
         for k in range(max_dist):
             k_positive[k] = self.phi(k)
             k_negative[k] = self.phi(-k)
