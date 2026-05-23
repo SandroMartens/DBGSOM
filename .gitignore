@@ -138,6 +138,3 @@ mypy.ini
 .pyre/
 
 fashion-mnist_train.csv
-
-# docs
-docs/output
