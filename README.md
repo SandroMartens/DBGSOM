@@ -4,7 +4,7 @@
 ![AppVeyor](https://img.shields.io/appveyor/build/SandroMartens/DBGSOM?label=Appveyor)
 [![Python package](https://github.com/SandroMartens/DBGSOM/actions/workflows/python-package.yml/badge.svg)](https://github.com/SandroMartens/DBGSOM/actions/workflows/python-package.yml)
 [![Upload Python Package](https://github.com/SandroMartens/DBGSOM/actions/workflows/python-publish.yml/badge.svg)](https://github.com/SandroMartens/DBGSOM/actions/workflows/python-publish.yml)
-[![CodeQL](https://github.com/SandroMartens/DBGSOM/actions/workflows/github-code-scanning/codeql/badge.svg?branch=main)](https://github.com/SandroMartens/DBGSOM/actions/workflows/github-code-scanning/codeql)
+[![CodeQL Advanced](https://github.com/SandroMartens/DBGSOM/actions/workflows/codeql.yml/badge.svg)](https://github.com/SandroMartens/DBGSOM/actions/workflows/codeql.yml)
 
 # DBGSOM
 
