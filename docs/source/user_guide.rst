@@ -5,26 +5,23 @@ Both the SomClassifier and SomVQ implement the scikit-learn API and can be used 
 Classification
 --------------
 
-```python
-from dbgsom.SomClassifier import SomClassifier
-from sklearn.datasets import load_digits
-digits_X, digits_y = load_digits(return_X_y=True)
 
-classifier.fit(digits_X, digits_y)
-classifier.score(digits_X, digits_y)
-```
+.. code-block:: python
+    from dbgsom.SomClassifier import SomClassifier
+    from sklearn.datasets import load_digits
+    digits_X, digits_y = load_digits(return_X_y=True)
 
-```python
-0.8375069560378409
-```
+    classifier.fit(digits_X, digits_y)
+    classifier.score(digits_X, digits_y)
 
-```python
+.. code::
+    0.8375069560378409
+
+.. code:: python
 classifier.predict(digits_X)
-```
 
-```python
-array([0, 1, 8, ..., 8, 9, 6], shape=(1797,))
-```
+.. code::
+    array([0, 1, 8, ..., 8, 9, 6], shape=(1797,))
 
 Clustering
 ----------
