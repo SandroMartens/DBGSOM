@@ -21,7 +21,6 @@ dependencies = [
     "networkx>=3.6.1",
     "numba>=0.65.1",
     "numpy>=2.4.6",
-    "numpydoc>=1.10.0",
     "pandas>=3.0.3",
     "scikit-learn>=1.8.0",
     "seaborn>=0.13.2",
@@ -53,5 +52,7 @@ dev = [
     "ruff>=0.15.14",
 ]
 docs = [
+    "babel>=2.18.0",
+    "numpydoc>=1.10.0",
     "sphinx>=9.0.4",
 ]

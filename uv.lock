@@ -335,7 +335,6 @@ dependencies = [
     { name = "networkx" },
     { name = "numba" },
     { name = "numpy" },
-    { name = "numpydoc" },
     { name = "pandas" },
     { name = "scikit-learn" },
     { name = "seaborn" },
@@ -349,6 +348,8 @@ dev = [
     { name = "ruff" },
 ]
 docs = [
+    { name = "babel" },
+    { name = "numpydoc" },
     { name = "sphinx", version = "9.0.4", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
     { name = "sphinx", version = "9.1.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
 ]
@@ -359,7 +360,6 @@ requires-dist = [
     { name = "networkx", specifier = ">=3.6.1" },
     { name = "numba", specifier = ">=0.65.1" },
     { name = "numpy", specifier = ">=2.4.6" },
-    { name = "numpydoc", specifier = ">=1.10.0" },
     { name = "pandas", specifier = ">=3.0.3" },
     { name = "scikit-learn", specifier = ">=1.8.0" },
     { name = "seaborn", specifier = ">=0.13.2" },
@@ -372,7 +372,11 @@ dev = [
     { name = "pytest", specifier = ">=9.0.3" },
     { name = "ruff", specifier = ">=0.15.14" },
 ]
-docs = [{ name = "sphinx", specifier = ">=9.0.4" }]
+docs = [
+    { name = "babel", specifier = ">=2.18.0" },
+    { name = "numpydoc", specifier = ">=1.10.0" },
+    { name = "sphinx", specifier = ">=9.0.4" },
+]
 
 [[package]]
 name = "debugpy"
