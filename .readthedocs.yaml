@@ -28,5 +28,8 @@ python:
    install:
    - method: uv
      command: sync
-   groups:
-   - docs
+     groups:
+      - docs
+
+sphinx:
+  configuration: docs/source/conf.py   
