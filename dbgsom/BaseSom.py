@@ -390,15 +390,54 @@ class BaseSom(BaseEstimator):
         data["hit_count"] = pd.to_numeric(data["hit_count"])
         data["average_distance"] = pd.to_numeric(data["average_distance"])
         coordinates = pd.DataFrame(np.array(self.neurons_), columns=["x", "y"])
+        coordinates = pd.DataFrame(np.array(self.neurons_), columns=["x", "y"])
         dots = pd.concat([coordinates, data], axis=1)
-        # matplotlib.use("nbAgg")
-        # f = plt.figure()
-        so.Plot(dots, x="x", y="y", color=color, pointsize=pointsize).add(
-            so.Dot()
-        ).scale(color=palette).label(x="", y="").show()  # .on(f)
-        # f
-        # f.show()
-        # plt.show()
+
+        # Mappings (Spalten) und Literale (feste Werte) sauber trennen
+        plot_kwargs = {}
+        dot_kwargs = {}
+
+        # 1. Farbe absichern
+        if color is not None and color in dots.columns:
+            # Falls eine numerische Spalte überall denselben Wert hat (z.B. alle Fehler = 0),
+            # als String formatieren, um die kontinuierliche Division durch Null zu verhindern.
+            if (
+                pd.api.types.is_numeric_dtype(dots[color])
+                and dots[color].nunique() <= 1
+            ):
+                dots[color] = dots[color].astype(str)
+            plot_kwargs["color"] = color
+
+        # 2. Punktgröße absichern
+        if isinstance(pointsize, str) and pointsize in dots.columns:
+            if (
+                pd.api.types.is_numeric_dtype(dots[pointsize])
+                and dots[pointsize].nunique() <= 1
+            ):
+                dots[pointsize] = dots[pointsize].astype(str)
+            plot_kwargs["pointsize"] = pointsize
+        else:
+            # Wenn es eine Zahl ist (z.B. der Default 1), gehört es direkt in das Dot-Objekt!
+            dot_kwargs["pointsize"] = pointsize
+
+        # Plot sicher aufbauen
+        p = so.Plot(dots, x="x", y="y", **plot_kwargs).add(so.Dot(**dot_kwargs))
+
+        # Skalierung nur anwenden, wenn auch nach Farbe gruppiert wird
+        if "color" in plot_kwargs:
+            p = p.scale(color=palette)
+
+        p.label(x="", y="").show()
+
+    #     dots = pd.concat([coordinates, data], axis=1)
+    #     # matplotlib.use("nbAgg")
+    #     # f = plt.figure()
+    #     so.Plot(dots, x="x", y="y", color=color, pointsize=pointsize).add(
+    #         so.Dot()
+    #     ).scale(color=palette).label(x="", y="").show()  # .on(f)
+    #     # f
+    #     # f.show()
+    #     # plt.show()
 
     def _get_u_matrix(self) -> np.ndarray[Any, np.dtype[np.float64]]:
         """Calculate the average distance from each neuron to its neighbors in the
