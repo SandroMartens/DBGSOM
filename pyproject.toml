@@ -41,6 +41,7 @@ select = [
     "ANN",       # Flake8-Annotations (Zwingende Type Hints für jede Funktion)
     "I",         # Isort (Strikte Ordnung bei Imports)
 ]
+ignore = ["D400", "D415", "D205"]
 
 [tool.ruff.lint.mccabe]
 max-complexity = 10  # Alles über Komplexität 10 blockiert den Build

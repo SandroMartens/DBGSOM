@@ -1,4 +1,4 @@
-"""This class handles the core SOM functionality."""
+"""Handles the core SOM functionality."""
 
 import copy
 import sys
@@ -115,7 +115,7 @@ class BaseSom(BaseEstimator):
         learning_rate: float = 0.02,
         verbose: bool = False,
         coarse_training_frac: float = 0.5,
-        random_state: Any = None,
+        random_state: int | None | np.random.RandomState = None,
         convergence_treshold: float = 10**-5,
         max_neurons: int = 100,
         metric: str = "euclidean",
@@ -315,8 +315,7 @@ class BaseSom(BaseEstimator):
         return np.array([data[attribute] for _, data in self.som_.nodes.data()])
 
     def transform(self, X: npt.ArrayLike, y: npt.ArrayLike | None = None) -> np.ndarray:
-        """Calculate a non negative least squares mixture model of prototypes that
-        approximate each sample.
+        """Calculate a non negative least squares mixture model of prototypes that approximate each sample.
 
         Parameters
         ----------
@@ -331,7 +330,7 @@ class BaseSom(BaseEstimator):
         coefficients : np.ndarray of shape (n_samples, n_protoypes)
             Coefficients of the linear regression model.
 
-        """
+        """  # noqa: E501
         check_is_fitted(self)
         # X, y = self._check_input_data(X, y)
         if y is None:
@@ -403,10 +402,7 @@ class BaseSom(BaseEstimator):
         # plt.show()
 
     def _get_u_matrix(self) -> np.ndarray[Any, np.dtype[np.float64]]:
-        """Calculate the average distance from each neuron to its neighbors in the
-        input space.
-
-        """
+        """Calculate the average distance from each neuron to its neighbors in the input space."""  # noqa: E501
         g = self.som_
         node_weights = np.array([g.nodes[node]["weight"] for node in g.nodes])
         neighbor_weights = np.array(
@@ -503,10 +499,7 @@ class BaseSom(BaseEstimator):
                 self._add_new_neurons()
 
     def _create_som(self, data: npt.NDArray) -> nx.Graph:
-        """Create a graph containing the first four neurons in a square.
-        Each neuron has a weight vector randomly chosen from the training
-         samples.
-        """
+        """Create a graph containing the first four neurons in a square. Each neuron has a weight vector randomly chosen from the training samples."""  # noqa: E501
         rng = np.random.default_rng(seed=self.random_state)
         init_vectors = rng.choice(a=data, size=4, replace=False)
         neurons = [
