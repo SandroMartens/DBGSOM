@@ -173,12 +173,11 @@ class BaseSom(BaseEstimator):
 
         """
         # Initialization
-        # X, y = self._check_input_data(X, y)
 
         if y is None:
             X = validate_data(self, X, ensure_min_samples=4)
 
-        if y is not None:
+        elif y is not None:
             X, y = validate_data(self, X, y, ensure_min_samples=4)
             classes, y = np.unique(y, return_inverse=True)
             self.classes_ = np.array(classes)
@@ -315,7 +314,7 @@ class BaseSom(BaseEstimator):
         """Return an array with some given attribute of the nodes."""
         return np.array([data[attribute] for _, data in self.som_.nodes.data()])
 
-    def transform(self, X: npt.ArrayLike, y: npt.ArrayLike | None) -> np.ndarray:
+    def transform(self, X: npt.ArrayLike, y: npt.ArrayLike | None = None) -> np.ndarray:
         """Calculate a non negative least squares mixture model of prototypes that
         approximate each sample.
 
@@ -334,8 +333,11 @@ class BaseSom(BaseEstimator):
 
         """
         check_is_fitted(self)
-        # X, y = validate_data(self, X=X, y=y, dtype=np.float64, reset=False)
-        X, y = self._check_input_data(X, y)
+        # X, y = self._check_input_data(X, y)
+        if y is None:
+            X = validate_data(self, X, reset=False)
+        elif y is not None:
+            X, y = validate_data(self, X, y, reset=False)
         transformer = SparseCoder(
             dictionary=normalize(self.weights_),
             n_jobs=self.n_jobs,
@@ -1004,7 +1006,7 @@ class BaseSom(BaseEstimator):
 
         """
         check_is_fitted(self)
-        X = np.array(check_array(X))
+        X = np.array((X))
         distances, _ = self._get_winning_neurons(X, n_bmu=1)
         error = float(np.mean(distances))
         return error
@@ -1042,6 +1044,19 @@ class BaseSom(BaseEstimator):
         return topographic_error / X.shape[0]
 
     def topographic_function(self, X: npt.ArrayLike) -> npt.NDArray:
+        """Compute the topographic function for the SOM.
+
+        Parameters
+        ----------
+        X : array_like of shape (n_samples, n_features)
+            Data used to compute the topographic function.
+
+        Returns
+        -------
+        ndarray of shape (2, 2 * max_dist)
+            Topographic function values for negative and positive distances.
+
+        """
         X = validate_data(self, X)
         self._delaunay_maxtrix = self._calculate_delaunay_triangulation(X)
         self.euclid_dist_matrix = euclidean_distances(self.neurons_)
