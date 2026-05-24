@@ -371,10 +371,10 @@ class BaseSom(BaseEstimator):
 
         Parameters
         ----------
-            "color" : {None, "label", "epoch_created", "error", "average_distance", "density", "hit_count"}, default = None
+        color : {None, "label", "epoch_created", "error", "average_distance", "density", "hit_count"}, default = None
             Attribute which is represented as color.
 
-            "pointsize" : {None, "label", "epoch_created", "error", "average_distance", "density", "hit_count"}, default = None
+        pointsize : {None, "label", "epoch_created", "error", "average_distance", "density", "hit_count"}, default = None
 
             "label" : Label of the prototype when trained supervised.
 

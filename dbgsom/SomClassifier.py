@@ -169,7 +169,7 @@ class SomClassifier(TransformerMixin, ClassifierMixin, BaseSom):
         # classes, y = np.unique(y, return_inverse=True)
         # self.classes_ = classes
 
-    def predict(self, X: npt.ArrayLike) -> np.ndarray:
+    def predict(self, X: npt.ArrayLike) -> npt.NDArray:
         """Predict class labels for samples in X.
 
         Parameters
@@ -188,7 +188,7 @@ class SomClassifier(TransformerMixin, ClassifierMixin, BaseSom):
         labels = np.argmax(self.predict_proba(X=X), axis=1)
         return self.classes_[labels]
 
-    def predict_proba(self, X: npt.ArrayLike, y=None) -> npt.NDArray:
+    def predict_proba(self, X: npt.ArrayLike, y: None = None) -> npt.NDArray:
         """Predict the probability of each class and each sample.
 
         Parameters
