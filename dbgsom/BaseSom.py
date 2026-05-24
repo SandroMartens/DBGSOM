@@ -1041,29 +1041,26 @@ class BaseSom(BaseEstimator):
 
         return topographic_error / X.shape[0]
 
-    def topographic_function(self, X: npt.ArrayLike) -> tuple[np.ndarray, np.ndarray]:
-        X = check_array(X)
+    def topographic_function(self, X: npt.ArrayLike) -> npt.NDArray:
+        X = validate_data(self, X)
         self._delaunay_maxtrix = self._calculate_delaunay_triangulation(X)
         self.euclid_dist_matrix = euclidean_distances(self.neurons_)
         self.manhattan_dist_matrix = manhattan_distances(self.neurons_)
         self.max_dist_matrix = pairwise_distances(self.neurons_, metric="chebyshev")
         max_dist = int(self.max_dist_matrix.max())
         k_positive = np.arange(max_dist)
-        k_negative = np.arange(-max_dist - 1, stop=0)
+        k_negative = np.arange(-max_dist, stop=0)
         for k in range(max_dist):
-            k_positive[k] = self.phi(k)
-            k_negative[k] = self.phi(-k)
+            k_positive[k] = self._phi(k)
+            k_negative[k] = self._phi(-k)
 
-        ks_positive = np.array([k_positive, np.arange(max_dist)])
-        ks_negative = np.array([k_negative, np.arange(max_dist)])
-        return ks_negative.astype(np.float64), ks_positive.astype(np.float64)
-
-        return (
-            k_positive / len(self.neurons_),
-            k_negative / len(self.neurons_),
+        ks_positive = np.array([k_positive, np.arange(max_dist) / max_dist])
+        ks_negative = np.array([k_negative, -np.arange(max_dist) / max_dist])
+        return np.append(
+            ks_negative.astype(np.float64), ks_positive.astype(np.float64), axis=1
         )
 
-    def phi(self, k: int) -> int:
+    def _phi(self, k: int) -> int:
         if k > 0:
             return np.count_nonzero(
                 (self.max_dist_matrix > k) & (self._delaunay_maxtrix == 1)
@@ -1073,7 +1070,7 @@ class BaseSom(BaseEstimator):
                 (self.euclid_dist_matrix == 1) & (self._delaunay_maxtrix > -k)
             )
         else:
-            return self.phi(-1) + self.phi(1)
+            return self._phi(-1) + self._phi(1)
 
     def _calculate_delaunay_triangulation(self, X) -> np.ndarray:
         """Calculate the Delaunay triangulation distance matrix."""
