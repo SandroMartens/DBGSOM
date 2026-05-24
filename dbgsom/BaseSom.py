@@ -27,7 +27,7 @@ try:
     from sklearn.metrics.pairwise import euclidean_distances, manhattan_distances
     from sklearn.neighbors import NearestNeighbors
     from sklearn.preprocessing import normalize
-    from sklearn.utils import check_array, check_random_state
+    from sklearn.utils import check_random_state
     from sklearn.utils._param_validation import Interval, StrOptions
     from sklearn.utils.validation import check_is_fitted
     from tqdm import tqdm
@@ -539,8 +539,9 @@ class BaseSom(BaseEstimator):
 
     def _create_som(self, data: npt.NDArray) -> nx.Graph:
         """Create a graph containing the first four neurons in a square. Each neuron has a weight vector randomly chosen from the training samples."""  # noqa: E501
-        rng = np.random.default_rng(seed=self.random_state)
-        init_vectors = rng.choice(a=data, size=4, replace=False)
+        n_samples = data.shape[0]
+        chosen_indices = self.random_state_.choice(n_samples, size=4, replace=False)
+        init_vectors = data[chosen_indices]
         neurons = [
             ((0, 0), {"weight": init_vectors[0], "epoch_created": 0}),
             ((0, 1), {"weight": init_vectors[1], "epoch_created": 0}),

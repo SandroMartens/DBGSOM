@@ -120,9 +120,6 @@ class SomClassifier(TransformerMixin, ClassifierMixin, BaseSom):
 
     """
 
-    def __init__(self):
-        super().__init__()
-
     def __sklearn_tags__(self):
         tags = super().__sklearn_tags__()
         return tags
