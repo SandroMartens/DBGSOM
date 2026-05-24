@@ -57,6 +57,7 @@ dev = [
 ]
 docs = [
     "babel>=2.18.0",
+    "esbonio>=2.0.0",
     "numpydoc>=1.10.0",
     "sphinx>=9.0.4",
 ]
