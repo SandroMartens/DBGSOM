@@ -1,4 +1,4 @@
-"""This class handles the core SOM functionality."""
+"""Handles the core SOM functionality."""
 
 import copy
 import sys
@@ -115,7 +115,7 @@ class BaseSom(BaseEstimator):
         learning_rate: float = 0.02,
         verbose: bool = False,
         coarse_training_frac: float = 0.5,
-        random_state: Any = None,
+        random_state: int | None | np.random.RandomState = None,
         convergence_treshold: float = 10**-5,
         max_neurons: int = 100,
         metric: str = "euclidean",
@@ -173,12 +173,11 @@ class BaseSom(BaseEstimator):
 
         """
         # Initialization
-        # X, y = self._check_input_data(X, y)
 
         if y is None:
             X = validate_data(self, X, ensure_min_samples=4)
 
-        if y is not None:
+        elif y is not None:
             X, y = validate_data(self, X, y, ensure_min_samples=4)
             classes, y = np.unique(y, return_inverse=True)
             self.classes_ = np.array(classes)
@@ -315,9 +314,8 @@ class BaseSom(BaseEstimator):
         """Return an array with some given attribute of the nodes."""
         return np.array([data[attribute] for _, data in self.som_.nodes.data()])
 
-    def transform(self, X: npt.ArrayLike, y: npt.ArrayLike | None) -> np.ndarray:
-        """Calculate a non negative least squares mixture model of prototypes that
-        approximate each sample.
+    def transform(self, X: npt.ArrayLike, y: npt.ArrayLike | None = None) -> np.ndarray:
+        """Calculate a non negative least squares mixture model of prototypes that approximate each sample.
 
         Parameters
         ----------
@@ -332,10 +330,13 @@ class BaseSom(BaseEstimator):
         coefficients : np.ndarray of shape (n_samples, n_protoypes)
             Coefficients of the linear regression model.
 
-        """
+        """  # noqa: E501
         check_is_fitted(self)
-        # X, y = validate_data(self, X=X, y=y, dtype=np.float64, reset=False)
-        X, y = self._check_input_data(X, y)
+        # X, y = self._check_input_data(X, y)
+        if y is None:
+            X = validate_data(self, X, reset=False)
+        elif y is not None:
+            X, y = validate_data(self, X, y, reset=False)
         transformer = SparseCoder(
             dictionary=normalize(self.weights_),
             n_jobs=self.n_jobs,
@@ -440,10 +441,7 @@ class BaseSom(BaseEstimator):
     #     # plt.show()
 
     def _get_u_matrix(self) -> np.ndarray[Any, np.dtype[np.float64]]:
-        """Calculate the average distance from each neuron to its neighbors in the
-        input space.
-
-        """
+        """Calculate the average distance from each neuron to its neighbors in the input space."""  # noqa: E501
         g = self.som_
         node_weights = np.array([g.nodes[node]["weight"] for node in g.nodes])
         neighbor_weights = np.array(
@@ -540,10 +538,7 @@ class BaseSom(BaseEstimator):
                 self._add_new_neurons()
 
     def _create_som(self, data: npt.NDArray) -> nx.Graph:
-        """Create a graph containing the first four neurons in a square.
-        Each neuron has a weight vector randomly chosen from the training
-         samples.
-        """
+        """Create a graph containing the first four neurons in a square. Each neuron has a weight vector randomly chosen from the training samples."""  # noqa: E501
         rng = np.random.default_rng(seed=self.random_state)
         init_vectors = rng.choice(a=data, size=4, replace=False)
         neurons = [
@@ -1043,7 +1038,7 @@ class BaseSom(BaseEstimator):
 
         """
         check_is_fitted(self)
-        X = np.array(check_array(X))
+        X = np.array((X))
         distances, _ = self._get_winning_neurons(X, n_bmu=1)
         error = float(np.mean(distances))
         return error
@@ -1080,29 +1075,39 @@ class BaseSom(BaseEstimator):
 
         return topographic_error / X.shape[0]
 
-    def topographic_function(self, X: npt.ArrayLike) -> tuple[np.ndarray, np.ndarray]:
-        X = check_array(X)
+    def topographic_function(self, X: npt.ArrayLike) -> npt.NDArray:
+        """Compute the topographic function for the SOM.
+
+        Parameters
+        ----------
+        X : array_like of shape (n_samples, n_features)
+            Data used to compute the topographic function.
+
+        Returns
+        -------
+        ndarray of shape (2, 2 * max_dist)
+            Topographic function values for negative and positive distances.
+
+        """
+        X = validate_data(self, X)
         self._delaunay_maxtrix = self._calculate_delaunay_triangulation(X)
         self.euclid_dist_matrix = euclidean_distances(self.neurons_)
         self.manhattan_dist_matrix = manhattan_distances(self.neurons_)
         self.max_dist_matrix = pairwise_distances(self.neurons_, metric="chebyshev")
         max_dist = int(self.max_dist_matrix.max())
         k_positive = np.arange(max_dist)
-        k_negative = np.arange(-max_dist - 1, stop=0)
+        k_negative = np.arange(-max_dist, stop=0)
         for k in range(max_dist):
-            k_positive[k] = self.phi(k)
-            k_negative[k] = self.phi(-k)
+            k_positive[k] = self._phi(k)
+            k_negative[k] = self._phi(-k)
 
-        ks_positive = np.array([k_positive, np.arange(max_dist)])
-        ks_negative = np.array([k_negative, np.arange(max_dist)])
-        return ks_negative.astype(np.float64), ks_positive.astype(np.float64)
-
-        return (
-            k_positive / len(self.neurons_),
-            k_negative / len(self.neurons_),
+        ks_positive = np.array([k_positive, np.arange(max_dist) / max_dist])
+        ks_negative = np.array([k_negative, -np.arange(max_dist) / max_dist])
+        return np.append(
+            ks_negative.astype(np.float64), ks_positive.astype(np.float64), axis=1
         )
 
-    def phi(self, k: int) -> int:
+    def _phi(self, k: int) -> int:
         if k > 0:
             return np.count_nonzero(
                 (self.max_dist_matrix > k) & (self._delaunay_maxtrix == 1)
@@ -1112,7 +1117,7 @@ class BaseSom(BaseEstimator):
                 (self.euclid_dist_matrix == 1) & (self._delaunay_maxtrix > -k)
             )
         else:
-            return self.phi(-1) + self.phi(1)
+            return self._phi(-1) + self._phi(1)
 
     def _calculate_delaunay_triangulation(self, X) -> np.ndarray:
         """Calculate the Delaunay triangulation distance matrix."""
