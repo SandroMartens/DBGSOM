@@ -36,7 +36,6 @@ except ImportError as e:
     sys.exit()
 
 
-# pylint:  disable= attribute-defined-outside-init
 class BaseSom(BaseEstimator):
     """Base Self-Organizing Map (SOM) implementation.
 
@@ -191,6 +190,7 @@ class BaseSom(BaseEstimator):
         self.quantization_error_ = self.calculate_quantization_error(X)
         self.n_features_in_ = X.shape[1]
         self._write_node_statistics(X)
+        self._write_edge_statistics()
         self._delete_dead_neurons_from_graph(X)
         self._label_prototypes(X, y)
 
@@ -295,6 +295,20 @@ class BaseSom(BaseEstimator):
             self.som_.nodes[node]["density"] = density
             self.som_.nodes[node]["hit_count"] = hit_count
             self.som_.nodes[node]["average_distance"] = average_distance
+
+    def _write_edge_statistics(self) -> None:
+        som = self.som_
+
+        for u, v in som.edges:
+            # Gewichte der beiden verbundenen Knoten holen
+            weight_x = som.nodes[u]["weight"]
+            weight_y = som.nodes[v]["weight"]
+
+            # Euklidischen Abstand berechnen
+            distance = np.linalg.norm(weight_x - weight_y)
+
+            # Abstand als neues Kanten-Attribut (z.B. "weight_distance") speichern
+            som.edges[u, v]["weight_distance"] = 1 / float(distance)
 
     def _delete_dead_neurons_from_graph(self, X: npt.ArrayLike) -> None:
         """Delete all neurons which represent zero samples from the training set."""
@@ -444,6 +458,8 @@ class BaseSom(BaseEstimator):
         """Calculate the average distance from each neuron to its neighbors in the input space."""  # noqa: E501
         g = self.som_
         node_weights = np.array([g.nodes[node]["weight"] for node in g.nodes])
+        # node_weights = g.nodes.data("weight")
+
         neighbor_weights = np.array(
             [
                 g.nodes[neighbor]["weight"]
