@@ -683,7 +683,7 @@ class BaseSom(BaseEstimator):
                 self.som_.nodes[neuron]["error"] = error
 
         else:
-            errors = numba_quantization_error_bincount(
+            errors = numba_quantization_error(
                 winners,
                 length=self.weights_.shape[0],
                 distances=distances,
