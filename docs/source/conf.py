@@ -7,18 +7,16 @@
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
 import os
-import pathlib
 import sys
+import tomllib
+from pathlib import Path
 
+# Fügt das Projekt-Root-Verzeichnis hinzu (wo der Ordner 'dbgsom' liegt)
 sys.path.insert(0, os.path.abspath("../.."))
-sys.path.insert(0, os.path.abspath("dbgsom"))
-sys.path.insert(0, pathlib.Path(__file__).parents[2].resolve().as_posix())
-
 
 project = "DBGSOM"
 copyright = "2023, Sandro Martens"
 author = "Sandro Martens"
-release = "0.1"
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
@@ -28,7 +26,7 @@ extensions = [
     "sphinx.ext.autodoc",
     "numpydoc",
     "sphinx.ext.autosummary",
-    # "sphinx_autodoc_typehints",
+    "sphinx_autodoc_typehints",
 ]
 numpydoc_class_members_toctree = False
 templates_path = ["_templates"]
@@ -40,8 +38,14 @@ root_doc = "index"
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
-html_theme = "alabaster"
+html_theme = "furo"
 html_static_path = ["_static"]
 
-sys.path.append(os.path.abspath("./dbgsom"))
-sys.path.insert(0, os.path.abspath("."))
+
+pyproject_path = Path(__file__).parents[2] / "pyproject.toml"
+
+with open(pyproject_path, "rb") as f:
+    pyproject_data = tomllib.load(f)
+# 3. Version extrahieren
+release = pyproject_data["project"]["version"]  # z. B. "0.1.3"
+version = ".".join(release.split(".")[:2])  # Macht daraus "0.1" (für kurze Darstellung)

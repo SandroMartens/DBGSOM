@@ -138,3 +138,9 @@ mypy.ini
 .pyre/
 
 fashion-mnist_train.csv
+
+# Ruff
+.ruff_cache
+
+# Qudo
+.qodo
