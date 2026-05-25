@@ -685,7 +685,7 @@ class BaseSom(BaseEstimator):
                 self.som_.nodes[neuron]["error"] = error
 
         else:
-            errors = numba_quantization_error(
+            errors = numba_quantization_error_bincount(
                 winners,
                 length=self.weights_.shape[0],
                 distances=distances,
@@ -1202,17 +1202,9 @@ def numba_voronoi_set_centers(
     return voronoi_set_centers
 
 
-@nb.njit(
-    fastmath=True,
-    parallel=True,
-)
-def numba_quantization_error(
+@nb.njit(fastmath=True)
+def numba_quantization_error_bincount(
     winners: npt.NDArray, length: int, distances: npt.NDArray
 ) -> npt.NDArray:
-    """Calculate the quantization error for a given set of winners, distances, and length."""
-    errors = np.zeros(shape=length)
-    for i in nb.prange(len(winners)):
-        winner = winners[i]
-        distance = distances[i]
-        errors[winner] += distance
-    return errors
+    """Berechnet den Quantisierungsfehler effizient mit np.bincount."""
+    return np.bincount(winners, weights=distances, minlength=length)
