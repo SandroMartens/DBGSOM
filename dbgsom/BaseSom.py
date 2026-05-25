@@ -216,19 +216,19 @@ class BaseSom(BaseEstimator):
     def predict(self, X):
         raise NotImplementedError
 
-    def _check_arguments(self) -> None:
-        if self.decay_function not in ["linear", "exponential"]:
-            raise ValueError(
-                "Decay function not supported. Must be 'linear' or 'exponential'."
-            )
-        if self.threshold_method not in ["se", "classical"]:
-            raise ValueError(
-                "threshold_method not supported. Must be 'se' or 'classical'."
-            )
-        if self.growth_criterion not in ["quantization_error", "entropy"]:
-            raise ValueError(
-                "growth_criterion not supported. Must be 'quantization_error' or 'entropy'."
-            )
+    # def _check_arguments(self) -> None:
+    #     if self.decay_function not in ["linear", "exponential"]:
+    #         raise ValueError(
+    #             "Decay function not supported. Must be 'linear' or 'exponential'."
+    #         )
+    #     if self.threshold_method not in ["se", "classical"]:
+    #         raise ValueError(
+    #             "threshold_method not supported. Must be 'se' or 'classical'."
+    #         )
+    #     if self.growth_criterion not in ["quantization_error", "entropy"]:
+    #         raise ValueError(
+    #             "growth_criterion not supported. Must be 'quantization_error' or 'entropy'."
+    #         )
 
     def _grow_vertical(self, X: npt.NDArray, y: None | npt.NDArray = None) -> None:
         """Triggers vertical growth in the SOM by creating new instances of the DBGSOM
@@ -454,8 +454,6 @@ class BaseSom(BaseEstimator):
         """Calculate the average distance from each neuron to its neighbors in the input space."""  # noqa: E501
         g = self.som_
         node_weights = np.array([g.nodes[node]["weight"] for node in g.nodes])
-        # node_weights = g.nodes.data("weight")
-
         neighbor_weights = np.array(
             [
                 g.nodes[neighbor]["weight"]
@@ -469,7 +467,7 @@ class BaseSom(BaseEstimator):
 
         return distances
 
-    def _calculate_rep(self, X: npt.ArrayLike) -> None:
+    def _calculate_rep(self, X: npt.NDArray) -> None:
         """Return the resemble entropy parameter.
 
         1. Calculate histogram of components of each sample.
@@ -479,7 +477,7 @@ class BaseSom(BaseEstimator):
         Use 20 bins as default
         """
         hists = []
-        for sample in X:  # type: ignore
+        for sample in X:
             hists.append(np.histogram(sample, bins=20)[0])
 
     def _initialize_som(self, data: npt.NDArray) -> None:
@@ -1051,7 +1049,7 @@ class BaseSom(BaseEstimator):
 
         """
         check_is_fitted(self)
-        X = np.array((X))
+        X = validate_data(self, X, reset=False)
         distances, _ = self._get_winning_neurons(X, n_bmu=1)
         error = float(np.mean(distances))
         return error
