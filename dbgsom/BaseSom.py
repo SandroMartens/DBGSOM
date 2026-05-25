@@ -1226,7 +1226,7 @@ def numba_voronoi_set_centers(
 
 
 @nb.njit(fastmath=True)
-def numba_quantization_error_bincount(
+def numba_quantization_error(
     winners: npt.NDArray, length: int, distances: npt.NDArray
 ) -> npt.NDArray:
     """Berechnet den Quantisierungsfehler effizient mit np.bincount."""

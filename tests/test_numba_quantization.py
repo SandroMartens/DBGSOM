@@ -1,5 +1,6 @@
 import numpy as np
 import pytest
+
 from dbgsom.BaseSom import (
     numba_quantization_error,
 )  # Ersetze 'your_module' mit deinem Dateinamen
