@@ -24,14 +24,13 @@ author = "Sandro Martens"
 extensions = [
     "sphinx.ext.doctest",
     "sphinx.ext.autodoc",
-    "numpydoc",
     "sphinx.ext.autosummary",
     "sphinx_autodoc_typehints",
+    "sphinx.ext.napoleon",  # <-- Einfach hier reinschreiben, fertig!
 ]
 numpydoc_class_members_toctree = False
 templates_path = ["_templates"]
 exclude_patterns = []
-
 root_doc = "index"
 
 
@@ -39,6 +38,13 @@ root_doc = "index"
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
 html_theme = "furo"
+html_theme_options = {
+    # ... falls hier schon Einträge stehen, lass sie drin ...
+    "pygments_light_style": "tango",
+    "pygments_dark_style": "monokai",
+}
+pygments_style = "tango"
+pygments_dark_style = "monokai"
 html_static_path = ["_static"]
 
 

@@ -365,32 +365,27 @@ class BaseSom(BaseEstimator):
         self,
         color: None | str = None,
         palette: str = "magma_r",
-        pointsize: float = 1,
+        pointsize: None | str = None,
     ) -> None:
         """Plot the neurons.
 
         Parameters
         ----------
-        color : {None, "label", "epoch_created", "error", "average_distance", "density", "hit_count"}, default = None
+        color : {'label', 'epoch_created', 'error', 'average_distance', 'density', 'hit_count'}, optional
             Attribute which is represented as color.
 
-        pointsize : {None, "label", "epoch_created", "error", "average_distance", "density", "hit_count"}, default = None
+        pointsize : {'label', 'epoch_created', 'error', 'average_distance', 'density', 'hit_count'}, optional
+            Determines the property used for the node sizing:
 
-            "label" : Label of the prototype when trained supervised.
+            * 'label': Label of the prototype when trained supervised.
+            * 'epoch_created': When the neuron was created.
+            * 'error' : Quantization error of each neuron.
+            * 'average_distance' : Average distance to neighbor neurons in the input space.
+            * 'density' : Estimated local density around the prototype.
+            * 'hit_count' : How many samples the prototype represents.
 
-            "epoch_created" : When the neuron was created.
-
-            "error" : Quantization error of each neuron.
-
-            "average_distance" : Average distance to neighbor neurons in
-            the input space. Creates a U-Matrix.
-
-            "density" : estimated local density around the prototype
-
-            "hit_count" : How many samples the prototype represents
-
-        palette : matplotlib colormap/seaborn palette, default = "magma_r"
-            Name of seaborn palette to color code the values of attribute
+        palette : str, default: 'magma_r'
+            Name of seaborn palette to color code the values of attribute.
 
         """
         data = pd.DataFrame(dict(self.som_.nodes)).T.set_index(
