@@ -1103,31 +1103,54 @@ class BaseSom(BaseEstimator):
 
         """
         X = validate_data(self, X)
-        self._delaunay_maxtrix = self._calculate_delaunay_triangulation(X)
-        self.euclid_dist_matrix = euclidean_distances(self.neurons_)
-        self.manhattan_dist_matrix = manhattan_distances(self.neurons_)
-        self.max_dist_matrix = pairwise_distances(self.neurons_, metric="chebyshev")
-        max_dist = int(self.max_dist_matrix.max())
-        k_positive = np.arange(max_dist)
-        k_negative = np.arange(-max_dist, stop=0)
-        for k in range(max_dist):
-            k_positive[k] = self._phi(k)
-            k_negative[k] = self._phi(-k)
+        self._delaunay_matrix = self._calculate_delaunay_triangulation(X)
 
-        ks_positive = np.array([k_positive, np.arange(max_dist) / max_dist])
-        ks_negative = np.array([k_negative, -np.arange(max_dist) / max_dist])
-        return np.append(
-            ks_negative.astype(np.float64), ks_positive.astype(np.float64), axis=1
-        )
+        # 1. Nur die wirklich benötigten Matrizen berechnen (Manhattan gelöscht)
+        self.euclid_dist_matrix = euclidean_distances(self.neurons_)
+        self.max_dist_matrix = pairwise_distances(self.neurons_, metric="chebyshev")
+
+        max_dist = int(self.max_dist_matrix.max())
+        k_values = np.arange(-max_dist, max_dist + 1)
+        phi_values = np.zeros(len(k_values), dtype=np.float64)
+
+        # 2. ÜBERRAGENDER PERFORMANCE-TRICK: Vorfiltern der Matrizen in 1D-Arrays
+        # Für k > 0 interessieren uns nur max_dist-Werte, wo Delaunay == 1 ist
+        valid_max_dists = self.max_dist_matrix[self._delaunay_matrix == 1]
+
+        # Für k < 0 interessieren uns nur Delaunay-Werte, wo Euclid == 1 ist
+        valid_delaunay_dists = self._delaunay_matrix[self.euclid_dist_matrix == 1]
+
+        # 3. Werte für k berechnen (ohne teure Matrix-Scans)
+        for idx, k in enumerate(k_values):
+            if k > 0:
+                phi_values[idx] = np.sum(valid_max_dists > k)
+            elif k < 0:
+                phi_values[idx] = np.sum(valid_delaunay_dists > -k)
+
+        # 4. Sonderfall k = 0 berechnen (_phi(-1) + _phi(1))
+        # Wir suchen die Indizes in unserem fertigen phi_values Array
+        idx_neg1 = np.where(k_values == -1)[0]
+        idx_pos1 = np.where(k_values == 1)[0]
+        idx_zero = np.where(k_values == 0)[0]
+
+        if len(idx_zero) > 0:
+            val_neg1 = phi_values[idx_neg1[0]] if len(idx_neg1) > 0 else 0.0
+            val_pos1 = phi_values[idx_pos1[0]] if len(idx_pos1) > 0 else 0.0
+            phi_values[idx_zero[0]] = val_neg1 + val_pos1
+
+        # Normierung der X-Achse
+        normalized_distances = k_values / max_dist if max_dist > 0 else k_values
+
+        return np.vstack((phi_values, normalized_distances))
 
     def _phi(self, k: int) -> int:
         if k > 0:
             return np.count_nonzero(
-                (self.max_dist_matrix > k) & (self._delaunay_maxtrix == 1)
+                (self.max_dist_matrix > k) & (self._delaunay_matrix == 1)
             )
         elif k < 0:
             return np.count_nonzero(
-                (self.euclid_dist_matrix == 1) & (self._delaunay_maxtrix > -k)
+                (self.euclid_dist_matrix == 1) & (self._delaunay_matrix > -k)
             )
         else:
             return self._phi(-1) + self._phi(1)
