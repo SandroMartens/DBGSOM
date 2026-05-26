@@ -204,31 +204,12 @@ class BaseSom(BaseEstimator):
 
         return self
 
-    def _check_input_data(
-        self, X: npt.NDArray, y: npt.NDArray | None
-    ) -> tuple[npt.NDArray, npt.NDArray | None]:
-        raise NotImplementedError
-
     def _fit(self, X):
         # For VQ Subclass specific code
         pass
 
     def predict(self, X):
         raise NotImplementedError
-
-    # def _check_arguments(self) -> None:
-    #     if self.decay_function not in ["linear", "exponential"]:
-    #         raise ValueError(
-    #             "Decay function not supported. Must be 'linear' or 'exponential'."
-    #         )
-    #     if self.threshold_method not in ["se", "classical"]:
-    #         raise ValueError(
-    #             "threshold_method not supported. Must be 'se' or 'classical'."
-    #         )
-    #     if self.growth_criterion not in ["quantization_error", "entropy"]:
-    #         raise ValueError(
-    #             "growth_criterion not supported. Must be 'quantization_error' or 'entropy'."
-    #         )
 
     def _grow_vertical(self, X: npt.NDArray, y: None | npt.NDArray = None) -> None:
         """Triggers vertical growth in the SOM by creating new instances of the DBGSOM
@@ -345,7 +326,6 @@ class BaseSom(BaseEstimator):
 
         """  # noqa: E501
         check_is_fitted(self)
-        # X, y = self._check_input_data(X, y)
         if y is None:
             X = validate_data(self, X, reset=False)
         elif y is not None:
@@ -399,7 +379,7 @@ class BaseSom(BaseEstimator):
         data["density"] = pd.to_numeric(data["density"])
         data["hit_count"] = pd.to_numeric(data["hit_count"])
         data["average_distance"] = pd.to_numeric(data["average_distance"])
-        coordinates = pd.DataFrame(np.array(self.neurons_), columns=["x", "y"])
+        # coordinates = pd.DataFrame(np.array(self.neurons_), columns=["x", "y"])
         coordinates = pd.DataFrame(np.array(self.neurons_), columns=["x", "y"])
         dots = pd.concat([coordinates, data], axis=1)
 
@@ -470,18 +450,18 @@ class BaseSom(BaseEstimator):
         total = np.bincount(src, weights=edge_distances, minlength=n)
         return np.where(counts > 0, total / counts, 0.0)
 
-    def _calculate_rep(self, X: npt.NDArray) -> None:
-        """Return the resemble entropy parameter.
+    # def _calculate_rep(self, X: npt.NDArray) -> None:
+    #     """Return the resemble entropy parameter.
 
-        1. Calculate histogram of components of each sample.
-        2. Calculate entropy of each sample from histogram
-        3. Save minimum and maximum rep for all classes
+    #     1. Calculate histogram of components of each sample.
+    #     2. Calculate entropy of each sample from histogram
+    #     3. Save minimum and maximum rep for all classes
 
-        Use 20 bins as default
-        """
-        hists = []
-        for sample in X:
-            hists.append(np.histogram(sample, bins=20)[0])
+    #     Use 20 bins as default
+    #     """
+    #     hists = []
+    #     for sample in X:
+    #         hists.append(np.histogram(sample, bins=20)[0])
 
     def _initialize_som(self, data: npt.NDArray) -> None:
         """First training phase.
@@ -1143,18 +1123,6 @@ class BaseSom(BaseEstimator):
         normalized_distances = k_values / max_dist if max_dist > 0 else k_values
 
         return np.vstack((phi_values, normalized_distances))
-
-    def _phi(self, k: int) -> int:
-        if k > 0:
-            return np.count_nonzero(
-                (self.max_dist_matrix > k) & (self._delaunay_matrix == 1)
-            )
-        elif k < 0:
-            return np.count_nonzero(
-                (self.euclid_dist_matrix == 1) & (self._delaunay_matrix > -k)
-            )
-        else:
-            return self._phi(-1) + self._phi(1)
 
     def _calculate_delaunay_triangulation(self, X) -> np.ndarray:
         """Calculate the Delaunay triangulation distance matrix."""

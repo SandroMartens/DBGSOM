@@ -124,22 +124,6 @@ class SomClassifier(TransformerMixin, ClassifierMixin, BaseSom):
         tags = super().__sklearn_tags__()
         return tags
 
-    def _check_input_data(
-        self, X: npt.NDArray, y: npt.NDArray | None
-    ) -> tuple[npt.NDArray, npt.NDArray | None]:
-        if y is None:
-            # Wenn kein y übergeben wurde (bei predict/transform), validieren wir NUR X
-            X = validate_data(
-                self, X=X, ensure_min_samples=4, dtype=[np.float64, np.float32]
-            )
-            return np.array(X), None
-        else:
-            # Wenn y da ist (beim fit), validieren wir beide zusammen
-            X, y = validate_data(
-                self, X=X, y=y, ensure_min_samples=4, dtype=[np.float64, np.float32]
-            )
-            return np.array(X), np.array(y)
-
     def _label_prototypes(self, X: npt.NDArray, y: npt.NDArray) -> None:
         """This method assigns labels to the prototypes based on the input data."""
         _, winners = self._get_winning_neurons(X, n_bmu=1)

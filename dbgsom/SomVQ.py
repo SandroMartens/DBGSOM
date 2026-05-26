@@ -118,25 +118,9 @@ class SomVQ(TransformerMixin, ClusterMixin, BaseSom):
 
     """
 
-    # def __init__(self) -> None:
-    #     super().__init__()
-
     def __sklearn_tags__(self):
         tags = super().__sklearn_tags__()
         return tags
-
-    def _check_input_data(self, X: npt.ArrayLike, y=None) -> tuple[npt.NDArray, None]:
-        X = np.array(
-            validate_data(
-                self,
-                array=X,
-                ensure_min_samples=4,
-                dtype=[np.float64, np.float32],
-                reset=False,
-            )
-        )
-        # throw away any y
-        return X, None
 
     def _label_prototypes(self, X: npt.ArrayLike, y=None) -> None:
         for i, neuron in enumerate(self.som_):
