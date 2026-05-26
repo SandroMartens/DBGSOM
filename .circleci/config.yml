@@ -1,38 +1,55 @@
-version: 2
+version: 2.1
 
 jobs:
   build:
     docker:
-      - image: cimg/python:3.10
+      # Upgrade auf ein modernes, stabiles Python
+      - image: cimg/python:3.12
     working_directory: ~/repo
     steps:
       - checkout
+
       - run:
-          name: install dependencies
+          name: Install uv & Dependencies
           command: |
-            wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh
-            chmod +x miniconda.sh && ./miniconda.sh -b -p ~/miniconda
-            export PATH="~/miniconda/bin:$PATH"
-            conda update --yes --quiet conda
-            conda create -n testenv --yes --quiet python=3
-            source activate testenv
-            conda install --yes pip numpy scipy scikit-learn matplotlib sphinx sphinx_rtd_theme numpydoc
-            pip install sphinx-gallery
-            pip install .
+            # 1. uv blitzschnell installieren
+            curl -LsSf https://astral.sh/uv/install.sh | sh
+            echo 'export PATH="$HOME/.local/bin:$PATH"' >> $BASH_ENV
+            source $BASH_ENV
+            
+            # 2. Virtuelle Umgebung erstellen & aktivieren
+            uv venv
+            echo 'source .venv/bin/activate' >> $BASH_ENV
+            source $BASH_ENV
+            
+            # 3. Alle Pakete in Rekordzeit installieren (ersetzt das langsame Conda)
+            uv pip install numpy scipy scikit-learn matplotlib sphinx sphinx_rtd_theme numpydoc sphinx-gallery
+            uv pip install .
+
+      - run:
+          name: Build Documentation
+          command: |
             cd docs
             make html
+
       - store_artifacts:
           path: docs/build/html/
           destination: docs
+
+      # Hinweis: Falls log.txt nicht existiert, fängt dieser Schritt es sauber ab
       - store_artifacts:
           path: ~/log.txt
-      - run: ls -ltrh docs/build/html
-    filters:
-      branches:
-        ignore: gh-pages
+          optional: true
+
+      - run:
+          name: Verify Build
+          command: ls -ltrh docs/build/html
 
 workflows:
   version: 2
-  workflow:
+  documentation_workflow:
     jobs:
-      - build
+      - build:
+          filters:
+            branches:
+              ignore: gh-pages

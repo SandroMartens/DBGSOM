@@ -1,10 +1,10 @@
 ![license](https://img.shields.io/github/license/SandroMartens/DBGSOM)
 ![CircleCI](https://img.shields.io/circleci/build/github/SandroMartens/DBGSOM?label=CircleCI)
 ![readthedocs](https://img.shields.io/readthedocs/dbgsom)
-![AppVeyor](https://img.shields.io/appveyor/build/SandroMartens/DBGSOM?label=Appveyor)
 [![Python package](https://github.com/SandroMartens/DBGSOM/actions/workflows/python-package.yml/badge.svg)](https://github.com/SandroMartens/DBGSOM/actions/workflows/python-package.yml)
-[![Upload Python Package](https://github.com/SandroMartens/DBGSOM/actions/workflows/python-publish.yml/badge.svg)](https://github.com/SandroMartens/DBGSOM/actions/workflows/python-publish.yml)
+[![Publish to PyPI](https://github.com/SandroMartens/DBGSOM/actions/workflows/publish.yml/badge.svg)](https://github.com/SandroMartens/DBGSOM/actions/workflows/publish.yml)
 [![CodeQL Advanced](https://github.com/SandroMartens/DBGSOM/actions/workflows/codeql.yml/badge.svg)](https://github.com/SandroMartens/DBGSOM/actions/workflows/codeql.yml)
+[![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 
 # DBGSOM
 
