@@ -9,7 +9,7 @@ from sklearn.base import (
 )
 from sklearn.utils.validation import validate_data
 
-from .BaseSom import BaseSom
+from dbgsom.BaseSom import BaseSom
 
 
 class SomVQ(TransformerMixin, ClusterMixin, BaseSom):

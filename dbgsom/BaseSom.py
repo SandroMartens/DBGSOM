@@ -216,19 +216,19 @@ class BaseSom(BaseEstimator):
     def predict(self, X):
         raise NotImplementedError
 
-    def _check_arguments(self) -> None:
-        if self.decay_function not in ["linear", "exponential"]:
-            raise ValueError(
-                "Decay function not supported. Must be 'linear' or 'exponential'."
-            )
-        if self.threshold_method not in ["se", "classical"]:
-            raise ValueError(
-                "threshold_method not supported. Must be 'se' or 'classical'."
-            )
-        if self.growth_criterion not in ["quantization_error", "entropy"]:
-            raise ValueError(
-                "growth_criterion not supported. Must be 'quantization_error' or 'entropy'."
-            )
+    # def _check_arguments(self) -> None:
+    #     if self.decay_function not in ["linear", "exponential"]:
+    #         raise ValueError(
+    #             "Decay function not supported. Must be 'linear' or 'exponential'."
+    #         )
+    #     if self.threshold_method not in ["se", "classical"]:
+    #         raise ValueError(
+    #             "threshold_method not supported. Must be 'se' or 'classical'."
+    #         )
+    #     if self.growth_criterion not in ["quantization_error", "entropy"]:
+    #         raise ValueError(
+    #             "growth_criterion not supported. Must be 'quantization_error' or 'entropy'."
+    #         )
 
     def _grow_vertical(self, X: npt.NDArray, y: None | npt.NDArray = None) -> None:
         """Triggers vertical growth in the SOM by creating new instances of the DBGSOM
@@ -454,8 +454,6 @@ class BaseSom(BaseEstimator):
         """Calculate the average distance from each neuron to its neighbors in the input space."""  # noqa: E501
         g = self.som_
         node_weights = np.array([g.nodes[node]["weight"] for node in g.nodes])
-        # node_weights = g.nodes.data("weight")
-
         neighbor_weights = np.array(
             [
                 g.nodes[neighbor]["weight"]
@@ -469,7 +467,7 @@ class BaseSom(BaseEstimator):
 
         return distances
 
-    def _calculate_rep(self, X: npt.ArrayLike) -> None:
+    def _calculate_rep(self, X: npt.NDArray) -> None:
         """Return the resemble entropy parameter.
 
         1. Calculate histogram of components of each sample.
@@ -479,7 +477,7 @@ class BaseSom(BaseEstimator):
         Use 20 bins as default
         """
         hists = []
-        for sample in X:  # type: ignore
+        for sample in X:
             hists.append(np.histogram(sample, bins=20)[0])
 
     def _initialize_som(self, data: npt.NDArray) -> None:
@@ -1051,7 +1049,7 @@ class BaseSom(BaseEstimator):
 
         """
         check_is_fitted(self)
-        X = np.array((X))
+        X = validate_data(self, X, reset=False)
         distances, _ = self._get_winning_neurons(X, n_bmu=1)
         error = float(np.mean(distances))
         return error
@@ -1103,31 +1101,54 @@ class BaseSom(BaseEstimator):
 
         """
         X = validate_data(self, X)
-        self._delaunay_maxtrix = self._calculate_delaunay_triangulation(X)
-        self.euclid_dist_matrix = euclidean_distances(self.neurons_)
-        self.manhattan_dist_matrix = manhattan_distances(self.neurons_)
-        self.max_dist_matrix = pairwise_distances(self.neurons_, metric="chebyshev")
-        max_dist = int(self.max_dist_matrix.max())
-        k_positive = np.arange(max_dist)
-        k_negative = np.arange(-max_dist, stop=0)
-        for k in range(max_dist):
-            k_positive[k] = self._phi(k)
-            k_negative[k] = self._phi(-k)
+        self._delaunay_matrix = self._calculate_delaunay_triangulation(X)
 
-        ks_positive = np.array([k_positive, np.arange(max_dist) / max_dist])
-        ks_negative = np.array([k_negative, -np.arange(max_dist) / max_dist])
-        return np.append(
-            ks_negative.astype(np.float64), ks_positive.astype(np.float64), axis=1
-        )
+        # 1. Nur die wirklich benötigten Matrizen berechnen (Manhattan gelöscht)
+        self.euclid_dist_matrix = euclidean_distances(self.neurons_)
+        self.max_dist_matrix = pairwise_distances(self.neurons_, metric="chebyshev")
+
+        max_dist = int(self.max_dist_matrix.max())
+        k_values = np.arange(-max_dist, max_dist + 1)
+        phi_values = np.zeros(len(k_values), dtype=np.float64)
+
+        # 2. ÜBERRAGENDER PERFORMANCE-TRICK: Vorfiltern der Matrizen in 1D-Arrays
+        # Für k > 0 interessieren uns nur max_dist-Werte, wo Delaunay == 1 ist
+        valid_max_dists = self.max_dist_matrix[self._delaunay_matrix == 1]
+
+        # Für k < 0 interessieren uns nur Delaunay-Werte, wo Euclid == 1 ist
+        valid_delaunay_dists = self._delaunay_matrix[self.euclid_dist_matrix == 1]
+
+        # 3. Werte für k berechnen (ohne teure Matrix-Scans)
+        for idx, k in enumerate(k_values):
+            if k > 0:
+                phi_values[idx] = np.sum(valid_max_dists > k)
+            elif k < 0:
+                phi_values[idx] = np.sum(valid_delaunay_dists > -k)
+
+        # 4. Sonderfall k = 0 berechnen (_phi(-1) + _phi(1))
+        # Wir suchen die Indizes in unserem fertigen phi_values Array
+        idx_neg1 = np.where(k_values == -1)[0]
+        idx_pos1 = np.where(k_values == 1)[0]
+        idx_zero = np.where(k_values == 0)[0]
+
+        if len(idx_zero) > 0:
+            val_neg1 = phi_values[idx_neg1[0]] if len(idx_neg1) > 0 else 0.0
+            val_pos1 = phi_values[idx_pos1[0]] if len(idx_pos1) > 0 else 0.0
+            phi_values[idx_zero[0]] = val_neg1 + val_pos1
+
+        # Normierung der X-Achse
+        normalized_distances = k_values / max_dist if max_dist > 0 else k_values
+
+        return np.vstack((phi_values, normalized_distances))
 
     def _phi(self, k: int) -> int:
         if k > 0:
             return np.count_nonzero(
-                (self.max_dist_matrix > k) & (self._delaunay_maxtrix == 1)
+                (self.max_dist_matrix > k) & (self._delaunay_matrix == 1)
             )
         elif k < 0:
             return np.count_nonzero(
-                (self.euclid_dist_matrix == 1) & (self._delaunay_maxtrix > -k)
+                (self.euclid_dist_matrix == 1) & (self._delaunay_matrix > -k)
             )
         else:
             return self._phi(-1) + self._phi(1)
@@ -1202,17 +1223,9 @@ def numba_voronoi_set_centers(
     return voronoi_set_centers
 
 
-@nb.njit(
-    fastmath=True,
-    parallel=True,
-)
+@nb.njit(fastmath=True)
 def numba_quantization_error(
     winners: npt.NDArray, length: int, distances: npt.NDArray
 ) -> npt.NDArray:
-    """Calculate the quantization error for a given set of winners, distances, and length."""
-    errors = np.zeros(shape=length)
-    for i in nb.prange(len(winners)):  # ty:ignore[not-iterable]
-        winner = winners[i]
-        distance = distances[i]
-        errors[winner] += distance
-    return errors
+    """Berechnet den Quantisierungsfehler effizient mit np.bincount."""
+    return np.bincount(winners, weights=distances, minlength=length)
