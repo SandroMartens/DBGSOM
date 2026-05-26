@@ -2,7 +2,7 @@
 
 import copy
 import sys
-from math import exp, log, pi, sqrt
+from math import exp, log, sqrt
 from numbers import Integral
 from typing import Any, Self
 
@@ -269,21 +269,20 @@ class BaseSom(BaseEstimator):
         """
         distances, winners = self._get_winning_neurons(X, n_bmu=1)
         average_distances = self._get_u_matrix()
+
+        n_neurons = len(self.neurons_)
         sigma = average_distances.mean()
-        densities = np.zeros((len(self.neurons_)))
-        hit_counts = np.zeros((len(self.neurons_)))
-        for winner in np.unique(winners):
-            samples = X[winners == winner]
-            distances_per_neuron = distances[winners == winner]
-            if len(distances_per_neuron) > 0:
-                local_density = np.mean(
-                    (np.exp(-(distances_per_neuron**2) / (2 * sigma**2)))
-                    / (sigma * sqrt(2 * pi))
-                )
-            else:
-                local_density = 0
-            densities[winner] = local_density
-            hit_counts[winner] = len(samples)
+
+        hit_counts = np.bincount(winners, minlength=n_neurons)
+        kernel_values = np.exp(-(distances**2) / (2 * sigma**2)) / (
+            sigma * np.sqrt(2 * np.pi)
+        )
+        sum_densities = np.bincount(winners, weights=kernel_values, minlength=n_neurons)
+
+        densities = np.divide(
+            sum_densities, hit_counts, out=np.zeros(n_neurons), where=hit_counts > 0
+        )
+
         return average_distances, densities, hit_counts
 
     def _write_node_statistics(self, X: npt.NDArray) -> None:

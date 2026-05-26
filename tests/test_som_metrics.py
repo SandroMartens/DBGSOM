@@ -1,13 +1,14 @@
-from sklearn.exceptions import NotFittedError
-import numpy as np
 from unittest.mock import MagicMock
+
+import numpy as np
 import pytest
+from sklearn.exceptions import NotFittedError
+
 from dbgsom.BaseSom import BaseSom  # Ersetze 'your_module' mit deinem Dateinamen
 
 
 def test_topographic_function_matrix_logic():
     """Testet die logischen Verknüpfungen von Euclid, Chebyshev und Delaunay."""
-
     # Wir erstellen 3 Neuronen in einer Reihe, um Abstände zu kontrollieren
     # N0 bei (0,0), N1 bei (1,0), N2 bei (2,0)
     neurons = [[0.0, 0.0], [1.0, 0.0], [2.0, 0.0]]

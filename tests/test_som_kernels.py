@@ -1,5 +1,5 @@
-import pytest
 import numpy as np
+import pytest
 
 # 1. HIER IMPORTIERST DU DEINE ECHTE KLASSE
 from dbgsom.BaseSom import BaseSom
@@ -17,7 +17,6 @@ def real_som() -> BaseSom:
 class TestGaussianNeighborhood:
     def test_center_is_one(self, real_som):
         """Testet deine ECHTE Methode auf der ECHTEN Klasse."""
-
         # VORBEREITUNG (State Injection):
         # Da wir die Methode isoliert testen wollen, ohne vorher ein
         # stundenlanges Training zu laufen, setzen wir die Variablen direkt:
@@ -39,7 +38,6 @@ class TestGaussianNeighborhood:
 class TestExponentialSimilarity:
     def test_perfect_match_yields_maximum_weight(self, real_som):
         """Testet deine echte Outlier-Dämpfung."""
-
         # VORBEREITUNG:
         # Wir füttern die echte Instanz mit einer bekannten Gesamtvarianz
         real_som._total_variance = 4.0

@@ -1,5 +1,5 @@
-import pytest
 from sklearn.utils.estimator_checks import check_estimator
+
 from dbgsom.SomClassifier import SomClassifier
 from dbgsom.SomVQ import SomVQ
 
