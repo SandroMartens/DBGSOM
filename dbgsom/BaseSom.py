@@ -711,245 +711,76 @@ class BaseSom(BaseEstimator):
         for i in sorted_indices:
             node = list(self.som_.nodes)[i]
             node_degree = nx.degree(self.som_, node)
-            degree_functions = {
-                1: self._insert_neuron_3p,
-                2: self._insert_neuron_2p,
-                3: self._insert_neuron_1p,
-            }
             if error_values[i] > self.growing_threshold_ and node_degree < 4:
-                if node_degree in degree_functions:
-                    new_node, new_weight = degree_functions[node_degree](node)
-                else:
-                    continue
-
+                new_node, new_weight = self._insert_neuron(node)
                 self._add_node_to_graph(node=new_node, weight=new_weight)
-
             else:
                 break
 
-    def _insert_neuron_1p(
-        self, node: tuple[int, int]
-    ) -> tuple[tuple[int, int], np.ndarray]:
-        """Add neuron to the only free position.
-        The available positions are:
-        - (x_i, y_i + 1)
-        - (x_i, y_i - 1)
-        - (x_i + 1, y_i)
-        - (x_i - 1, y_i)
-        """
-        node_x, node_y = node
-        nbrs = self.som_.adj[node]
-        possible_positions = [
-            (node_x, node_y + 1),
-            (node_x, node_y - 1),
-            (node_x + 1, node_y),
-            (node_x - 1, node_y),
-        ]
-        for new_position_candidate in possible_positions:
-            if new_position_candidate not in nbrs:
-                new_position = new_position_candidate
-                neighbor_position = (
-                    2 * node_x - new_position[0],
-                    2 * node_y - new_position[1],
-                )
-                new_weight = (
-                    2 * self.som_.nodes[node]["weight"]
-                    - self.som_.nodes[neighbor_position]["weight"]
-                )
-
-        return new_position, new_weight
-
-    def _insert_neuron_2p(
+    def _insert_neuron(
         self, bo: tuple[int, int]
     ) -> tuple[tuple[int, int], np.ndarray]:
-        """Add new neuron to the direction with the larger error.
+        """Insert one new neuron around the boundary neuron bo.
 
-        Case (a):
-         o--nb1--nb4
-         |   |
-        nb2--bo--p1
-         |   |
-        nb3  p2
-        The position P1 is preferable if E(NB4) > E(NB3),
-        otherwise P2 is the choice.
+        Implements the directed insertion rule from Section 3.3.1.1 of the paper:
+        prefer the free position whose adjacent existing neuron (corner neighbor)
+        has the highest accumulative error. If a free position has no corner
+        neighbor, fall back to the error of the neuron directly opposite bo.
 
-        Case (b):
-         o--nb1
-         |   |
-        nb2--bo--p1
-             |
-             p2
-        When there is no neuron adjacent to P1 and P2 (Fig. 3.b), the
-        preferable position is P1 if E(NB1) > E(NB2),otherwise a new
-        neuron will be added to P2.
-
-        Case (c):
-        For the case that the boundary neuron (BO) is not at the corner
-        of the grid and there is no neuron adjacent to the available
-        positions the preferable position is decided randomly.
+        Weight is initialized by reflecting the opposite neighbor through bo
+        (rule 1w / 2w / 3w), then averaged with the corner neighbor if one exists.
         """
-        nbr1, nbr2 = self.som_.adj[bo]
-        (nbr1_x, nbr1_y), (nbr2_x, nbr2_y) = nbr1, nbr2
-        error_nbr1 = self.som_.nodes[nbr1]["error"]
-        error_nbr2 = self.som_.nodes[nbr2]["error"]
-        bo_x, bo_y = bo
-        # corner_neighbor_positions = {
-        #     (bo_x + 1, bo_y + 1),
-        #     (bo_x + 1, bo_y - 1),
-        #     (bo_x - 1, bo_y + 1),
-        #     (bo_x - 1, bo_y - 1),
-        # }
+        bx, by = bo
+        all_adjacent = [(bx + 1, by), (bx - 1, by), (bx, by + 1), (bx, by - 1)]
+        free_positions = [p for p in all_adjacent if p not in self.som_.nodes]
 
-        # corner_neighbors = list(
-        #     corner_neighbor_positions.intersection(set(self.som_.neighbors(nbr1)))
-        # )
+        def corner_neighbors_of(p: tuple[int, int]) -> list[tuple[int, int]]:
+            """Existing grid neighbors of p, excluding bo itself."""
+            px, py = p
+            return [
+                n
+                for n in [(px + 1, py), (px - 1, py), (px, py + 1), (px, py - 1)]
+                if n in self.som_.nodes and n != bo
+            ]
 
-        # # Case (a)
-        # if len(corner_neighbors) == 1:
-        #     nbr3 = corner_neighbors[0]
-        #     error_nbr3 = self.som_.nodes[nbr3]["error"]
+        def opposite_of(p: tuple[int, int]) -> tuple[int, int] | None:
+            """Existing neighbor of bo directly opposite p, or any neighbor as fallback."""  # noqa: E501
+            op = (2 * bx - p[0], 2 * by - p[1])
+            if op in self.som_.nodes:
+                return op
+            return next(iter(self.som_.neighbors(bo)), None)
 
-        # else:
-        #     nbr3, nbr4 = corner_neighbors[:2]
-        #     error_nbr3 = self.som_.nodes[nbr3]["error"]
-        #     error_nbr4 = self.som_.nodes[nbr4]["error"]
+        best_score = -1.0
+        best_p = free_positions[0]
+        best_corner: tuple[int, int] | None = None
 
-        # Case (b):
-        if error_nbr1 > error_nbr2:
-            new_node = (2 * bo_x - nbr2_x, 2 * bo_y - nbr2_y)
-            new_weight = (
-                2 * self.som_.nodes[bo]["weight"] - self.som_.nodes[nbr2]["weight"]
-            )
-        else:
-            new_node = (2 * bo_x - nbr1_x, 2 * bo_y - nbr1_y)
-            new_weight = (
-                2 * self.som_.nodes[bo]["weight"] - self.som_.nodes[nbr1]["weight"]
-            )
-
-        #  Case (c): Two opposite neighbors
-        if nbr1_x == nbr2_x or nbr1_y == nbr2_y:
-            if nbr1_x == nbr2_x:
-                new_node = (bo_x + 1, bo_y)
-                new_weight = (
-                    2 * self.som_.nodes[bo]["weight"] - self.som_.nodes[nbr2]["weight"]
-                )
+        for p in free_positions:
+            corners = corner_neighbors_of(p)
+            if corners:
+                corner = max(corners, key=lambda n: self.som_.nodes[n]["error"])
+                score = self.som_.nodes[corner]["error"]
             else:
-                new_node = (bo_x, bo_y + 1)
-                new_weight = (
-                    2 * self.som_.nodes[bo]["weight"] - self.som_.nodes[nbr1]["weight"]
-                )
+                op = opposite_of(p)
+                score = self.som_.nodes[op]["error"] if op else 0.0
+                corner = None
 
-        return new_node, new_weight
+            if score > best_score:
+                best_score = score
+                best_p = p
+                best_corner = corner
 
-    def _insert_neuron_3p(
-        self, bo: tuple[int, int]
-    ) -> tuple[tuple[int, int], np.ndarray]:
-        """If the boundary neuron (BO) has three available positions (P1, P2
-        and P3), the accumulative error of surrounding neurons should be
-        considered according to the insertion rule.
+        # Weight initialization: reflect opposite neighbor through bo, then
+        # average with the corner neighbor when one guides the position choice.
+        op = opposite_of(best_p)
+        w_bo = self.som_.nodes[bo]["weight"]
+        w_base = (2 * w_bo - self.som_.nodes[op]["weight"]) if op else w_bo.copy()
 
-        Case (a):
-        nb2  P2
-         |    |
-        -nb1--BO--P1
-         |    |
-        nb3  P3
-
-        P1 should be selected if E(NB1) > E(NB2, NB3), otherwise a decision
-        should be made just between P2 and P3. The preferable position is P2 if
-        E(NB2) > E(NB3), otherwise a new neuron will be added to P3.
-
-        Case (b):
-         nb2  P2
-          |   |
-        -nb1--BO--P1
-              |
-              P3
-        If there is just one neuron adjacent to an available position
-        P1 or P2 can be selected for insertion according to the
-        same rule as before.
-
-        Case (c):
-              P2
-              |
-        -nb1--BO--P1
-              |
-              P3
-        For the case which there is no neuron adjacent to the
-        available positions the position P1 is preferable
-
-        """
-        bo_x, bo_y = bo
-        corner_neighbor_positions = {
-            (bo_x + 1, bo_y + 1),
-            (bo_x + 1, bo_y - 1),
-            (bo_x - 1, bo_y + 1),
-            (bo_x - 1, bo_y - 1),
-        }
-
-        nb_1 = list(self.som_.neighbors(bo))[0]
-        corner_neighbors = list(
-            corner_neighbor_positions.intersection(set(self.som_.neighbors(nb_1)))
-        )
-
-        if len(corner_neighbors) == 0:
-            new_node, new_weight = self._3p_case_c(nb_1, bo)
-        elif len(corner_neighbors) == 1:
-            nb_2 = corner_neighbors[0]
-            new_node, new_weight = self._3p_case_b(nb_1, bo, nb_2)
+        if best_corner is not None:
+            w_new = (w_base + self.som_.nodes[best_corner]["weight"]) / 2
         else:
-            nb_2 = corner_neighbors[0]
-            nb_3 = corner_neighbors[1]
-            new_node, new_weight = self._3p_case_a(nb_1, bo, nb_2, nb_3)
+            w_new = w_base
 
-        return new_node, new_weight
-
-    def _3p_case_a(
-        self,
-        nb_1: tuple[int, int],
-        bo: tuple[int, int],
-        nb_2: tuple[int, int],
-        nb_3: tuple[int, int],
-    ) -> tuple[tuple[int, int], np.ndarray]:
-        error_nb_1 = self.som_.nodes[nb_1]["error"]
-        error_nb_2 = self.som_.nodes[nb_2]["error"]
-        error_nb_3 = self.som_.nodes[nb_3]["error"]
-
-        if error_nb_1 > error_nb_2 and error_nb_1 > error_nb_3:
-            new_node, new_weight = self._3p_case_c(nb_1, bo)
-        elif error_nb_2 > error_nb_3:
-            new_node, new_weight = self._3p_case_b(nb_1, bo, nb_2)
-        else:
-            new_node, new_weight = self._3p_case_b(nb_1, bo, nb_3)
-
-        return new_node, new_weight
-
-    def _3p_case_b(
-        self, nb_1: tuple[int, int], bo: tuple[int, int], nb_2: tuple[int, int]
-    ) -> tuple[tuple[int, int], np.ndarray]:
-        if self.som_.nodes[nb_1]["error"] > self.som_.nodes[nb_2]["error"]:
-            new_node, new_weight = self._3p_case_c(nb_1, bo)
-        else:
-            new_node = (
-                nb_2[0] + bo[0] - nb_1[0],
-                nb_2[1] + bo[1] - nb_1[1],
-            )
-
-            new_weight = (
-                (2 * self.som_.nodes[bo]["weight"] - self.som_.nodes[nb_1]["weight"])
-                + self.som_.nodes[nb_2]["weight"]
-            ) / 2
-
-        return new_node, new_weight
-
-    def _3p_case_c(
-        self, neighbor: tuple[int, int], node: tuple[int, int]
-    ) -> tuple[tuple[int, int], np.ndarray]:
-        new_node = (2 * node[0] - neighbor[0], 2 * node[1] - neighbor[1])
-        new_weight = (
-            2 * self.som_.nodes[node]["weight"] - self.som_.nodes[neighbor]["weight"]
-        )
-        return new_node, new_weight
+        return best_p, w_new
 
     def _add_node_to_graph(self, node: tuple[int, int], weight: np.ndarray) -> None:
         self.som_.add_node(node)
