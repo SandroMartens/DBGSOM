@@ -10,7 +10,7 @@ authors = [
 ]
 description = "A Python implementation of the Directed Batch Growing Self-Organizing Map"
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 license = "MIT"
 classifiers = [
     "Programming Language :: Python :: 3",

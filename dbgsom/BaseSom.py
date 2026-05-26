@@ -1211,7 +1211,7 @@ def numba_quantization_error(
 ) -> npt.NDArray:
     """Calculate the quantization error for a given set of winners, distances, and length."""
     errors = np.zeros(shape=length)
-    for i in nb.prange(len(winners)):
+    for i in nb.prange(len(winners)):  # ty:ignore[not-iterable]
         winner = winners[i]
         distance = distances[i]
         errors[winner] += distance

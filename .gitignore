@@ -144,3 +144,7 @@ fashion-mnist_train.csv
 
 # Qudo
 .qodo
+
+# Minimum requirements
+overrides.txt
+requirements*
