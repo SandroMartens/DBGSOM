@@ -392,7 +392,7 @@ class BaseSom(BaseEstimator):
         )
 
         data["label_index"] = pd.to_numeric(data["label"])
-        data["label"] = self.classes_[data["label_index"]]
+        # data["label"] = self.classes_[data["label_index"]]
 
         data["epoch_created"] = pd.to_numeric(data["epoch_created"])
         data["error"] = pd.to_numeric(data["error"])
@@ -426,9 +426,6 @@ class BaseSom(BaseEstimator):
             ):
                 dots[pointsize] = dots[pointsize].astype(str)
             plot_kwargs["pointsize"] = pointsize
-        else:
-            # Wenn es eine Zahl ist (z.B. der Default 1), gehört es direkt in das Dot-Objekt!
-            dot_kwargs["pointsize"] = pointsize
 
         # Plot sicher aufbauen
         p = so.Plot(dots, x="x", y="y", **plot_kwargs).add(so.Dot(**dot_kwargs))
@@ -437,7 +434,9 @@ class BaseSom(BaseEstimator):
         if "color" in plot_kwargs:
             p = p.scale(color=palette)
 
-        p.label(x="", y="").show()
+        p.show()
+
+        # p.label(x="", y="").show()
 
     #     dots = pd.concat([coordinates, data], axis=1)
     #     # matplotlib.use("nbAgg")
@@ -452,19 +451,24 @@ class BaseSom(BaseEstimator):
     def _get_u_matrix(self) -> np.ndarray[Any, np.dtype[np.float64]]:
         """Calculate the average distance from each neuron to its neighbors in the input space."""  # noqa: E501
         g = self.som_
-        node_weights = np.array([g.nodes[node]["weight"] for node in g.nodes])
-        neighbor_weights = np.array(
-            [
-                g.nodes[neighbor]["weight"]
-                for neighbors in g.adj.values()
-                for neighbor in neighbors
-            ]
-        )
-        distances = scipy.spatial.distance.cdist(node_weights, neighbor_weights).mean(
-            axis=1
-        )
+        node_to_idx = {node: i for i, node in enumerate(self.neurons_)}
+        weights = self.weights_
 
-        return distances
+        src, dst = zip(
+            *(
+                (node_to_idx[n], node_to_idx[nb])
+                for n in self.neurons_
+                for nb in g.neighbors(n)
+            )
+        )
+        src = np.array(src)
+        dst = np.array(dst)
+
+        edge_distances = np.linalg.norm(weights[src] - weights[dst], axis=1)
+        n = len(self.neurons_)
+        counts = np.bincount(src, minlength=n)
+        total = np.bincount(src, weights=edge_distances, minlength=n)
+        return np.where(counts > 0, total / counts, 0.0)
 
     def _calculate_rep(self, X: npt.NDArray) -> None:
         """Return the resemble entropy parameter.
