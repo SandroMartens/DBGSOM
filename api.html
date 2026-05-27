@@ -482,7 +482,7 @@ contained subobjects that are estimators.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="dbgsom.SomVQ.SomVQ.plot">
-<span class="sig-name descname"><span class="pre">plot</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">color</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pointsize</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">layout</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'grid'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">palette</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'magma_r'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">seed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dbgsom.SomVQ.SomVQ.plot" title="Link to this definition">¶</a></dt>
+<span class="sig-name descname"><span class="pre">plot</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">color</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pointsize</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">layout</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'grid'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">palette</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'magma_r'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dbgsom.SomVQ.SomVQ.plot" title="Link to this definition">¶</a></dt>
 <dd><p>Plot the SOM neurons and their neighbourhood edges using seaborn objects.</p>
 <p>Edges are drawn first as grey lines; nodes are drawn on top and can be
 colour- and size-coded by any node attribute stored in the graph.</p>
@@ -504,18 +504,10 @@ reveals the topological structure of the feature space.</p>
 </p></li>
 <li><p><strong>pointsize</strong> (<em>{'label'</em><em>, </em><em>'epoch_created'</em><em>, </em><em>'error'</em><em>, </em><em>'average_distance'</em><em>,</em>) – ‘density’, ‘hit_count’}, optional
 Node attribute mapped to point size.</p></li>
-<li><p><strong>layout</strong> (<em>{'grid'</em><em>, </em><em>'spring_weighted'</em><em>, </em><em>'spring'</em><em>, </em><em>'pca'}</em><em>, </em><em>default 'grid'</em>) – <p>Algorithm used to compute node positions.</p>
+<li><p><strong>layout</strong> (<em>{'grid'</em><em>, </em><em>'pca'}</em><em>, </em><em>default 'grid'</em>) – <p>Algorithm used to compute node positions.</p>
 <dl class="simple">
 <dt><code class="docutils literal notranslate"><span class="pre">'grid'</span></code></dt><dd><p>Neurons are placed at their integer SOM grid coordinates.
 Preserves the topological map structure.</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">'spring_weighted'</span></code></dt><dd><p>Force-directed layout where the spring constant of each edge
-is proportional to <code class="docutils literal notranslate"><span class="pre">weight_distance</span></code> (= 1 / Euclidean
-distance between adjacent weight vectors).  Neurons with
-similar weight vectors are pulled together, directly
-reflecting the U-matrix structure.</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">'spring'</span></code></dt><dd><p>Unweighted Fruchterman–Reingold force-directed layout.</p>
 </dd>
 <dt><code class="docutils literal notranslate"><span class="pre">'pca'</span></code></dt><dd><p>Weight vectors projected to 2-D with PCA.  Node positions
 reflect the principal directions of variance in feature space.</p>
@@ -523,8 +515,6 @@ reflect the principal directions of variance in feature space.</p>
 </dl>
 </p></li>
 <li><p><strong>palette</strong> (str, default <code class="docutils literal notranslate"><span class="pre">'magma_r'</span></code>) – Seaborn / Matplotlib colormap name applied to the colour mapping.</p></li>
-<li><p><strong>seed</strong> (<em>int</em><em> or </em><em>None</em><em>, </em><em>default 0</em>) – Random seed for the spring layouts.  Set to <code class="docutils literal notranslate"><span class="pre">None</span></code> for a
-non-deterministic result.</p></li>
 </ul>
 </dd>
 </dl>
@@ -866,7 +856,7 @@ contained subobjects that are estimators.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="dbgsom.SomClassifier.SomClassifier.plot">
-<span class="sig-name descname"><span class="pre">plot</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">color</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pointsize</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">layout</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'grid'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">palette</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'magma_r'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">seed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dbgsom.SomClassifier.SomClassifier.plot" title="Link to this definition">¶</a></dt>
+<span class="sig-name descname"><span class="pre">plot</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">color</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pointsize</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">layout</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'grid'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">palette</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'magma_r'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dbgsom.SomClassifier.SomClassifier.plot" title="Link to this definition">¶</a></dt>
 <dd><p>Plot the SOM neurons and their neighbourhood edges using seaborn objects.</p>
 <p>Edges are drawn first as grey lines; nodes are drawn on top and can be
 colour- and size-coded by any node attribute stored in the graph.</p>
@@ -888,18 +878,10 @@ reveals the topological structure of the feature space.</p>
 </p></li>
 <li><p><strong>pointsize</strong> (<em>{'label'</em><em>, </em><em>'epoch_created'</em><em>, </em><em>'error'</em><em>, </em><em>'average_distance'</em><em>,</em>) – ‘density’, ‘hit_count’}, optional
 Node attribute mapped to point size.</p></li>
-<li><p><strong>layout</strong> (<em>{'grid'</em><em>, </em><em>'spring_weighted'</em><em>, </em><em>'spring'</em><em>, </em><em>'pca'}</em><em>, </em><em>default 'grid'</em>) – <p>Algorithm used to compute node positions.</p>
+<li><p><strong>layout</strong> (<em>{'grid'</em><em>, </em><em>'pca'}</em><em>, </em><em>default 'grid'</em>) – <p>Algorithm used to compute node positions.</p>
 <dl class="simple">
 <dt><code class="docutils literal notranslate"><span class="pre">'grid'</span></code></dt><dd><p>Neurons are placed at their integer SOM grid coordinates.
 Preserves the topological map structure.</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">'spring_weighted'</span></code></dt><dd><p>Force-directed layout where the spring constant of each edge
-is proportional to <code class="docutils literal notranslate"><span class="pre">weight_distance</span></code> (= 1 / Euclidean
-distance between adjacent weight vectors).  Neurons with
-similar weight vectors are pulled together, directly
-reflecting the U-matrix structure.</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">'spring'</span></code></dt><dd><p>Unweighted Fruchterman–Reingold force-directed layout.</p>
 </dd>
 <dt><code class="docutils literal notranslate"><span class="pre">'pca'</span></code></dt><dd><p>Weight vectors projected to 2-D with PCA.  Node positions
 reflect the principal directions of variance in feature space.</p>
@@ -907,8 +889,6 @@ reflect the principal directions of variance in feature space.</p>
 </dl>
 </p></li>
 <li><p><strong>palette</strong> (str, default <code class="docutils literal notranslate"><span class="pre">'magma_r'</span></code>) – Seaborn / Matplotlib colormap name applied to the colour mapping.</p></li>
-<li><p><strong>seed</strong> (<em>int</em><em> or </em><em>None</em><em>, </em><em>default 0</em>) – Random seed for the spring layouts.  Set to <code class="docutils literal notranslate"><span class="pre">None</span></code> for a
-non-deterministic result.</p></li>
 </ul>
 </dd>
 </dl>
