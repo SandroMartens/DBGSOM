@@ -188,11 +188,12 @@ class BaseSom(BaseEstimator):
         self._grow_som(X, y)
         # self.rep = self._calculate_rep(X)
         self.topographic_error_ = self._calculate_topographic_error(X)
-        self.quantization_error_ = self.calculate_quantization_error(X)
+        distances, _ = self._get_winning_neurons(X, n_bmu=1)
+        self.quantization_error_ = float(np.mean(distances))
         self.n_features_in_ = X.shape[1]
         self._write_node_statistics(X)
         self._write_edge_statistics()
-        self._delete_dead_neurons_from_graph(X)
+        # self._delete_dead_neurons_from_graph(X)
         self._label_prototypes(X, y)
 
         # Vertical growing phase
@@ -289,7 +290,7 @@ class BaseSom(BaseEstimator):
             distance = np.linalg.norm(weight_x - weight_y)
 
             # Abstand als neues Kanten-Attribut (z.B. "weight_distance") speichern
-            som.edges[u, v]["weight_distance"] = 1 / float(distance)
+            som.edges[u, v]["weight_distance"] = 1 / float(distance + 0.001)
 
     def _delete_dead_neurons_from_graph(self, X: npt.ArrayLike) -> None:
         """Delete all neurons which represent zero samples from the training set."""
@@ -1030,7 +1031,7 @@ class BaseSom(BaseEstimator):
             Topographic function values for negative and positive distances.
 
         """
-        X = validate_data(self, X)
+        X = validate_data(self, X, reset=False)
         self._delaunay_matrix = self._calculate_delaunay_triangulation(X)
 
         # 1. Nur die wirklich benötigten Matrizen berechnen (Manhattan gelöscht)
