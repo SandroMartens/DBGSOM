@@ -22,10 +22,9 @@ try:
     from sklearn.base import BaseEstimator, clone
     from sklearn.decomposition import SparseCoder
     from sklearn.metrics import pairwise_distances
+    from sklearn.metrics.pairwise import euclidean_distances
 
     # from line_profiler import profile
-    from sklearn.metrics.pairwise import euclidean_distances
-    from sklearn.neighbors import NearestNeighbors
     from sklearn.preprocessing import normalize
     from sklearn.utils import check_random_state
     from sklearn.utils._param_validation import Interval, StrOptions
@@ -682,21 +681,20 @@ class BaseSom(BaseEstimator):
     def _get_winning_neurons(
         self, data: npt.NDArray, n_bmu: int
     ) -> tuple[npt.NDArray, npt.NDArray]:
-        """Calculate distances from each neuron to each sample.
+        """Return distances and indices of the n_bmu nearest prototypes per sample.
 
-        Return distances and index of the winning neuron(s) or
-        best matching units(s) for each sample.
+        Uses a numba-JIT kernel for n_bmu=1 (hot path: fused distance + argmin,
+        no distance matrix allocated). Falls back to BLAS + argpartition for
+        n_bmu > 1 (only used post-training for topographic error).
         """
-        weights = self.weights_
-        nn_tree = NearestNeighbors(n_neighbors=n_bmu)
-        nn_tree.fit(weights)
-        result = nn_tree.kneighbors(data)
-        distances = result[0]
-        winners = result[1].T[0:n_bmu].T
         if n_bmu == 1:
-            winners = winners.reshape(-1)
-            distances = distances.reshape(-1)
-
+            return numba_find_winners(data, self.weights_)
+        dist_matrix = euclidean_distances(data, self.weights_)
+        part = np.argpartition(dist_matrix, n_bmu, axis=1)[:, :n_bmu]
+        row_idx = np.arange(len(data))[:, np.newaxis]
+        order = np.argsort(dist_matrix[row_idx, part], axis=1)
+        winners = part[row_idx, order]
+        distances = dist_matrix[row_idx, winners]
         return distances, winners
 
     def _label_prototypes(self, X, y) -> None:
@@ -1151,6 +1149,32 @@ def numba_voronoi_set_centers(
             voronoi_set_centers[i, j] = mean_samples
 
     return voronoi_set_centers
+
+
+@nb.njit(parallel=True, fastmath=True)
+def numba_find_winners(
+    data: npt.NDArray, weights: npt.NDArray
+) -> tuple[npt.NDArray, npt.NDArray]:
+    """Find the nearest weight vector for each sample (fused distance + argmin)."""
+    n_samples = data.shape[0]
+    n_features = data.shape[1]
+    n_neurons = weights.shape[0]
+    winners = np.empty(n_samples, dtype=np.int64)
+    distances = np.empty(n_samples, dtype=np.float64)
+    for i in nb.prange(n_samples):  # type: ignore[attr-defined]
+        best_dist_sq = np.inf
+        best_j = 0
+        for j in range(n_neurons):
+            d_sq = 0.0
+            for k in range(n_features):
+                diff = data[i, k] - weights[j, k]
+                d_sq += diff * diff
+            if d_sq < best_dist_sq:
+                best_dist_sq = d_sq
+                best_j = j
+        winners[i] = best_j
+        distances[i] = np.sqrt(best_dist_sq)
+    return distances, winners
 
 
 @nb.njit(fastmath=True)
