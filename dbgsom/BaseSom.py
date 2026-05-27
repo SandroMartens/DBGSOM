@@ -349,7 +349,7 @@ class BaseSom(BaseEstimator):
         layout: str = "grid",
         palette: str = "magma_r",
         seed: int | None = 0,
-    ) -> None:
+    ) -> so.Plot:
         """Plot the SOM neurons and their neighbourhood edges using seaborn objects.
 
         Edges are drawn first as grey lines; nodes are drawn on top and can be
@@ -358,10 +358,16 @@ class BaseSom(BaseEstimator):
         Parameters
         ----------
         color : {'label', 'epoch_created', 'error', 'average_distance', 'density',
-                 'hit_count'}, optional
+                 'hit_count', 'pca_rgb'}, optional
             Node attribute mapped to colour.  Numeric attributes with all
             identical values are cast to string to avoid a degenerate
             continuous scale.
+
+            Pass ``'pca_rgb'`` to colour each neuron by its position in the
+            first three principal components of the weight space: PC1 -> R,
+            PC2 -> G, PC3 -> B (each component min-max normalised to 0-255).
+            Similar colours indicate similar weight vectors; the colour pattern
+            reveals the topological structure of the feature space.
 
         pointsize : {'label', 'epoch_created', 'error', 'average_distance',
                      'density', 'hit_count'}, optional
@@ -398,7 +404,7 @@ class BaseSom(BaseEstimator):
         nodes = list(self.som_.nodes)
         pos = self._compute_graph_layout(layout, nodes, seed)
 
-        # ── Node DataFrame ────────────────────────────────────────────────
+        # -- Node DataFrame ---------------------------------------------------
         node_data = pd.DataFrame(dict(self.som_.nodes)).T.reset_index(drop=True)
         coords = pd.DataFrame(
             [(pos[n][0], pos[n][1]) for n in nodes], columns=["x", "y"]
@@ -416,9 +422,9 @@ class BaseSom(BaseEstimator):
             if col in nodes_df.columns:
                 nodes_df[col] = pd.to_numeric(nodes_df[col], errors="raise")
 
-        # ── Edge DataFrame (NaN-separated path — matplotlib breaks lines at NaN) ──
-        # Using a single continuous path with NaN sentinels is more reliable than
-        # grouping (so.Path + group= does not split into independent segments).
+        # -- Edge DataFrame (NaN-separated path) ------------------------------
+        # NaN sentinels are more reliable than group= for splitting segments;
+        # matplotlib breaks a Path at every NaN row.
         edge_rows: list[dict] = []
         for u, v in self.som_.edges():
             edge_rows.append({"x": float(pos[u][0]), "y": float(pos[u][1])})
@@ -428,16 +434,12 @@ class BaseSom(BaseEstimator):
             pd.DataFrame(edge_rows) if edge_rows else pd.DataFrame(columns=["x", "y"])
         )
 
-        # ── Aesthetic mappings ────────────────────────────────────────────
+        # -- Aesthetic mappings -----------------------------------------------
         node_aesthetics: dict[str, str] = {}
 
-        if color is not None and color in nodes_df.columns:
-            if (
-                pd.api.types.is_numeric_dtype(nodes_df[color])
-                and nodes_df[color].nunique() <= 1
-            ):
-                nodes_df[color] = nodes_df[color].astype(str)
-            node_aesthetics["color"] = color
+        color_col, color_scale = self._resolve_color_aesthetic(nodes_df, color, palette)
+        if color_col is not None:
+            node_aesthetics["color"] = color_col
 
         if isinstance(pointsize, str) and pointsize in nodes_df.columns:
             if (
@@ -447,7 +449,7 @@ class BaseSom(BaseEstimator):
                 nodes_df[pointsize] = nodes_df[pointsize].astype(str)
             node_aesthetics["pointsize"] = pointsize
 
-        # ── Build and show plot ───────────────────────────────────────────
+        # -- Build and show plot ----------------------------------------------
         p = so.Plot(nodes_df, x="x", y="y")
 
         if not edges_df.empty:
@@ -458,10 +460,98 @@ class BaseSom(BaseEstimator):
 
         p = p.add(so.Dot(), data=nodes_df, **node_aesthetics)
 
-        if "color" in node_aesthetics:
-            p = p.scale(color=palette)
+        if color_scale is not None:
+            p = p.scale(color=color_scale)
 
-        p.show()
+        return p
+
+    def _resolve_color_aesthetic(
+        self,
+        nodes_df: pd.DataFrame,
+        color: str | None,
+        palette: str,
+    ) -> tuple[str | None, "so.Scale | None"]:
+        """Resolve the colour aesthetic and build the matching seaborn scale.
+
+        Returns
+        -------
+        col_name : str or None
+            Column name in *nodes_df* to use as the ``color`` aesthetic,
+            or ``None`` when no colour mapping is requested.
+        scale : so.Scale or None
+            Ready-to-use scale object, or ``None`` when *col_name* is ``None``.
+
+        """
+        if color == "pca_rgb":
+            hex_colors = self._compute_pca_rgb_colors()
+            nodes_df["pca_rgb"] = hex_colors
+            return "pca_rgb", so.Nominal(values={c: c for c in hex_colors})
+
+        if color is not None and color in nodes_df.columns:
+            if (
+                pd.api.types.is_numeric_dtype(nodes_df[color])
+                and nodes_df[color].nunique() <= 1
+            ):
+                nodes_df[color] = nodes_df[color].astype(str)
+            return color, self._build_color_scale(nodes_df[color], palette)
+
+        return None, None
+
+    def _build_color_scale(
+        self,
+        series: pd.Series,
+        palette: str,
+    ) -> "so.Scale":
+        """Return the appropriate seaborn objects colour scale for *series*.
+
+        Numeric series -> ``so.Continuous`` with *palette* as a matplotlib
+        colormap.  Categorical / string series -> ``so.Nominal`` populated
+        with colours drawn from the named seaborn palette.
+
+        """
+        if pd.api.types.is_numeric_dtype(series):
+            return so.Continuous(palette)
+        import seaborn as sns
+
+        colors = sns.color_palette(palette, n_colors=series.nunique())
+        return so.Nominal(values=list(colors))
+
+    def _compute_pca_rgb_colors(self) -> list[str]:
+        """Project weight vectors to 3-D with PCA and map to RGB hex strings.
+
+        Each of the three principal components is independently min-max
+        normalised to [0, 255] and mapped to the R, G, and B channel
+        respectively.  Neurons with similar weight vectors receive similar
+        colours; the resulting colour pattern reveals the topological
+        structure of the feature space.
+
+        Returns
+        -------
+        hex_colors : list of str
+            One ``'#rrggbb'`` string per neuron, in the same order as
+            ``self.neurons_``.
+
+        """
+        from sklearn.decomposition import PCA
+
+        n_components = min(3, self.weights_.shape[1], self.weights_.shape[0])
+        components = PCA(n_components=n_components).fit_transform(self.weights_)
+
+        # Min-max normalise each component independently to [0, 1]
+        col_min = components.min(axis=0)
+        col_max = components.max(axis=0)
+        col_range = np.where(col_max - col_min == 0, 1.0, col_max - col_min)
+        components_norm = (components - col_min) / col_range
+
+        # Pad to exactly 3 channels if the data has fewer than 3 features
+        if n_components < 3:
+            pad = np.zeros((len(components_norm), 3 - n_components))
+            components_norm = np.hstack([components_norm, pad])
+
+        return [
+            "#{:02x}{:02x}{:02x}".format(int(r * 255), int(g * 255), int(b * 255))
+            for r, g, b in components_norm
+        ]
 
     def _compute_graph_layout(
         self,
@@ -473,9 +563,11 @@ class BaseSom(BaseEstimator):
         if layout == "grid":
             return {n: n for n in nodes}
         if layout == "spring":
-            return nx.spring_layout(self.som_, seed=seed)
+            return nx.spring_layout(self.som_, seed=seed, iterations=10000)
         if layout == "spring_weighted":
-            return nx.spring_layout(self.som_, weight="weight_distance", seed=seed)
+            return nx.spring_layout(
+                self.som_, weight="weight_distance", seed=seed, iterations=10000
+            )
         if layout == "pca":
             from sklearn.decomposition import PCA
 
