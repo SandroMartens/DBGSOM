@@ -482,57 +482,27 @@ contained subobjects that are estimators.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="dbgsom.SomVQ.SomVQ.plot">
-<span class="sig-name descname"><span class="pre">plot</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">color</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">palette</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'magma_r'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pointsize</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dbgsom.SomVQ.SomVQ.plot" title="Link to this definition">¶</a></dt>
-<dd><p>Plot the neurons.</p>
+<span class="sig-name descname"><span class="pre">plot</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">color</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pointsize</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">layout</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'grid'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">palette</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'magma_r'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">seed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dbgsom.SomVQ.SomVQ.plot" title="Link to this definition">¶</a></dt>
+<dd><p>Plot the SOM neurons and their neighbourhood edges using seaborn objects.</p>
+<p>Edges are drawn first as grey lines; nodes are drawn on top and can be
+colour- and size-coded by any node attribute stored in the graph.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><code class="xref py py-obj docutils literal notranslate"><span class="pre">None</span></code></span></p>
 </dd>
 <dt class="field-even">Parameters<span class="colon">:</span></dt>
 <dd class="field-even"><ul class="simple">
-<li><p><strong>color</strong> (<em>{'label'</em><em>, </em><em>'epoch_created'</em><em>, </em><em>'error'</em><em>, </em><em>'average_distance'</em><em>, </em><em>'density'</em><em>, </em><em>'hit_count'}</em><em>, </em><em>optional</em>) – Attribute which is represented as color.</p></li>
-<li><p><strong>pointsize</strong> (<em>{'label'</em><em>, </em><em>'epoch_created'</em><em>, </em><em>'error'</em><em>, </em><em>'average_distance'</em><em>, </em><em>'density'</em><em>, </em><em>'hit_count'}</em><em>, </em><em>optional</em>) – <p>Determines the property used for the node sizing:</p>
-<ul>
-<li><p>’label’: Label of the prototype when trained supervised.</p></li>
-<li><p>’epoch_created’: When the neuron was created.</p></li>
-<li><p>’error’ : Quantization error of each neuron.</p></li>
-<li><p>’average_distance’ : Average distance to neighbor neurons in the input space.</p></li>
-<li><p>’density’ : Estimated local density around the prototype.</p></li>
-<li><p>’hit_count’ : How many samples the prototype represents.</p></li>
-</ul>
-</p></li>
-<li><p><strong>palette</strong> (<em>str</em><em>, </em><em>default: 'magma_r'</em>) – Name of seaborn palette to color code the values of attribute.</p></li>
-</ul>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="dbgsom.SomVQ.SomVQ.plot_graph">
-<span class="sig-name descname"><span class="pre">plot_graph</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">color</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">layout</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'spring_weighted'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">seed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">min_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">50</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">scale_factor</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">palette</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'tab10'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ax</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">figsize</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">(10,</span> <span class="pre">8)</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dbgsom.SomVQ.SomVQ.plot_graph" title="Link to this definition">¶</a></dt>
-<dd><p>Plot the SOM topology as a NetworkX graph with Matplotlib.</p>
-<p>Nodes are placed according to <em>layout</em>.  Edges reflect the SOM
-neighbourhood structure.  Colour and size can each be mapped to any
-node attribute stored in the graph.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><code class="xref py py-class docutils literal notranslate"><span class="pre">Axes</span></code></span></p>
-</dd>
-<dt class="field-even">Parameters<span class="colon">:</span></dt>
-<dd class="field-even"><ul class="simple">
-<li><p><strong>color</strong> (<em>str</em><em>, </em><em>optional</em>) – Node attribute used for colouring.  Integer attributes with
-≤ 20 unique values (e.g. <code class="docutils literal notranslate"><span class="pre">'label'</span></code>, <code class="docutils literal notranslate"><span class="pre">'epoch_created'</span></code>) are
-treated as <strong>categorical</strong> and produce a colour legend.  Float
-attributes (e.g. <code class="docutils literal notranslate"><span class="pre">'density'</span></code>, <code class="docutils literal notranslate"><span class="pre">'error'</span></code>,
-<code class="docutils literal notranslate"><span class="pre">'average_distance'</span></code>) are treated as <strong>continuous</strong> and
-produce a colorbar.  When <code class="docutils literal notranslate"><span class="pre">color='label'</span></code> and the estimator
-has a <code class="docutils literal notranslate"><span class="pre">classes_</span></code> attribute the legend shows the original class
-names instead of integer indices.</p></li>
-<li><p><strong>size</strong> (<em>str</em><em>, </em><em>optional</em>) – Node attribute used for sizing (e.g. <code class="docutils literal notranslate"><span class="pre">'hit_count'</span></code>).  Each
-node’s area in points² is <code class="docutils literal notranslate"><span class="pre">min_size</span> <span class="pre">+</span> <span class="pre">value</span> <span class="pre">*</span> <span class="pre">scale_factor</span></code>.
-A size legend with three representative values is added.</p></li>
-<li><p><strong>layout</strong> (<em>{'spring_weighted'</em><em>, </em><em>'spring'</em><em>, </em><em>'grid'</em><em>, </em><em>'pca'}</em><em>, </em><em>default = 'spring_weighted'</em>) – <p>Algorithm used to compute node positions.</p>
+<li><p><strong>color</strong> (<em>{'label'</em><em>, </em><em>'epoch_created'</em><em>, </em><em>'error'</em><em>, </em><em>'average_distance'</em><em>, </em><em>'density'</em><em>,</em>) – ‘hit_count’}, optional
+Node attribute mapped to colour.  Numeric attributes with all
+identical values are cast to string to avoid a degenerate
+continuous scale.</p></li>
+<li><p><strong>pointsize</strong> (<em>{'label'</em><em>, </em><em>'epoch_created'</em><em>, </em><em>'error'</em><em>, </em><em>'average_distance'</em><em>,</em>) – ‘density’, ‘hit_count’}, optional
+Node attribute mapped to point size.</p></li>
+<li><p><strong>layout</strong> (<em>{'grid'</em><em>, </em><em>'spring_weighted'</em><em>, </em><em>'spring'</em><em>, </em><em>'pca'}</em><em>, </em><em>default 'grid'</em>) – <p>Algorithm used to compute node positions.</p>
 <dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">'grid'</span></code></dt><dd><p>Neurons are placed at their integer SOM grid coordinates.
+Preserves the topological map structure.</p>
+</dd>
 <dt><code class="docutils literal notranslate"><span class="pre">'spring_weighted'</span></code></dt><dd><p>Force-directed layout where the spring constant of each edge
 is proportional to <code class="docutils literal notranslate"><span class="pre">weight_distance</span></code> (= 1 / Euclidean
 distance between adjacent weight vectors).  Neurons with
@@ -541,40 +511,17 @@ reflecting the U-matrix structure.</p>
 </dd>
 <dt><code class="docutils literal notranslate"><span class="pre">'spring'</span></code></dt><dd><p>Unweighted Fruchterman–Reingold force-directed layout.</p>
 </dd>
-<dt><code class="docutils literal notranslate"><span class="pre">'grid'</span></code></dt><dd><p>Neurons are placed at their integer SOM grid coordinates.
-Preserves the topological map structure but ignores
-feature-space distances.</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">'pca'</span></code></dt><dd><p>The weight vectors are projected to 2-D with PCA.  Node
-positions reflect the principal directions of variance in
-feature space.</p>
+<dt><code class="docutils literal notranslate"><span class="pre">'pca'</span></code></dt><dd><p>Weight vectors projected to 2-D with PCA.  Node positions
+reflect the principal directions of variance in feature space.</p>
 </dd>
 </dl>
 </p></li>
-<li><p><strong>seed</strong> (<em>int</em><em> or </em><em>None</em><em>, </em><em>default = 0</em>) – Random seed for the spring layouts.  Set to <code class="docutils literal notranslate"><span class="pre">None</span></code> for a
+<li><p><strong>palette</strong> (str, default <code class="docutils literal notranslate"><span class="pre">'magma_r'</span></code>) – Seaborn / Matplotlib colormap name applied to the colour mapping.</p></li>
+<li><p><strong>seed</strong> (<em>int</em><em> or </em><em>None</em><em>, </em><em>default 0</em>) – Random seed for the spring layouts.  Set to <code class="docutils literal notranslate"><span class="pre">None</span></code> for a
 non-deterministic result.</p></li>
-<li><p><strong>min_size</strong> (<em>float</em><em>, </em><em>default = 2</em>) – Minimum node area in points².</p></li>
-<li><p><strong>scale_factor</strong> (<em>float</em><em>, </em><em>default = 1</em>) – Multiplier applied to the <em>size</em> attribute value before adding
-<em>min_size</em>.</p></li>
-<li><p><strong>palette</strong> (str, default = <code class="docutils literal notranslate"><span class="pre">'tab10'</span></code>) – Matplotlib colormap name.  Applied to both categorical and
-continuous colour mappings.</p></li>
-<li><p><strong>ax</strong> (<em>matplotlib.axes.Axes</em><em>, </em><em>optional</em>) – Axes to draw on.  A new figure is created when <em>None</em>.</p></li>
-<li><p><strong>figsize</strong> (tuple of int, default = <code class="docutils literal notranslate"><span class="pre">(10,</span> <span class="pre">8)</span></code>) – Figure size in inches.  Ignored when <em>ax</em> is provided.</p></li>
 </ul>
 </dd>
-<dt class="field-odd">Returns<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>ax</strong> – The axes the graph was drawn on.</p>
-</dd>
-<dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p>matplotlib.axes.Axes</p>
-</dd>
 </dl>
-<p class="rubric">Examples</p>
-<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">clf</span><span class="o">.</span><span class="n">plot_graph</span><span class="p">(</span><span class="n">color</span><span class="o">=</span><span class="s2">&quot;label&quot;</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="s2">&quot;hit_count&quot;</span><span class="p">)</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">clf</span><span class="o">.</span><span class="n">plot_graph</span><span class="p">(</span><span class="n">color</span><span class="o">=</span><span class="s2">&quot;density&quot;</span><span class="p">,</span> <span class="n">layout</span><span class="o">=</span><span class="s2">&quot;pca&quot;</span><span class="p">,</span> <span class="n">palette</span><span class="o">=</span><span class="s2">&quot;magma_r&quot;</span><span class="p">)</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">clf</span><span class="o">.</span><span class="n">plot_graph</span><span class="p">(</span><span class="n">color</span><span class="o">=</span><span class="s2">&quot;label&quot;</span><span class="p">,</span> <span class="n">layout</span><span class="o">=</span><span class="s2">&quot;grid&quot;</span><span class="p">)</span>
-</pre></div>
-</div>
 </dd></dl>
 
 <dl class="py method">
@@ -913,57 +860,27 @@ contained subobjects that are estimators.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="dbgsom.SomClassifier.SomClassifier.plot">
-<span class="sig-name descname"><span class="pre">plot</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">color</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">palette</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'magma_r'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pointsize</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dbgsom.SomClassifier.SomClassifier.plot" title="Link to this definition">¶</a></dt>
-<dd><p>Plot the neurons.</p>
+<span class="sig-name descname"><span class="pre">plot</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">color</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pointsize</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">layout</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'grid'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">palette</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'magma_r'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">seed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dbgsom.SomClassifier.SomClassifier.plot" title="Link to this definition">¶</a></dt>
+<dd><p>Plot the SOM neurons and their neighbourhood edges using seaborn objects.</p>
+<p>Edges are drawn first as grey lines; nodes are drawn on top and can be
+colour- and size-coded by any node attribute stored in the graph.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><code class="xref py py-obj docutils literal notranslate"><span class="pre">None</span></code></span></p>
 </dd>
 <dt class="field-even">Parameters<span class="colon">:</span></dt>
 <dd class="field-even"><ul class="simple">
-<li><p><strong>color</strong> (<em>{'label'</em><em>, </em><em>'epoch_created'</em><em>, </em><em>'error'</em><em>, </em><em>'average_distance'</em><em>, </em><em>'density'</em><em>, </em><em>'hit_count'}</em><em>, </em><em>optional</em>) – Attribute which is represented as color.</p></li>
-<li><p><strong>pointsize</strong> (<em>{'label'</em><em>, </em><em>'epoch_created'</em><em>, </em><em>'error'</em><em>, </em><em>'average_distance'</em><em>, </em><em>'density'</em><em>, </em><em>'hit_count'}</em><em>, </em><em>optional</em>) – <p>Determines the property used for the node sizing:</p>
-<ul>
-<li><p>’label’: Label of the prototype when trained supervised.</p></li>
-<li><p>’epoch_created’: When the neuron was created.</p></li>
-<li><p>’error’ : Quantization error of each neuron.</p></li>
-<li><p>’average_distance’ : Average distance to neighbor neurons in the input space.</p></li>
-<li><p>’density’ : Estimated local density around the prototype.</p></li>
-<li><p>’hit_count’ : How many samples the prototype represents.</p></li>
-</ul>
-</p></li>
-<li><p><strong>palette</strong> (<em>str</em><em>, </em><em>default: 'magma_r'</em>) – Name of seaborn palette to color code the values of attribute.</p></li>
-</ul>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="dbgsom.SomClassifier.SomClassifier.plot_graph">
-<span class="sig-name descname"><span class="pre">plot_graph</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">color</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">layout</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'spring_weighted'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">seed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">min_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">50</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">scale_factor</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">palette</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'tab10'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ax</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">figsize</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">(10,</span> <span class="pre">8)</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dbgsom.SomClassifier.SomClassifier.plot_graph" title="Link to this definition">¶</a></dt>
-<dd><p>Plot the SOM topology as a NetworkX graph with Matplotlib.</p>
-<p>Nodes are placed according to <em>layout</em>.  Edges reflect the SOM
-neighbourhood structure.  Colour and size can each be mapped to any
-node attribute stored in the graph.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><code class="xref py py-class docutils literal notranslate"><span class="pre">Axes</span></code></span></p>
-</dd>
-<dt class="field-even">Parameters<span class="colon">:</span></dt>
-<dd class="field-even"><ul class="simple">
-<li><p><strong>color</strong> (<em>str</em><em>, </em><em>optional</em>) – Node attribute used for colouring.  Integer attributes with
-≤ 20 unique values (e.g. <code class="docutils literal notranslate"><span class="pre">'label'</span></code>, <code class="docutils literal notranslate"><span class="pre">'epoch_created'</span></code>) are
-treated as <strong>categorical</strong> and produce a colour legend.  Float
-attributes (e.g. <code class="docutils literal notranslate"><span class="pre">'density'</span></code>, <code class="docutils literal notranslate"><span class="pre">'error'</span></code>,
-<code class="docutils literal notranslate"><span class="pre">'average_distance'</span></code>) are treated as <strong>continuous</strong> and
-produce a colorbar.  When <code class="docutils literal notranslate"><span class="pre">color='label'</span></code> and the estimator
-has a <code class="docutils literal notranslate"><span class="pre">classes_</span></code> attribute the legend shows the original class
-names instead of integer indices.</p></li>
-<li><p><strong>size</strong> (<em>str</em><em>, </em><em>optional</em>) – Node attribute used for sizing (e.g. <code class="docutils literal notranslate"><span class="pre">'hit_count'</span></code>).  Each
-node’s area in points² is <code class="docutils literal notranslate"><span class="pre">min_size</span> <span class="pre">+</span> <span class="pre">value</span> <span class="pre">*</span> <span class="pre">scale_factor</span></code>.
-A size legend with three representative values is added.</p></li>
-<li><p><strong>layout</strong> (<em>{'spring_weighted'</em><em>, </em><em>'spring'</em><em>, </em><em>'grid'</em><em>, </em><em>'pca'}</em><em>, </em><em>default = 'spring_weighted'</em>) – <p>Algorithm used to compute node positions.</p>
+<li><p><strong>color</strong> (<em>{'label'</em><em>, </em><em>'epoch_created'</em><em>, </em><em>'error'</em><em>, </em><em>'average_distance'</em><em>, </em><em>'density'</em><em>,</em>) – ‘hit_count’}, optional
+Node attribute mapped to colour.  Numeric attributes with all
+identical values are cast to string to avoid a degenerate
+continuous scale.</p></li>
+<li><p><strong>pointsize</strong> (<em>{'label'</em><em>, </em><em>'epoch_created'</em><em>, </em><em>'error'</em><em>, </em><em>'average_distance'</em><em>,</em>) – ‘density’, ‘hit_count’}, optional
+Node attribute mapped to point size.</p></li>
+<li><p><strong>layout</strong> (<em>{'grid'</em><em>, </em><em>'spring_weighted'</em><em>, </em><em>'spring'</em><em>, </em><em>'pca'}</em><em>, </em><em>default 'grid'</em>) – <p>Algorithm used to compute node positions.</p>
 <dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">'grid'</span></code></dt><dd><p>Neurons are placed at their integer SOM grid coordinates.
+Preserves the topological map structure.</p>
+</dd>
 <dt><code class="docutils literal notranslate"><span class="pre">'spring_weighted'</span></code></dt><dd><p>Force-directed layout where the spring constant of each edge
 is proportional to <code class="docutils literal notranslate"><span class="pre">weight_distance</span></code> (= 1 / Euclidean
 distance between adjacent weight vectors).  Neurons with
@@ -972,40 +889,17 @@ reflecting the U-matrix structure.</p>
 </dd>
 <dt><code class="docutils literal notranslate"><span class="pre">'spring'</span></code></dt><dd><p>Unweighted Fruchterman–Reingold force-directed layout.</p>
 </dd>
-<dt><code class="docutils literal notranslate"><span class="pre">'grid'</span></code></dt><dd><p>Neurons are placed at their integer SOM grid coordinates.
-Preserves the topological map structure but ignores
-feature-space distances.</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">'pca'</span></code></dt><dd><p>The weight vectors are projected to 2-D with PCA.  Node
-positions reflect the principal directions of variance in
-feature space.</p>
+<dt><code class="docutils literal notranslate"><span class="pre">'pca'</span></code></dt><dd><p>Weight vectors projected to 2-D with PCA.  Node positions
+reflect the principal directions of variance in feature space.</p>
 </dd>
 </dl>
 </p></li>
-<li><p><strong>seed</strong> (<em>int</em><em> or </em><em>None</em><em>, </em><em>default = 0</em>) – Random seed for the spring layouts.  Set to <code class="docutils literal notranslate"><span class="pre">None</span></code> for a
+<li><p><strong>palette</strong> (str, default <code class="docutils literal notranslate"><span class="pre">'magma_r'</span></code>) – Seaborn / Matplotlib colormap name applied to the colour mapping.</p></li>
+<li><p><strong>seed</strong> (<em>int</em><em> or </em><em>None</em><em>, </em><em>default 0</em>) – Random seed for the spring layouts.  Set to <code class="docutils literal notranslate"><span class="pre">None</span></code> for a
 non-deterministic result.</p></li>
-<li><p><strong>min_size</strong> (<em>float</em><em>, </em><em>default = 2</em>) – Minimum node area in points².</p></li>
-<li><p><strong>scale_factor</strong> (<em>float</em><em>, </em><em>default = 1</em>) – Multiplier applied to the <em>size</em> attribute value before adding
-<em>min_size</em>.</p></li>
-<li><p><strong>palette</strong> (str, default = <code class="docutils literal notranslate"><span class="pre">'tab10'</span></code>) – Matplotlib colormap name.  Applied to both categorical and
-continuous colour mappings.</p></li>
-<li><p><strong>ax</strong> (<em>matplotlib.axes.Axes</em><em>, </em><em>optional</em>) – Axes to draw on.  A new figure is created when <em>None</em>.</p></li>
-<li><p><strong>figsize</strong> (tuple of int, default = <code class="docutils literal notranslate"><span class="pre">(10,</span> <span class="pre">8)</span></code>) – Figure size in inches.  Ignored when <em>ax</em> is provided.</p></li>
 </ul>
 </dd>
-<dt class="field-odd">Returns<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>ax</strong> – The axes the graph was drawn on.</p>
-</dd>
-<dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p>matplotlib.axes.Axes</p>
-</dd>
 </dl>
-<p class="rubric">Examples</p>
-<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">clf</span><span class="o">.</span><span class="n">plot_graph</span><span class="p">(</span><span class="n">color</span><span class="o">=</span><span class="s2">&quot;label&quot;</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="s2">&quot;hit_count&quot;</span><span class="p">)</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">clf</span><span class="o">.</span><span class="n">plot_graph</span><span class="p">(</span><span class="n">color</span><span class="o">=</span><span class="s2">&quot;density&quot;</span><span class="p">,</span> <span class="n">layout</span><span class="o">=</span><span class="s2">&quot;pca&quot;</span><span class="p">,</span> <span class="n">palette</span><span class="o">=</span><span class="s2">&quot;magma_r&quot;</span><span class="p">)</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">clf</span><span class="o">.</span><span class="n">plot_graph</span><span class="p">(</span><span class="n">color</span><span class="o">=</span><span class="s2">&quot;label&quot;</span><span class="p">,</span> <span class="n">layout</span><span class="o">=</span><span class="s2">&quot;grid&quot;</span><span class="p">)</span>
-</pre></div>
-</div>
 </dd></dl>
 
 <dl class="py method">
@@ -1269,7 +1163,6 @@ parameters and not others.</p>
 <li><a class="reference internal" href="#dbgsom.SomVQ.SomVQ.get_metadata_routing"><code class="docutils literal notranslate"><span class="pre">SomVQ.get_metadata_routing()</span></code></a></li>
 <li><a class="reference internal" href="#dbgsom.SomVQ.SomVQ.get_params"><code class="docutils literal notranslate"><span class="pre">SomVQ.get_params()</span></code></a></li>
 <li><a class="reference internal" href="#dbgsom.SomVQ.SomVQ.plot"><code class="docutils literal notranslate"><span class="pre">SomVQ.plot()</span></code></a></li>
-<li><a class="reference internal" href="#dbgsom.SomVQ.SomVQ.plot_graph"><code class="docutils literal notranslate"><span class="pre">SomVQ.plot_graph()</span></code></a></li>
 <li><a class="reference internal" href="#dbgsom.SomVQ.SomVQ.predict"><code class="docutils literal notranslate"><span class="pre">SomVQ.predict()</span></code></a></li>
 <li><a class="reference internal" href="#dbgsom.SomVQ.SomVQ.set_output"><code class="docutils literal notranslate"><span class="pre">SomVQ.set_output()</span></code></a></li>
 <li><a class="reference internal" href="#dbgsom.SomVQ.SomVQ.set_params"><code class="docutils literal notranslate"><span class="pre">SomVQ.set_params()</span></code></a></li>
@@ -1292,7 +1185,6 @@ parameters and not others.</p>
 <li><a class="reference internal" href="#dbgsom.SomClassifier.SomClassifier.get_metadata_routing"><code class="docutils literal notranslate"><span class="pre">SomClassifier.get_metadata_routing()</span></code></a></li>
 <li><a class="reference internal" href="#dbgsom.SomClassifier.SomClassifier.get_params"><code class="docutils literal notranslate"><span class="pre">SomClassifier.get_params()</span></code></a></li>
 <li><a class="reference internal" href="#dbgsom.SomClassifier.SomClassifier.plot"><code class="docutils literal notranslate"><span class="pre">SomClassifier.plot()</span></code></a></li>
-<li><a class="reference internal" href="#dbgsom.SomClassifier.SomClassifier.plot_graph"><code class="docutils literal notranslate"><span class="pre">SomClassifier.plot_graph()</span></code></a></li>
 <li><a class="reference internal" href="#dbgsom.SomClassifier.SomClassifier.predict"><code class="docutils literal notranslate"><span class="pre">SomClassifier.predict()</span></code></a></li>
 <li><a class="reference internal" href="#dbgsom.SomClassifier.SomClassifier.predict_proba"><code class="docutils literal notranslate"><span class="pre">SomClassifier.predict_proba()</span></code></a></li>
 <li><a class="reference internal" href="#dbgsom.SomClassifier.SomClassifier.score"><code class="docutils literal notranslate"><span class="pre">SomClassifier.score()</span></code></a></li>
