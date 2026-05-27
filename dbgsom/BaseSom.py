@@ -12,6 +12,7 @@ from sklearn.utils.validation import validate_data
 # import matplotlib
 
 try:
+    import matplotlib.pyplot as plt
     import networkx as nx
     import numba as nb
     import numpy as np
@@ -429,6 +430,279 @@ class BaseSom(BaseEstimator):
     #     # f
     #     # f.show()
     #     # plt.show()
+
+    def plot_graph(
+        self,
+        color: str | None = None,
+        size: str | None = None,
+        layout: str = "spring_weighted",
+        seed: int | None = 0,
+        min_size: float = 50,
+        scale_factor: float = 5,
+        palette: str = "tab10",
+        ax: "plt.Axes | None" = None,
+        figsize: tuple[int, int] = (10, 8),
+    ) -> "plt.Axes":
+        """Plot the SOM topology as a NetworkX graph with Matplotlib.
+
+        Nodes are placed according to *layout*.  Edges reflect the SOM
+        neighbourhood structure.  Colour and size can each be mapped to any
+        node attribute stored in the graph.
+
+        Parameters
+        ----------
+        color : str, optional
+            Node attribute used for colouring.  Integer attributes with
+            ≤ 20 unique values (e.g. ``'label'``, ``'epoch_created'``) are
+            treated as **categorical** and produce a colour legend.  Float
+            attributes (e.g. ``'density'``, ``'error'``,
+            ``'average_distance'``) are treated as **continuous** and
+            produce a colorbar.  When ``color='label'`` and the estimator
+            has a ``classes_`` attribute the legend shows the original class
+            names instead of integer indices.
+
+        size : str, optional
+            Node attribute used for sizing (e.g. ``'hit_count'``).  Each
+            node's area in points² is ``min_size + value * scale_factor``.
+            A size legend with three representative values is added.
+
+        layout : {'spring_weighted', 'spring', 'grid', 'pca'}, \
+default = 'spring_weighted'
+            Algorithm used to compute node positions.
+
+            ``'spring_weighted'``
+                Force-directed layout where the spring constant of each edge
+                is proportional to ``weight_distance`` (= 1 / Euclidean
+                distance between adjacent weight vectors).  Neurons with
+                similar weight vectors are pulled together, directly
+                reflecting the U-matrix structure.
+
+            ``'spring'``
+                Unweighted Fruchterman–Reingold force-directed layout.
+
+            ``'grid'``
+                Neurons are placed at their integer SOM grid coordinates.
+                Preserves the topological map structure but ignores
+                feature-space distances.
+
+            ``'pca'``
+                The weight vectors are projected to 2-D with PCA.  Node
+                positions reflect the principal directions of variance in
+                feature space.
+
+        seed : int or None, default = 0
+            Random seed for the spring layouts.  Set to ``None`` for a
+            non-deterministic result.
+
+        min_size : float, default = 2
+            Minimum node area in points².
+
+        scale_factor : float, default = 1
+            Multiplier applied to the *size* attribute value before adding
+            *min_size*.
+
+        palette : str, default = ``'tab10'``
+            Matplotlib colormap name.  Applied to both categorical and
+            continuous colour mappings.
+
+        ax : matplotlib.axes.Axes, optional
+            Axes to draw on.  A new figure is created when *None*.
+
+        figsize : tuple of int, default = ``(10, 8)``
+            Figure size in inches.  Ignored when *ax* is provided.
+
+        Returns
+        -------
+        ax : matplotlib.axes.Axes
+            The axes the graph was drawn on.
+
+        Examples
+        --------
+        >>> clf.plot_graph(color="label", size="hit_count")
+        >>> clf.plot_graph(color="density", layout="pca", palette="magma_r")
+        >>> clf.plot_graph(color="label", layout="grid")
+
+        """
+        check_is_fitted(self)
+
+        nodes = list(self.som_.nodes)
+        pos = self._compute_graph_layout(layout, nodes, seed)
+
+        if ax is None:
+            _, ax = plt.subplots(figsize=figsize)
+
+        raw_sizes, node_sizes = self._compute_node_sizes(
+            nodes, size, min_size, scale_factor
+        )
+
+        nx.draw_networkx_edges(self.som_, pos, ax=ax, alpha=1, edge_color="gray")
+        self._draw_colored_nodes(ax, pos, nodes, node_sizes, color, palette)
+
+        if size is not None and raw_sizes is not None:
+            self._draw_size_legend(ax, raw_sizes, size, min_size, scale_factor)
+
+        ax.axis("off")
+        plt.tight_layout()
+        return ax
+
+    def _compute_graph_layout(
+        self,
+        layout: str,
+        nodes: list,
+        seed: int | None,
+    ) -> dict:
+        """Return a ``{node: (x, y)}`` position dict for the given layout strategy."""
+        if layout == "grid":
+            return {n: n for n in nodes}
+        if layout == "spring":
+            return nx.spring_layout(self.som_, seed=seed)
+        if layout == "spring_weighted":
+            return nx.spring_layout(self.som_, weight="weight_distance", seed=seed)
+        if layout == "pca":
+            from sklearn.decomposition import PCA
+
+            coords = PCA(n_components=2).fit_transform(self.weights_)
+            return {n: coords[i] for i, n in enumerate(nodes)}
+        raise ValueError(
+            f"Unknown layout {layout!r}. "
+            "Choose from 'spring_weighted', 'spring', 'grid', 'pca'."
+        )
+
+    def _compute_node_sizes(
+        self,
+        nodes: list,
+        size: str | None,
+        min_size: float,
+        scale_factor: float,
+    ) -> tuple[np.ndarray | None, dict]:
+        """Return ``(raw_sizes_array_or_None, {node: point²})``."""
+        if size is None:
+            return None, {n: float(min_size) for n in nodes}
+        raw = np.array([self.som_.nodes[n].get(size, 0) for n in nodes], dtype=float)
+        sized = {
+            n: float(min_size + raw[i] * scale_factor) for i, n in enumerate(nodes)
+        }
+        return raw, sized
+
+    def _draw_colored_nodes(
+        self,
+        ax: "plt.Axes",
+        pos: dict,
+        nodes: list,
+        node_sizes: dict,
+        color: str | None,
+        palette: str,
+    ) -> None:
+        """Draw nodes with colour encoding; add legend or colorbar as appropriate."""
+        draw_kwargs = dict(
+            ax=ax,
+            edgecolors="black",
+            linewidths=0.5,
+        )
+        sizes = [node_sizes[n] for n in nodes]
+
+        if color is None:
+            nx.draw_networkx_nodes(
+                self.som_,
+                pos,
+                nodelist=nodes,
+                node_size=sizes,
+                node_color="steelblue",
+                **draw_kwargs,
+            )
+            return
+
+        raw_vals = [self.som_.nodes[n].get(color) for n in nodes]
+        sample = raw_vals[0] if raw_vals else 0
+        is_categorical = isinstance(sample, (str, bool)) or (
+            isinstance(sample, (int, np.integer)) and len(set(raw_vals)) <= 20
+        )
+
+        if is_categorical:
+            self._draw_categorical_nodes(
+                ax, pos, nodes, node_sizes, raw_vals, color, palette, draw_kwargs
+            )
+        else:
+            sc = nx.draw_networkx_nodes(
+                self.som_,
+                pos,
+                nodelist=nodes,
+                node_size=sizes,
+                node_color=np.array(raw_vals, dtype=float),
+                cmap=plt.get_cmap(palette),
+                **draw_kwargs,
+            )
+            plt.colorbar(sc, ax=ax, label=color, shrink=0.7)
+
+    def _draw_categorical_nodes(
+        self,
+        ax: "plt.Axes",
+        pos: dict,
+        nodes: list,
+        node_sizes: dict,
+        raw_vals: list,
+        color: str,
+        palette: str,
+        draw_kwargs: dict,
+    ) -> None:
+        """Draw one group of nodes per category value and add a colour legend."""
+        unique_vals = sorted(set(raw_vals))
+        cmap = plt.get_cmap(palette)
+        color_map = {
+            v: cmap(i / max(len(unique_vals) - 1, 1)) for i, v in enumerate(unique_vals)
+        }
+
+        for val in unique_vals:
+            nodelist = [n for n, v in zip(nodes, raw_vals) if v == val]
+            if not nodelist:
+                continue
+            if color == "label" and hasattr(self, "classes_"):
+                legend_label = str(self.classes_[int(val)]) if val >= 0 else "dead"
+            else:
+                legend_label = str(val)
+            nx.draw_networkx_nodes(
+                self.som_,
+                pos,
+                nodelist=nodelist,
+                node_size=[node_sizes[n] for n in nodelist],
+                node_color=[color_map[val]],
+                label=legend_label,
+                **draw_kwargs,
+            )
+
+        color_legend = ax.legend(
+            loc="upper left", title=color, scatterpoints=1, frameon=True
+        )
+        ax.add_artist(color_legend)
+
+    def _draw_size_legend(
+        self,
+        ax: "plt.Axes",
+        raw_sizes: np.ndarray,
+        size: str,
+        min_size: float,
+        scale_factor: float,
+    ) -> None:
+        """Add a size legend with three representative values."""
+        rep_vals = np.linspace(float(raw_sizes.min()), float(raw_sizes.max()), 3)
+        handles = [
+            ax.scatter(
+                [],
+                [],
+                s=min_size + v * scale_factor,
+                color="gray",
+                alpha=0.6,
+                edgecolors="black",
+            )
+            for v in rep_vals
+        ]
+        ax.legend(
+            handles,
+            [f"{v:.2g}" for v in rep_vals],
+            loc="lower left",
+            title=size,
+            frameon=True,
+        )
 
     def _get_u_matrix(self) -> np.ndarray[Any, np.dtype[np.float64]]:
         """Calculate the average distance from each neuron to its neighbors in the input space."""  # noqa: E501

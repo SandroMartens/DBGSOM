@@ -23,6 +23,7 @@ dependencies = [
     "numba>=0.65.1",
     "numpy>=2.4.6",
     "pandas>=3.0.3",
+    "scikit-image>=0.26.0",
     "scikit-learn>=1.8.0",
     "seaborn>=0.13.2",
     "tqdm>=4.67.3",
