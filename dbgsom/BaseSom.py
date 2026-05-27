@@ -635,6 +635,7 @@ class BaseSom(BaseEstimator):
             if self._neurons_added:
                 self.neurons_ = list(self.som_.nodes)
                 self._distance_matrix = nx.floyd_warshall_numpy(self.som_)
+                self._neurons_added = False
 
             distances, winners = self._get_winning_neurons(data, n_bmu=1)
             sample_weights = self._calculate_exp_similarity(distances)
@@ -821,7 +822,7 @@ class BaseSom(BaseEstimator):
         """
         error_values = self._extract_values_from_graph("error")
         sorted_indices = np.argsort(-error_values)
-        self._neurons_added = True
+        self._neurons_added = False
 
         for i in sorted_indices:
             node = list(self.som_.nodes)[i]
@@ -829,6 +830,7 @@ class BaseSom(BaseEstimator):
             if error_values[i] > self.growing_threshold_ and node_degree < 4:
                 new_node, new_weight = self._insert_neuron(node)
                 self._add_node_to_graph(node=new_node, weight=new_weight)
+                self._neurons_added = True
             else:
                 break
 
