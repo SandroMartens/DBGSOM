@@ -38,7 +38,7 @@ jobs:
     - name: Lint with ruff
       run: |
         # Prüft auf Syntaxfehler und logische Patzer
-        uv run ruff check . --exit-zero
+        uv run ruff check . --exit-zero --fix
         # Prüft, ob der Code sauber formatiert ist
         uv run ruff format --check .
 
