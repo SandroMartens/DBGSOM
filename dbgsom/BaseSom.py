@@ -222,7 +222,7 @@ class BaseSom(BaseEstimator):
         _, winners = self._get_winning_neurons(X, n_bmu=1)
         relevant_nodes = [
             node
-            for (node, error) in enumerate(self.som_.nodes(data="error"))
+            for (node, error) in self.som_.nodes(data="error")
             if error > self.vertical_growing_threshold_
         ]
         for node in relevant_nodes:
@@ -719,9 +719,7 @@ class BaseSom(BaseEstimator):
             else:
                 break
 
-    def _insert_neuron(
-        self, bo: tuple[int, int]
-    ) -> tuple[tuple[int, int], np.ndarray]:
+    def _insert_neuron(self, bo: tuple[int, int]) -> tuple[tuple[int, int], np.ndarray]:
         """Insert one new neuron around the boundary neuron bo.
 
         Implements the directed insertion rule from Section 3.3.1.1 of the paper:
@@ -1020,8 +1018,15 @@ def numba_voronoi_set_centers(
         group_index = index[group_start:group_end]
         samples = data[group_index]
         weights = kernel[group_index]
+        weight_sum = np.sum(weights)
         for j in nb.prange(samples.shape[1]):
-            mean_samples = np.average(samples[:, j], weights=weights)
+            if weight_sum == 0.0:
+                # All kernel weights underflowed to zero (very large distances
+                # relative to the data variance). Fall back to an unweighted mean
+                # so the weight vector still moves toward the Voronoi centroid.
+                mean_samples = np.mean(samples[:, j])
+            else:
+                mean_samples = np.average(samples[:, j], weights=weights)
             voronoi_set_centers[i, j] = mean_samples
 
     return voronoi_set_centers
