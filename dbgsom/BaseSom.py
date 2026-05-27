@@ -730,23 +730,17 @@ class BaseSom(BaseEstimator):
             index=index,
         )
 
-        # step 2
-        neuron_activations = np.zeros(shape=len(self.neurons_))
-        winners, winner_counts = np.unique(winners, return_counts=True)
-        for winner, count in zip(winners, winner_counts):
-            neuron_activations[winner] = count
+        # Step 2
+        neuron_activations = np.bincount(winners, minlength=len(self.neurons_))
 
         # Step 3
         gaussian_kernel = self._calculate_gaussian_neighborhood()
 
-        # Step 4
-        intermediate_calculation = (
-            gaussian_kernel[:, :, np.newaxis] * neuron_activations[:, np.newaxis]
-        )
-        new_weights = np.sum(
-            voronoi_set_centers * intermediate_calculation,
-            axis=1,
-        ) / np.sum(intermediate_calculation, axis=1)
+        # Step 4 — weighted[i,j] = h[i,j] * n_j; contract over j via BLAS
+        weighted = gaussian_kernel * neuron_activations
+        numerator = weighted @ voronoi_set_centers
+        denominator = weighted.sum(axis=1, keepdims=True)
+        new_weights = numerator / denominator
 
         # Step 5
         new_weights_dict = dict(zip(self.neurons_, new_weights))
@@ -1151,7 +1145,7 @@ def numba_voronoi_set_centers(
     return voronoi_set_centers
 
 
-@nb.njit(parallel=True, fastmath=True)
+@nb.njit(cache=True, parallel=True, fastmath=True)
 def numba_find_winners(
     data: npt.NDArray, weights: npt.NDArray
 ) -> tuple[npt.NDArray, npt.NDArray]:
