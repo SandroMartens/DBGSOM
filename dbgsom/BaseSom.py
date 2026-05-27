@@ -630,11 +630,11 @@ class BaseSom(BaseEstimator):
             self._current_epoch = current_epoch
             if current_epoch > self.coarse_training_frac * self.n_iter:
                 self._training_phase = "fine"
-            self.weights_ = self._extract_values_from_graph("weight")
             # check if new neurons were inserted
             if self._neurons_added:
                 self.neurons_ = list(self.som_.nodes)
                 self._distance_matrix = nx.floyd_warshall_numpy(self.som_)
+                self.weights_ = self._extract_values_from_graph("weight")
                 self._neurons_added = False
 
             distances, winners = self._get_winning_neurons(data, n_bmu=1)
@@ -744,12 +744,12 @@ class BaseSom(BaseEstimator):
         new_weights = numerator / denominator
 
         # Step 5
-        new_weights_dict = dict(zip(self.neurons_, new_weights))
-        change = np.linalg.norm(self.weights_ - new_weights, axis=1)
-        change_total = np.sum(change)
-        if change_total < self.convergence_treshold:
+        if np.linalg.norm(self.weights_ - new_weights) < self.convergence_treshold:
             self.converged_ = True
-        nx.set_node_attributes(G=self.som_, values=new_weights_dict, name="weight")
+        self.weights_ = new_weights
+        nx.set_node_attributes(
+            G=self.som_, values=dict(zip(self.neurons_, new_weights)), name="weight"
+        )
 
     def _calculate_gaussian_neighborhood(self) -> npt.NDArray:
         """Calculate the gaussian neighborhood function for all neuron
@@ -823,9 +823,10 @@ class BaseSom(BaseEstimator):
         error_values = self._extract_values_from_graph("error")
         sorted_indices = np.argsort(-error_values)
         self._neurons_added = False
+        nodes_list = list(self.som_.nodes)
 
         for i in sorted_indices:
-            node = list(self.som_.nodes)[i]
+            node = nodes_list[i]
             node_degree = nx.degree(self.som_, node)
             if error_values[i] > self.growing_threshold_ and node_degree < 4:
                 new_node, new_weight = self._insert_neuron(node)
