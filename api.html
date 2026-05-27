@@ -488,14 +488,20 @@ contained subobjects that are estimators.</p>
 colour- and size-coded by any node attribute stored in the graph.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><code class="xref py py-obj docutils literal notranslate"><span class="pre">None</span></code></span></p>
+<dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><code class="xref py py-class docutils literal notranslate"><span class="pre">Plot</span></code></span></p>
 </dd>
 <dt class="field-even">Parameters<span class="colon">:</span></dt>
 <dd class="field-even"><ul class="simple">
-<li><p><strong>color</strong> (<em>{'label'</em><em>, </em><em>'epoch_created'</em><em>, </em><em>'error'</em><em>, </em><em>'average_distance'</em><em>, </em><em>'density'</em><em>,</em>) – ‘hit_count’}, optional
+<li><p><strong>color</strong> (<em>{'label'</em><em>, </em><em>'epoch_created'</em><em>, </em><em>'error'</em><em>, </em><em>'average_distance'</em><em>, </em><em>'density'</em><em>,</em>) – <p>‘hit_count’, ‘pca_rgb’}, optional
 Node attribute mapped to colour.  Numeric attributes with all
 identical values are cast to string to avoid a degenerate
-continuous scale.</p></li>
+continuous scale.</p>
+<p>Pass <code class="docutils literal notranslate"><span class="pre">'pca_rgb'</span></code> to colour each neuron by its position in the
+first three principal components of the weight space: PC1 -&gt; R,
+PC2 -&gt; G, PC3 -&gt; B (each component min-max normalised to 0-255).
+Similar colours indicate similar weight vectors; the colour pattern
+reveals the topological structure of the feature space.</p>
+</p></li>
 <li><p><strong>pointsize</strong> (<em>{'label'</em><em>, </em><em>'epoch_created'</em><em>, </em><em>'error'</em><em>, </em><em>'average_distance'</em><em>,</em>) – ‘density’, ‘hit_count’}, optional
 Node attribute mapped to point size.</p></li>
 <li><p><strong>layout</strong> (<em>{'grid'</em><em>, </em><em>'spring_weighted'</em><em>, </em><em>'spring'</em><em>, </em><em>'pca'}</em><em>, </em><em>default 'grid'</em>) – <p>Algorithm used to compute node positions.</p>
@@ -866,14 +872,20 @@ contained subobjects that are estimators.</p>
 colour- and size-coded by any node attribute stored in the graph.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><code class="xref py py-obj docutils literal notranslate"><span class="pre">None</span></code></span></p>
+<dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><code class="xref py py-class docutils literal notranslate"><span class="pre">Plot</span></code></span></p>
 </dd>
 <dt class="field-even">Parameters<span class="colon">:</span></dt>
 <dd class="field-even"><ul class="simple">
-<li><p><strong>color</strong> (<em>{'label'</em><em>, </em><em>'epoch_created'</em><em>, </em><em>'error'</em><em>, </em><em>'average_distance'</em><em>, </em><em>'density'</em><em>,</em>) – ‘hit_count’}, optional
+<li><p><strong>color</strong> (<em>{'label'</em><em>, </em><em>'epoch_created'</em><em>, </em><em>'error'</em><em>, </em><em>'average_distance'</em><em>, </em><em>'density'</em><em>,</em>) – <p>‘hit_count’, ‘pca_rgb’}, optional
 Node attribute mapped to colour.  Numeric attributes with all
 identical values are cast to string to avoid a degenerate
-continuous scale.</p></li>
+continuous scale.</p>
+<p>Pass <code class="docutils literal notranslate"><span class="pre">'pca_rgb'</span></code> to colour each neuron by its position in the
+first three principal components of the weight space: PC1 -&gt; R,
+PC2 -&gt; G, PC3 -&gt; B (each component min-max normalised to 0-255).
+Similar colours indicate similar weight vectors; the colour pattern
+reveals the topological structure of the feature space.</p>
+</p></li>
 <li><p><strong>pointsize</strong> (<em>{'label'</em><em>, </em><em>'epoch_created'</em><em>, </em><em>'error'</em><em>, </em><em>'average_distance'</em><em>,</em>) – ‘density’, ‘hit_count’}, optional
 Node attribute mapped to point size.</p></li>
 <li><p><strong>layout</strong> (<em>{'grid'</em><em>, </em><em>'spring_weighted'</em><em>, </em><em>'spring'</em><em>, </em><em>'pca'}</em><em>, </em><em>default 'grid'</em>) – <p>Algorithm used to compute node positions.</p>
