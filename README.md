@@ -110,11 +110,11 @@ coefs = vq.transform(X)   # shape (n_samples, n_prototypes)
 `plot()` renders the SOM neurons as dots and the neighbourhood edges as grey lines, all via seaborn objects.
 
 ```python
-vq.plot(color="density")                           # continuous → colour gradient
-clf.plot(color="label")                            # categorical → colour legend
-vq.plot(color="hit_count", pointsize="error")      # colour + size encoding
-clf.plot(color="label", layout="spring_weighted")  # force-directed layout
+vq.plot(color="density")                       # continuous → colour gradient
+clf.plot(color="label")                        # categorical → colour legend
+vq.plot(color="hit_count", pointsize="error")  # colour + size encoding
 vq.plot(color="density", layout="pca", palette="magma_r")
+vq.plot(color="pca_rgb")                       # RGB colour from PCA of weight vectors
 ```
 
 Supported attributes for `color` / `pointsize`:
@@ -124,7 +124,7 @@ Supported attributes for `color` / `pointsize`:
 | --- | --- | --- |
 | `color` | any node attribute | Numeric attributes → continuous colour scale; int/str with ≤ 20 unique values → legend |
 | `pointsize` | any numeric attribute | Node size proportional to attribute value |
-| `layout` | `'grid'` _(default)_, `'spring_weighted'`, `'spring'`, `'pca'` | Node placement algorithm |
+| `layout` | `'grid'` _(default)_, `'pca'` | Node placement algorithm |
 | `palette` | any Matplotlib colormap | Applied to the colour mapping |
 
 ## Examples

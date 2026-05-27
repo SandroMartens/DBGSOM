@@ -24,7 +24,7 @@ try:
     from sklearn.metrics import pairwise_distances
 
     # from line_profiler import profile
-    from sklearn.metrics.pairwise import euclidean_distances, manhattan_distances
+    from sklearn.metrics.pairwise import euclidean_distances
     from sklearn.neighbors import NearestNeighbors
     from sklearn.preprocessing import normalize
     from sklearn.utils import check_random_state
@@ -348,7 +348,6 @@ class BaseSom(BaseEstimator):
         pointsize: str | None = None,
         layout: str = "grid",
         palette: str = "magma_r",
-        seed: int | None = 0,
     ) -> so.Plot:
         """Plot the SOM neurons and their neighbourhood edges using seaborn objects.
 
@@ -373,20 +372,12 @@ class BaseSom(BaseEstimator):
                      'density', 'hit_count'}, optional
             Node attribute mapped to point size.
 
-        layout : {'grid', 'spring_weighted', 'spring', 'pca'}, default 'grid'
+        layout : {'grid', 'pca'}, default 'grid'
             Algorithm used to compute node positions.
 
             ``'grid'``
                 Neurons are placed at their integer SOM grid coordinates.
                 Preserves the topological map structure.
-            ``'spring_weighted'``
-                Force-directed layout where the spring constant of each edge
-                is proportional to ``weight_distance`` (= 1 / Euclidean
-                distance between adjacent weight vectors).  Neurons with
-                similar weight vectors are pulled together, directly
-                reflecting the U-matrix structure.
-            ``'spring'``
-                Unweighted Fruchterman–Reingold force-directed layout.
             ``'pca'``
                 Weight vectors projected to 2-D with PCA.  Node positions
                 reflect the principal directions of variance in feature space.
@@ -394,15 +385,11 @@ class BaseSom(BaseEstimator):
         palette : str, default ``'magma_r'``
             Seaborn / Matplotlib colormap name applied to the colour mapping.
 
-        seed : int or None, default 0
-            Random seed for the spring layouts.  Set to ``None`` for a
-            non-deterministic result.
-
         """
         check_is_fitted(self)
 
         nodes = list(self.som_.nodes)
-        pos = self._compute_graph_layout(layout, nodes, seed)
+        pos = self._compute_graph_layout(layout, nodes)
 
         # -- Node DataFrame ---------------------------------------------------
         node_data = pd.DataFrame(dict(self.som_.nodes)).T.reset_index(drop=True)
@@ -553,30 +540,16 @@ class BaseSom(BaseEstimator):
             for r, g, b in components_norm
         ]
 
-    def _compute_graph_layout(
-        self,
-        layout: str,
-        nodes: list,
-        seed: int | None,
-    ) -> dict:
+    def _compute_graph_layout(self, layout: str, nodes: list) -> dict:
         """Return a ``{node: (x, y)}`` position dict for the given layout strategy."""
         if layout == "grid":
             return {n: n for n in nodes}
-        if layout == "spring":
-            return nx.spring_layout(self.som_, seed=seed, iterations=10000)
-        if layout == "spring_weighted":
-            return nx.spring_layout(
-                self.som_, weight="weight_distance", seed=seed, iterations=10000
-            )
         if layout == "pca":
             from sklearn.decomposition import PCA
 
             coords = PCA(n_components=2).fit_transform(self.weights_)
             return {n: coords[i] for i, n in enumerate(nodes)}
-        raise ValueError(
-            f"Unknown layout {layout!r}. "
-            "Choose from 'spring_weighted', 'spring', 'grid', 'pca'."
-        )
+        raise ValueError(f"Unknown layout {layout!r}. Choose from 'grid', 'pca'.")
 
     def _get_u_matrix(self) -> np.ndarray[Any, np.dtype[np.float64]]:
         """Calculate the average distance from each neuron to its neighbors in the input space."""  # noqa: E501
