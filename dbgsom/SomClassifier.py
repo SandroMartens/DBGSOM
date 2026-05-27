@@ -124,6 +124,30 @@ class SomClassifier(TransformerMixin, ClassifierMixin, BaseSom):
         tags = super().__sklearn_tags__()
         return tags
 
+    def fit(self, X: npt.ArrayLike, y: npt.ArrayLike) -> "SomClassifier":
+        """Train SomClassifier on labelled data.
+
+        Parameters
+        ----------
+        X : array_like of shape (n_samples, n_features)
+            Training data.
+
+        y : array_like of shape (n_samples,)
+            Class labels. Required for the classifier.
+
+        Returns
+        -------
+        self : SomClassifier
+            Trained estimator.
+
+        """
+        if y is None:
+            raise ValueError(
+                f"{self.__class__.__name__} requires y to be passed, "
+                "but the target y is None."
+            )
+        return super().fit(X, y)
+
     def _label_prototypes(self, X: npt.NDArray, y: npt.NDArray) -> None:
         """This method assigns labels to the prototypes based on the input data."""
         _, winners = self._get_winning_neurons(X, n_bmu=1)
