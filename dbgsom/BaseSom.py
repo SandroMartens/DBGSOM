@@ -29,6 +29,7 @@ try:
     from sklearn.preprocessing import normalize
     from sklearn.utils import check_random_state
     from sklearn.utils._param_validation import Interval, StrOptions
+    from sklearn.utils.multiclass import check_classification_targets
     from sklearn.utils.validation import check_is_fitted
     from tqdm import tqdm
 except ImportError as e:
@@ -178,6 +179,7 @@ class BaseSom(BaseEstimator):
 
         elif y is not None:
             X, y = validate_data(self, X, y, ensure_min_samples=4)
+            check_classification_targets(y)
             classes, y = np.unique(y, return_inverse=True)
             self.classes_ = np.array(classes)
         self.random_state_ = check_random_state(self.random_state)
