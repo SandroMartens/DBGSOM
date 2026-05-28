@@ -220,37 +220,20 @@ class SomClassifier(TransformerMixin, ClassifierMixin, BaseSom):
         """
         check_is_fitted(self)
         X = np.array(validate_data(self, X, reset=False))
-        if self.vertical_growth:
-            _, winners = self._get_winning_neurons(X, n_bmu=1)
-            probabilities_rows = []
-            for sample, winner in zip(X, winners):
-                node = self.neurons_[winner]
-                if "som" not in self.som_.nodes:
-                    probabilities_sample = self.som_.nodes[node]["probabilities"]
-                else:
-                    probabilities_sample = self.som_.nodes[node]["som"].predict_proba(
-                        sample
-                    )
+        _, winners = self._get_winning_neurons(X, n_bmu=1)
+        node_probabilities = self._extract_values_from_graph("probabilities")
 
-                probabilities_rows.append(probabilities_sample)
+        if not self.vertical_growth:
+            return node_probabilities[winners]
 
-            sample_probabilities = np.array(probabilities_rows)
-
-        else:
-            X_transformed = self.transform(X, y)
-            node_probabilities = self._extract_values_from_graph("probabilities")
-            sample_probabilities_unnormalized = X_transformed @ node_probabilities
-            row_sums = sample_probabilities_unnormalized.sum(axis=1)
-            zero_mask = row_sums == 0
-            if zero_mask.any():
-                _, winners = self._get_winning_neurons(X[zero_mask], n_bmu=1)
-                sample_probabilities_unnormalized[zero_mask] = node_probabilities[
-                    winners
-                ]
-                row_sums = sample_probabilities_unnormalized.sum(axis=1)
-            row_sums = np.where(row_sums == 0, 1.0, row_sums)
-            sample_probabilities = (
-                sample_probabilities_unnormalized / row_sums[:, np.newaxis]
-            )
-
-        return sample_probabilities
+        probabilities_rows = []
+        for sample, winner in zip(X, winners):
+            node = self.neurons_[winner]
+            if "som" in self.som_.nodes[node]:
+                proba = self.som_.nodes[node]["som"].predict_proba(
+                    sample.reshape(1, -1)
+                )[0]
+            else:
+                proba = node_probabilities[winner]
+            probabilities_rows.append(proba)
+        return np.array(probabilities_rows)

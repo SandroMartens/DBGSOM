@@ -15,18 +15,16 @@ def test_topographic_function_matrix_logic():
     som = SomVQ()
     som.neurons_ = neurons
 
+    # Floyd-Warshall graph distances for a 3-node line N0-N1-N2:
+    # [[0, 1, 2],
+    #  [1, 0, 1],
+    #  [2, 1, 0]]
+    som._distance_matrix = np.array([[0, 1, 2], [1, 0, 1], [2, 1, 0]], dtype=float)
+
     # Wir faken die Delaunay-Matrix (Form 3x3)
     # Symmetrisch: Verbindung zwischen 0-1 und 1-2
     mock_delaunay = np.array([[0, 1, 0], [1, 0, 1], [0, 1, 0]])
     som._calculate_delaunay_triangulation = MagicMock(return_value=mock_delaunay)
-
-    # Zur Erinnerung, was intern passiert:
-    # Max-Distanzen (Chebyshev) zwischen den Neuronen:
-    # [[0, 1, 2],
-    #  [1, 0, 1],
-    #  [2, 1, 0]]
-    #
-    # Euclid-Distanzen: Identisch zu Chebyshev in diesem 1D-Fall.
 
     # Ausführung (Input X ist hier egal, da Delaunay gemockt ist)
     result = som.topographic_function(X=np.array([[0, 0]]))

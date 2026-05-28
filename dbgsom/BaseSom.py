@@ -22,7 +22,6 @@ try:
     import seaborn.objects as so
     from sklearn.base import BaseEstimator, clone
     from sklearn.decomposition import SparseCoder
-    from sklearn.metrics import pairwise_distances
     from sklearn.metrics.pairwise import euclidean_distances, manhattan_distances
 
     # from line_profiler import profile
@@ -1088,22 +1087,23 @@ class BaseSom(BaseEstimator, ABC):
         X = validate_data(self, X, reset=False)
         self._delaunay_matrix = self._calculate_delaunay_triangulation(X)
 
-        self.euclid_dist_matrix = euclidean_distances(self.neurons_)
-        self.max_dist_matrix = pairwise_distances(self.neurons_, metric="chebyshev")
+        # self._distance_matrix is the Floyd-Warshall graph distance on the SOM,
+        # computed during fit(). It is the correct d_map for the topographic function.
+        map_dist_matrix = self._distance_matrix
 
-        max_dist = int(self.max_dist_matrix.max())
+        max_dist = int(map_dist_matrix.max())
         k_values = np.arange(-max_dist, max_dist + 1)
         phi_values = np.zeros(len(k_values), dtype=np.float64)
 
         # Pre-filter to 1-D arrays to avoid repeated full-matrix scans in the loop.
-        # For k > 0: only Chebyshev distances where Delaunay neighbours are connected.
-        valid_max_dists = self.max_dist_matrix[self._delaunay_matrix == 1]
-        # For k < 0: only Delaunay distances where Euclidean distance equals 1.
-        valid_delaunay_dists = self._delaunay_matrix[self.euclid_dist_matrix == 1]
+        # For k > 0: map distances for pairs that are direct Delaunay neighbours.
+        valid_map_dists = map_dist_matrix[self._delaunay_matrix == 1]
+        # For k < 0: Delaunay distances for pairs that are direct SOM graph neighbours.
+        valid_delaunay_dists = self._delaunay_matrix[map_dist_matrix == 1]
 
         for idx, k in enumerate(k_values):
             if k > 0:
-                phi_values[idx] = np.sum(valid_max_dists > k)
+                phi_values[idx] = np.sum(valid_map_dists > k)
             elif k < 0:
                 phi_values[idx] = np.sum(valid_delaunay_dists > -k)
 
