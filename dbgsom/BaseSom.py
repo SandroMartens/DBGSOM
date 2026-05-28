@@ -2,6 +2,7 @@
 
 import copy
 import sys
+from abc import ABC, abstractmethod
 from math import exp, log, sqrt
 from numbers import Integral
 from typing import Any, Self
@@ -36,7 +37,7 @@ except ImportError as e:
     sys.exit()
 
 
-class BaseSom(BaseEstimator):
+class BaseSom(BaseEstimator, ABC):
     """Base Self-Organizing Map (SOM) implementation.
 
     A Self-Organizing Map is an unsupervised neural network model that maps
@@ -210,6 +211,7 @@ class BaseSom(BaseEstimator):
         # For VQ Subclass specific code
         pass
 
+    @abstractmethod
     def predict(self, X):
         raise NotImplementedError
 
@@ -282,14 +284,9 @@ class BaseSom(BaseEstimator):
         som = self.som_
 
         for u, v in som.edges:
-            # Gewichte der beiden verbundenen Knoten holen
             weight_x = som.nodes[u]["weight"]
             weight_y = som.nodes[v]["weight"]
-
-            # Euklidischen Abstand berechnen
             distance = np.linalg.norm(weight_x - weight_y)
-
-            # Abstand als neues Kanten-Attribut (z.B. "weight_distance") speichern
             som.edges[u, v]["weight_distance"] = 1 / float(distance + 0.001)
 
     def _delete_dead_neurons_from_graph(self, X: npt.ArrayLike) -> None:
@@ -699,6 +696,7 @@ class BaseSom(BaseEstimator):
         distances = dist_matrix[row_idx, winners]
         return distances, winners
 
+    @abstractmethod
     def _label_prototypes(self, X, y) -> None:
         raise NotImplementedError
 
@@ -839,48 +837,51 @@ class BaseSom(BaseEstimator):
             else:
                 break
 
-    def _insert_neuron(self, bo: tuple[int, int]) -> tuple[tuple[int, int], np.ndarray]:
-        """Insert one new neuron around the boundary neuron bo.
+    def _corner_neighbors_of(
+        self, boundary_node: tuple[int, int], p: tuple[int, int]
+    ) -> list[tuple[int, int]]:
+        """Return existing grid neighbors of p, excluding boundary_node itself."""
+        px, py = p
+        return [
+            n
+            for n in [(px + 1, py), (px - 1, py), (px, py + 1), (px, py - 1)]
+            if n in self.som_.nodes and n != boundary_node
+        ]
 
-        Implements the directed insertion rule from Section 3.3.1.1 of the paper:
-        prefer the free position whose adjacent existing neuron (corner neighbor)
-        has the highest accumulative error. If a free position has no corner
-        neighbor, fall back to the error of the neuron directly opposite bo.
+    def _opposite_of(
+        self, boundary_node: tuple[int, int], p: tuple[int, int]
+    ) -> tuple[int, int] | None:
+        """Return the neighbor of boundary_node directly opposite p.
 
-        Weight is initialized by reflecting the opposite neighbor through bo
-        (rule 1w / 2w / 3w), then averaged with the corner neighbor if one exists.
+        Falls back to any neighbor of boundary_node when no exact opposite exists.
         """
-        bx, by = bo
-        all_adjacent = [(bx + 1, by), (bx - 1, by), (bx, by + 1), (bx, by - 1)]
-        free_positions = [p for p in all_adjacent if p not in self.som_.nodes]
+        bx, by = boundary_node
+        op = (2 * bx - p[0], 2 * by - p[1])
+        if op in self.som_.nodes:
+            return op
+        return next(iter(self.som_.neighbors(boundary_node)), None)
 
-        def corner_neighbors_of(p: tuple[int, int]) -> list[tuple[int, int]]:
-            """Existing grid neighbors of p, excluding bo itself."""
-            px, py = p
-            return [
-                n
-                for n in [(px + 1, py), (px - 1, py), (px, py + 1), (px, py - 1)]
-                if n in self.som_.nodes and n != bo
-            ]
+    def _find_insertion_position(
+        self,
+        boundary_node: tuple[int, int],
+        free_positions: list[tuple[int, int]],
+    ) -> tuple[tuple[int, int], tuple[int, int] | None]:
+        """Select the free position with the highest corner-neighbor error.
 
-        def opposite_of(p: tuple[int, int]) -> tuple[int, int] | None:
-            """Existing neighbor of bo directly opposite p, or any neighbor as fallback."""  # noqa: E501
-            op = (2 * bx - p[0], 2 * by - p[1])
-            if op in self.som_.nodes:
-                return op
-            return next(iter(self.som_.neighbors(bo)), None)
-
+        Implements the directed insertion rule from Section 3.3.1.1 of the paper.
+        Falls back to the error of the opposite neighbor when no corner neighbor exists.
+        """
         best_score = -1.0
         best_p = free_positions[0]
         best_corner: tuple[int, int] | None = None
 
         for p in free_positions:
-            corners = corner_neighbors_of(p)
+            corners = self._corner_neighbors_of(boundary_node, p)
             if corners:
                 corner = max(corners, key=lambda n: self.som_.nodes[n]["error"])
                 score = self.som_.nodes[corner]["error"]
             else:
-                op = opposite_of(p)
+                op = self._opposite_of(boundary_node, p)
                 score = self.som_.nodes[op]["error"] if op else 0.0
                 corner = None
 
@@ -889,17 +890,41 @@ class BaseSom(BaseEstimator):
                 best_p = p
                 best_corner = corner
 
-        # Weight initialization: reflect opposite neighbor through bo, then
-        # average with the corner neighbor when one guides the position choice.
-        op = opposite_of(best_p)
-        w_bo = self.som_.nodes[bo]["weight"]
-        w_base = (2 * w_bo - self.som_.nodes[op]["weight"]) if op else w_bo.copy()
+        return best_p, best_corner
+
+    def _initialize_neuron_weight(
+        self,
+        boundary_node: tuple[int, int],
+        best_p: tuple[int, int],
+        best_corner: tuple[int, int] | None,
+    ) -> np.ndarray:
+        """Compute the initial weight for a new neuron at best_p.
+
+        Reflects the opposite neighbor through boundary_node (rules 1w/2w/3w),
+        then averages with the corner neighbor when one guided the position choice.
+        """
+        op = self._opposite_of(boundary_node, best_p)
+        w_boundary = self.som_.nodes[boundary_node]["weight"]
+        if op is not None:
+            w_base = 2 * w_boundary - self.som_.nodes[op]["weight"]
+        else:
+            w_base = w_boundary.copy()
 
         if best_corner is not None:
-            w_new = (w_base + self.som_.nodes[best_corner]["weight"]) / 2
-        else:
-            w_new = w_base
+            return (w_base + self.som_.nodes[best_corner]["weight"]) / 2
+        return w_base
 
+    def _insert_neuron(
+        self, boundary_node: tuple[int, int]
+    ) -> tuple[tuple[int, int], np.ndarray]:
+        """Insert one new neuron around boundary_node."""
+        bx, by = boundary_node
+        all_adjacent = [(bx + 1, by), (bx - 1, by), (bx, by + 1), (bx, by - 1)]
+        free_positions = [p for p in all_adjacent if p not in self.som_.nodes]
+        best_p, best_corner = self._find_insertion_position(
+            boundary_node, free_positions
+        )
+        w_new = self._initialize_neuron_weight(boundary_node, best_p, best_corner)
         return best_p, w_new
 
     def _add_node_to_graph(self, node: tuple[int, int], weight: np.ndarray) -> None:
@@ -1023,6 +1048,15 @@ class BaseSom(BaseEstimator):
     def topographic_function(self, X: npt.ArrayLike) -> npt.NDArray:
         """Compute the topographic function for the SOM.
 
+        Measures topology preservation across all neighbourhood scales k.
+        Positive k values detect fold-overs (map neighbours that are far apart
+        in data space); negative k values detect tears (data neighbours that
+        are far apart on the map). phi(0) = phi(-1) + phi(1).
+
+        Reference: Villmann et al., "Topology preservation in self-organizing
+        feature maps: exact definition and measurement", IEEE Trans. Neural
+        Networks, 1997.
+
         Parameters
         ----------
         X : array_like of shape (n_samples, n_features)
@@ -1030,14 +1064,13 @@ class BaseSom(BaseEstimator):
 
         Returns
         -------
-        ndarray of shape (2, 2 * max_dist)
-            Topographic function values for negative and positive distances.
+        ndarray of shape (2, 2 * max_dist + 1)
+            Row 0: phi values; row 1: normalised k-axis in [-1, 1].
 
         """
         X = validate_data(self, X, reset=False)
         self._delaunay_matrix = self._calculate_delaunay_triangulation(X)
 
-        # 1. Nur die wirklich benötigten Matrizen berechnen (Manhattan gelöscht)
         self.euclid_dist_matrix = euclidean_distances(self.neurons_)
         self.max_dist_matrix = pairwise_distances(self.neurons_, metric="chebyshev")
 
@@ -1045,32 +1078,23 @@ class BaseSom(BaseEstimator):
         k_values = np.arange(-max_dist, max_dist + 1)
         phi_values = np.zeros(len(k_values), dtype=np.float64)
 
-        # 2. ÜBERRAGENDER PERFORMANCE-TRICK: Vorfiltern der Matrizen in 1D-Arrays
-        # Für k > 0 interessieren uns nur max_dist-Werte, wo Delaunay == 1 ist
+        # Pre-filter to 1-D arrays to avoid repeated full-matrix scans in the loop.
+        # For k > 0: only Chebyshev distances where Delaunay neighbours are connected.
         valid_max_dists = self.max_dist_matrix[self._delaunay_matrix == 1]
-
-        # Für k < 0 interessieren uns nur Delaunay-Werte, wo Euclid == 1 ist
+        # For k < 0: only Delaunay distances where Euclidean distance equals 1.
         valid_delaunay_dists = self._delaunay_matrix[self.euclid_dist_matrix == 1]
 
-        # 3. Werte für k berechnen (ohne teure Matrix-Scans)
         for idx, k in enumerate(k_values):
             if k > 0:
                 phi_values[idx] = np.sum(valid_max_dists > k)
             elif k < 0:
                 phi_values[idx] = np.sum(valid_delaunay_dists > -k)
 
-        # 4. Sonderfall k = 0 berechnen (_phi(-1) + _phi(1))
-        # Wir suchen die Indizes in unserem fertigen phi_values Array
-        idx_neg1 = np.where(k_values == -1)[0]
-        idx_pos1 = np.where(k_values == 1)[0]
-        idx_zero = np.where(k_values == 0)[0]
+        # k=0 is defined as phi(-1) + phi(1).
+        # Because k_values = arange(-max_dist, max_dist+1), k=0 sits at index max_dist.
+        if max_dist >= 1:
+            phi_values[max_dist] = phi_values[max_dist - 1] + phi_values[max_dist + 1]
 
-        if len(idx_zero) > 0:
-            val_neg1 = phi_values[idx_neg1[0]] if len(idx_neg1) > 0 else 0.0
-            val_pos1 = phi_values[idx_pos1[0]] if len(idx_pos1) > 0 else 0.0
-            phi_values[idx_zero[0]] = val_neg1 + val_pos1
-
-        # Normierung der X-Achse
         normalized_distances = k_values / max_dist if max_dist > 0 else k_values
 
         return np.vstack((phi_values, normalized_distances))

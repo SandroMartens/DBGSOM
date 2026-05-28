@@ -2,15 +2,14 @@ import numpy as np
 import pytest
 
 # 1. HIER IMPORTIERST DU DEINE ECHTE KLASSE
-from dbgsom.BaseSom import BaseSom
+from dbgsom.SomVQ import SomVQ
 
 
 # 2. DIE FIXTURE ERSTELLT EINE ECHTE INSTANZ
 @pytest.fixture
-def real_som() -> BaseSom:
+def real_som() -> SomVQ:
     """Erstellt eine echte, frische Instanz deiner SOM für jeden Test."""
-    # Gib hier die Parameter an, die dein Konstruktor (__init__) erwartet
-    return BaseSom(decay_function="exponential", coarse_training_frac=0.6)
+    return SomVQ(decay_function="exponential", coarse_training_frac=0.6)
 
 
 # 3. DIE TEST-KLASSEN NUTZEN DIE ECHTE INSTANZ

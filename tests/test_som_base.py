@@ -14,7 +14,7 @@ def test_scikit_learn_compatibility():
     # check_estimator wirft eine Exception, wenn deine API-Struktur verletzt wird
     classifier = SomClassifier()
     quantizer = SomVQ()
-    # check_estimator(classifier)
+    check_estimator(classifier, on_fail="warn")
     check_estimator(quantizer, on_fail="warn")
 
 

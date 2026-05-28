@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 from sklearn.exceptions import NotFittedError
 
-from dbgsom.BaseSom import BaseSom  # Ersetze 'your_module' mit deinem Dateinamen
+from dbgsom.SomVQ import SomVQ
 
 
 def test_topographic_function_matrix_logic():
@@ -12,7 +12,7 @@ def test_topographic_function_matrix_logic():
     # Wir erstellen 3 Neuronen in einer Reihe, um Abstände zu kontrollieren
     # N0 bei (0,0), N1 bei (1,0), N2 bei (2,0)
     neurons = [[0.0, 0.0], [1.0, 0.0], [2.0, 0.0]]
-    som = BaseSom()
+    som = SomVQ()
     som.neurons_ = neurons
 
     # Wir faken die Delaunay-Matrix (Form 3x3)
@@ -62,7 +62,7 @@ class TestQuantizationError:
     def test_quantization_error_correctness(self):
         """Prüft die mathematische Korrektheit gegen ein handberechnetes Ergebnis."""
         # Setup einer minimalen SOM
-        som = BaseSom()
+        som = SomVQ()
 
         # Wir simulieren den Zustand nach dem Fit (State Injection)
         som.weights_ = np.array(
@@ -94,7 +94,7 @@ class TestQuantizationError:
 
     def test_raises_not_fitted_error(self):
         """Stellt sicher, dass die Funktion ohne vorheriges Training blockiert."""
-        som = BaseSom()
+        som = SomVQ()
         X_test = np.array([[1.0, 2.0]])
 
         # Da fit() nicht aufgerufen wurde, MUSS scikit-learns NotFittedError fliegen
@@ -103,7 +103,7 @@ class TestQuantizationError:
 
     def test_invalid_input_nan_raises_error(self):
         """Prüft, ob fehlerhafte Daten (NaNs) dank check_array abgefangen werden."""
-        som = BaseSom()
+        som = SomVQ()
         som.weights_ = np.array([[0.0, 0.0]])  # Als "fitted" simulieren
 
         # Daten mit einem unzulässigen NaN-Wert
@@ -118,7 +118,7 @@ class TestTopographicError:
     @pytest.fixture
     def fitted_som(self):
         """Erstellt eine simulierte, fertig trainierte SOM mit 4 Neuronen auf einem Gitter."""
-        som = BaseSom()
+        som = SomVQ()
 
         # Wir simulieren ein 2x2 Gitter von Neuronen (Koordinaten im Raum)
         # Neuron 0: (0,0) | Neuron 1: (0,1)
