@@ -137,15 +137,25 @@ class SomVQ(TransformerMixin, ClusterMixin, BaseSom):
         Returns
         -------
         labels : ndarray of shape (n_samples,)
-            If fitted unsupervised: Index of best matching prototype.
+            Contiguous cluster index of the best matching prototype.
 
         """
         check_is_fitted(self)
         X = np.array(validate_data(self, X=X, reset=False))
-        _, labels = self._get_winning_neurons(X, n_bmu=1)
-
-        return labels
+        _, raw_winners = self._get_winning_neurons(X, n_bmu=1)
+        return self._label_encoder[raw_winners]
 
     def _fit(self, X: npt.NDArray) -> None:
-
-        self.labels_ = self.predict(X)
+        _, raw_labels = self._get_winning_neurons(X, n_bmu=1)
+        unique = np.unique(raw_labels)
+        self._label_encoder = np.full(len(self.neurons_), -1, dtype=int)
+        self._label_encoder[unique] = np.arange(len(unique))
+        # Dead neurons: assign label of nearest live neuron by weight distance
+        for d in np.where(self._label_encoder == -1)[0]:
+            nearest = unique[
+                np.argmin(
+                    np.linalg.norm(self.weights_[unique] - self.weights_[d], axis=1)
+                )
+            ]
+            self._label_encoder[d] = self._label_encoder[nearest]
+        self.labels_ = self._label_encoder[raw_labels]
