@@ -72,7 +72,7 @@ class SomClassifier(TransformerMixin, ClassifierMixin, BaseSom):
     random_state : any (optional), default = None
         Random state for weight initialization.
 
-    convergence_treshold : float, default = 10 ** -5
+    convergence_threshold : float, default = 10 ** -5
         If the sum of all weight changes is smaller than the threshold,
         convergence is assumed and the training is stopped.
 

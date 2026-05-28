@@ -4,8 +4,8 @@ import copy
 import sys
 from abc import ABC, abstractmethod
 from math import exp, log, sqrt
-from numbers import Integral
-from typing import Any, Self
+from numbers import Integral, Real
+from typing import Any, Callable, Self
 
 from sklearn.utils.validation import validate_data
 
@@ -80,7 +80,7 @@ class BaseSom(BaseEstimator, ABC):
     random_state : int, RandomState instance or None, default=None
         Random state for reproducibility.
 
-    convergence_treshold : float, default=1e-5
+    convergence_threshold : float, default=1e-5
         Threshold for convergence criterion.
 
     max_neurons : int, default=100
@@ -116,7 +116,7 @@ class BaseSom(BaseEstimator, ABC):
         verbose: bool = False,
         coarse_training_frac: float = 0.5,
         random_state: int | None | np.random.RandomState = None,
-        convergence_treshold: float = 10**-5,
+        convergence_threshold: float = 10**-5,
         max_neurons: int = 100,
         metric: str = "euclidean",
         threshold_method: str = "se",
@@ -135,7 +135,7 @@ class BaseSom(BaseEstimator, ABC):
         self.verbose = verbose
         self.coarse_training_frac = coarse_training_frac
         self.random_state = random_state
-        self.convergence_treshold = convergence_treshold
+        self.convergence_threshold = convergence_threshold
         self.max_neurons = max_neurons
         self.metric = metric
         self.threshold_method = threshold_method
@@ -145,9 +145,19 @@ class BaseSom(BaseEstimator, ABC):
         self.n_jobs = n_jobs
 
     _parameter_constraints = {
-        "n_iter": [Interval(Integral, 1, None, closed="left")],  # type: ignore
-        "max_neurons": [Interval(Integral, 4, None, closed="left")],  # type: ignore
-        "decay_function": [StrOptions({"exponential", "linear"})],  # type: ignore
+        "n_iter": [Interval(Integral, 1, None, closed="left")],
+        "convergence_iter": [Interval(Integral, 1, None, closed="left")],
+        "max_neurons": [Interval(Integral, 4, None, closed="left")],
+        "min_samples_vertical_growth": [Interval(Integral, 1, None, closed="left")],
+        "spreading_factor": [Interval(Real, 0, 1, closed="neither")],
+        "learning_rate": [Interval(Real, 0, None, closed="neither")],
+        "coarse_training_frac": [Interval(Real, 0, 1, closed="neither")],
+        "convergence_threshold": [Interval(Real, 0, None, closed="neither")],
+        "sigma_start": [Interval(Real, 0, None, closed="neither"), None],
+        "sigma_end": [Interval(Real, 0, None, closed="neither"), None],
+        "decay_function": [StrOptions({"exponential", "linear"})],
+        "threshold_method": [StrOptions({"classical", "se"})],
+        "growth_criterion": [StrOptions({"entropy", "quantization_error"})],
     }
 
     def __sklearn_tags__(self):
@@ -746,7 +756,7 @@ class BaseSom(BaseEstimator, ABC):
         new_weights[zero_denom] = self.weights_[zero_denom]
 
         # Step 5
-        if np.linalg.norm(self.weights_ - new_weights) < self.convergence_treshold:
+        if np.linalg.norm(self.weights_ - new_weights) < self.convergence_threshold:
             self.converged_ = True
         self.weights_ = new_weights
         nx.set_node_attributes(
@@ -975,13 +985,8 @@ class BaseSom(BaseEstimator, ABC):
             sigma_end = self.sigma_end
 
         if self._training_phase == "coarse":
-            if self.decay_function == "linear":
-                decay_function = linear_decay
-
-            elif self.decay_function == "exponential":
-                decay_function = exponential_decay
-
-            sigma = decay_function(
+            decay_fn = _DECAY_FUNCTIONS[self.decay_function]
+            sigma = decay_fn(
                 sigma_end=sigma_end,
                 sigma_start=sigma_start,
                 max_iter=self.n_iter,
@@ -1140,6 +1145,12 @@ def exponential_decay(
     sigma = sigma_end + (sigma_start - sigma_end) * exp(-learning_rate * current_iter)
 
     return sigma
+
+
+_DECAY_FUNCTIONS: dict[str, Callable[..., float]] = {
+    "linear": linear_decay,
+    "exponential": exponential_decay,
+}
 
 
 @nb.njit(
