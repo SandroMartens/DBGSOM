@@ -742,7 +742,10 @@ class BaseSom(BaseEstimator):
         weighted = gaussian_kernel * neuron_activations
         numerator = weighted @ voronoi_set_centers
         denominator = weighted.sum(axis=1, keepdims=True)
-        new_weights = numerator / denominator
+        zero_denom = (denominator == 0).squeeze()
+        safe_denom = np.where(denominator == 0, 1.0, denominator)
+        new_weights = numerator / safe_denom
+        new_weights[zero_denom] = self.weights_[zero_denom]
 
         # Step 5
         if np.linalg.norm(self.weights_ - new_weights) < self.convergence_treshold:

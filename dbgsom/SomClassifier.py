@@ -155,9 +155,11 @@ class SomClassifier(TransformerMixin, ClassifierMixin, BaseSom):
             labels = y[winners == winner_index]
             # dead neuron
             if len(labels) == 0:
-                label_winner = -1
-                labels = [-1]
-                counts = [0]
+                self.som_.nodes[neuron]["label"] = -1
+                self.som_.nodes[neuron]["probabilities"] = np.full(
+                    shape=self.classes_.shape, fill_value=1.0 / len(self.classes_)
+                )
+                continue
             else:
                 label_winner = mode(labels)
                 labels, counts = np.unique(labels, return_counts=True)
@@ -233,10 +235,18 @@ class SomClassifier(TransformerMixin, ClassifierMixin, BaseSom):
         else:
             X_transformed = self.transform(X, y)
             node_probabilities = self._extract_values_from_graph("probabilities")
-            # Sample Probabilities do not sum to 1
             sample_probabilities_unnormalized = X_transformed @ node_probabilities
-            sample_probabilities = sample_probabilities_unnormalized / (
-                sample_probabilities_unnormalized.sum(axis=1)[np.newaxis].T
+            row_sums = sample_probabilities_unnormalized.sum(axis=1)
+            zero_mask = row_sums == 0
+            if zero_mask.any():
+                _, winners = self._get_winning_neurons(X[zero_mask], n_bmu=1)
+                sample_probabilities_unnormalized[zero_mask] = node_probabilities[
+                    winners
+                ]
+                row_sums = sample_probabilities_unnormalized.sum(axis=1)
+            row_sums = np.where(row_sums == 0, 1.0, row_sums)
+            sample_probabilities = (
+                sample_probabilities_unnormalized / row_sums[:, np.newaxis]
             )
 
         return sample_probabilities
