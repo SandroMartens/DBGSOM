@@ -148,3 +148,6 @@ fashion-mnist_train.csv
 # Minimum requirements
 overrides.txt
 requirements*
+
+# Claude
+.claude
