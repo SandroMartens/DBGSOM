@@ -594,6 +594,13 @@ possible to update each component of a nested object.</p>
 <dt class="sig sig-object py" id="dbgsom.SomVQ.SomVQ.topographic_function">
 <span class="sig-name descname"><span class="pre">topographic_function</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">X</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dbgsom.SomVQ.SomVQ.topographic_function" title="Link to this definition">¶</a></dt>
 <dd><p>Compute the topographic function for the SOM.</p>
+<p>Measures topology preservation across all neighbourhood scales k.
+Positive k values detect fold-overs (map neighbours that are far apart
+in data space); negative k values detect tears (data neighbours that
+are far apart on the map). phi(0) = phi(-1) + phi(1).</p>
+<p>Reference: Villmann et al., “Topology preservation in self-organizing
+feature maps: exact definition and measurement”, IEEE Trans. Neural
+Networks, 1997.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><code class="xref py py-class docutils literal notranslate"><span class="pre">ndarray</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">tuple</span></code>[<code class="xref py py-data docutils literal notranslate"><span class="pre">Any</span></code>, <code class="xref py py-data docutils literal notranslate"><span class="pre">...</span></code>], <code class="xref py py-class docutils literal notranslate"><span class="pre">dtype</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">TypeVar</span></code>(<code class="docutils literal notranslate"><span class="pre">_ScalarT</span></code>, bound= <code class="xref py py-class docutils literal notranslate"><span class="pre">generic</span></code>)]]</span></p>
@@ -602,10 +609,10 @@ possible to update each component of a nested object.</p>
 <dd class="field-even"><p><strong>X</strong> (<em>array_like</em><em> of </em><em>shape</em><em> (</em><em>n_samples</em><em>, </em><em>n_features</em><em>)</em>) – Data used to compute the topographic function.</p>
 </dd>
 <dt class="field-odd">Returns<span class="colon">:</span></dt>
-<dd class="field-odd"><p>Topographic function values for negative and positive distances.</p>
+<dd class="field-odd"><p>Row 0: phi values; row 1: normalised k-axis in [-1, 1].</p>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p>ndarray of shape (2, 2 * max_dist)</p>
+<dd class="field-even"><p>ndarray of shape (2, 2 * max_dist + 1)</p>
 </dd>
 </dl>
 </dd></dl>
@@ -1049,6 +1056,13 @@ parameters and not others.</p>
 <dt class="sig sig-object py" id="dbgsom.SomClassifier.SomClassifier.topographic_function">
 <span class="sig-name descname"><span class="pre">topographic_function</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">X</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dbgsom.SomClassifier.SomClassifier.topographic_function" title="Link to this definition">¶</a></dt>
 <dd><p>Compute the topographic function for the SOM.</p>
+<p>Measures topology preservation across all neighbourhood scales k.
+Positive k values detect fold-overs (map neighbours that are far apart
+in data space); negative k values detect tears (data neighbours that
+are far apart on the map). phi(0) = phi(-1) + phi(1).</p>
+<p>Reference: Villmann et al., “Topology preservation in self-organizing
+feature maps: exact definition and measurement”, IEEE Trans. Neural
+Networks, 1997.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><code class="xref py py-class docutils literal notranslate"><span class="pre">ndarray</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">tuple</span></code>[<code class="xref py py-data docutils literal notranslate"><span class="pre">Any</span></code>, <code class="xref py py-data docutils literal notranslate"><span class="pre">...</span></code>], <code class="xref py py-class docutils literal notranslate"><span class="pre">dtype</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">TypeVar</span></code>(<code class="docutils literal notranslate"><span class="pre">_ScalarT</span></code>, bound= <code class="xref py py-class docutils literal notranslate"><span class="pre">generic</span></code>)]]</span></p>
@@ -1057,10 +1071,10 @@ parameters and not others.</p>
 <dd class="field-even"><p><strong>X</strong> (<em>array_like</em><em> of </em><em>shape</em><em> (</em><em>n_samples</em><em>, </em><em>n_features</em><em>)</em>) – Data used to compute the topographic function.</p>
 </dd>
 <dt class="field-odd">Returns<span class="colon">:</span></dt>
-<dd class="field-odd"><p>Topographic function values for negative and positive distances.</p>
+<dd class="field-odd"><p>Row 0: phi values; row 1: normalised k-axis in [-1, 1].</p>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p>ndarray of shape (2, 2 * max_dist)</p>
+<dd class="field-even"><p>ndarray of shape (2, 2 * max_dist + 1)</p>
 </dd>
 </dl>
 </dd></dl>
