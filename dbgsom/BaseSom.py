@@ -98,6 +98,12 @@ class BaseSom(BaseEstimator, ABC):
     min_samples_vertical_growth : int, default=100
         Minimum number of samples required for vertical growth.
 
+    tau_2 : float, default=0.5
+        Global stopping criterion threshold for vertical growth (τ₂ in the GHSOM paper).
+        A unit is expanded into a new child SOM when its quantization error exceeds
+        ``tau_2 * qe_0``, where ``qe_0`` is the quantization error of a single unit
+        whose weight equals the mean of all training data.
+
     n_jobs : int, default=1
         Number of parallel jobs for computation.
 
@@ -122,6 +128,7 @@ class BaseSom(BaseEstimator, ABC):
         threshold_method: str = "se",
         growth_criterion: str = "quantization_error",
         min_samples_vertical_growth: int = 100,
+        tau_2: float = 0.5,
         n_jobs: int = 1,
     ) -> None:
         super().__init__()
@@ -141,6 +148,7 @@ class BaseSom(BaseEstimator, ABC):
         self.threshold_method = threshold_method
         self.growth_criterion = growth_criterion
         self.min_samples_vertical_growth = min_samples_vertical_growth
+        self.tau_2 = tau_2
         self.vertical_growth = vertical_growth
         self.n_jobs = n_jobs
 
@@ -158,6 +166,7 @@ class BaseSom(BaseEstimator, ABC):
         "decay_function": [StrOptions({"exponential", "linear"})],
         "threshold_method": [StrOptions({"classical", "se"})],
         "growth_criterion": [StrOptions({"entropy", "quantization_error"})],
+        "tau_2": [Interval(Real, 0, 1, closed="neither")],
     }
 
     def __sklearn_tags__(self):
@@ -192,6 +201,9 @@ class BaseSom(BaseEstimator, ABC):
             check_classification_targets(y)
             classes, y = np.unique(y, return_inverse=True)
             self.classes_ = np.array(classes)
+        local_qe_0 = float(np.sum(np.linalg.norm(X - X.mean(axis=0), axis=1)))
+        if not hasattr(self, "qe_0_"):
+            self.qe_0_ = local_qe_0
         self.random_state_ = check_random_state(self.random_state)
         self._initialize_som(X)
 
@@ -230,7 +242,7 @@ class BaseSom(BaseEstimator, ABC):
         class and fitting them with filtered data.
         """
         # todo: refactor in sub classes
-        self.vertical_growing_threshold_ = 1.5 * self.growing_threshold_
+        self.vertical_growing_threshold_ = self.tau_2 * self.qe_0_
         _, winners = self._get_winning_neurons(X, n_bmu=1)
         relevant_nodes = [
             node
@@ -239,6 +251,7 @@ class BaseSom(BaseEstimator, ABC):
         ]
         for node in relevant_nodes:
             new_som = clone(self)
+            new_som.qe_0_ = self.qe_0_
             X_filtered = X[winners == node]
             if y is not None:
                 y_filtered = y[winners == node]

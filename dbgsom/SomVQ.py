@@ -89,6 +89,10 @@ class SomVQ(TransformerMixin, ClusterMixin, BaseSom):
     min_samples_vertical_growth : int, default = 100
         Minimum samples represented by a prototpye to trigger a vertical growth
 
+    tau_2 : float, default = 0.5
+        Global stopping criterion threshold for vertical growth (τ₂ in the GHSOM paper).
+        A unit is expanded when its quantization error exceeds ``tau_2 * qe_0``.
+
     sigma_start, sigma_end : {None, numeric}, default = None
         Start and end value for the neighborhood bandwidth.
 
