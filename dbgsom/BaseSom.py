@@ -23,7 +23,7 @@ try:
     from sklearn.base import BaseEstimator, clone
     from sklearn.decomposition import SparseCoder
     from sklearn.metrics import pairwise_distances
-    from sklearn.metrics.pairwise import euclidean_distances
+    from sklearn.metrics.pairwise import euclidean_distances, manhattan_distances
 
     # from line_profiler import profile
     from sklearn.preprocessing import normalize
@@ -1054,12 +1054,11 @@ class BaseSom(BaseEstimator, ABC):
 
         """
         _, bmu_indices = self._get_winning_neurons(X, n_bmu=2)
-        euclid_dist_matrix = euclidean_distances(self.neurons_)
+        manhattan_dist_matrix = manhattan_distances(self.neurons_)
         topographic_error = 0
         for node in bmu_indices:
-            # distance = int(distance_matrix[node[0], node[1]])
-            distance = euclid_dist_matrix[node[0], node[1]]
-            topographic_error += 1 if distance > 1.5 else 0
+            distance = manhattan_dist_matrix[node[0], node[1]]
+            topographic_error += 1 if distance > 1 else 0
 
         return topographic_error / X.shape[0]
 

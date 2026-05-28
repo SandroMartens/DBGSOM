@@ -42,4 +42,4 @@ def test_digits_training_regression():
 
     assert som.som_.number_of_nodes() == 24
     assert som.quantization_error_ == pytest.approx(24.09, abs=0.1)
-    assert som.topographic_error_ == pytest.approx(0.062, abs=0.01)
+    assert som.topographic_error_ == pytest.approx(0.117, abs=0.01)
