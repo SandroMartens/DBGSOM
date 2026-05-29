@@ -1,10 +1,26 @@
 import numpy as np
 import pytest
-from sklearn.datasets import load_digits
+from sklearn.datasets import load_digits, make_blobs
 from sklearn.utils.estimator_checks import check_estimator
 
 from dbgsom.SomClassifier import SomClassifier
 from dbgsom.SomVQ import SomVQ
+
+
+@pytest.fixture(scope="module")
+def classifier_vq_pair():
+    """SomVQ and SomClassifier trained on same blobs data with identical settings.
+
+    cluster_std=0.3 ensures well-separated classes so each neuron is class-pure.
+    """
+    X, y = make_blobs(
+        n_samples=300, centers=5, n_features=4, cluster_std=0.3, random_state=42
+    )
+    vq = SomVQ(random_state=42, n_iter=30, max_neurons=15, verbose=False).fit(X)
+    clf = SomClassifier(random_state=42, n_iter=30, max_neurons=15, verbose=False).fit(
+        X, y
+    )
+    return vq, clf, X, y
 
 
 def test_scikit_learn_compatibility():
@@ -29,6 +45,52 @@ def test_som_mathematical_convergence():
     assert 0.0 <= som.topographic_error_ <= 1.0
 
 
+def test_classifier_vq_identical_weights(classifier_vq_pair):
+    """Same training → identical prototypes."""
+    vq, clf, _, _ = classifier_vq_pair
+    np.testing.assert_array_equal(vq.weights_, clf.weights_)
+
+
+def test_classifier_vq_identical_bmu(classifier_vq_pair):
+    """Identical weights → same best-matching unit for every sample."""
+    vq, clf, X, _ = classifier_vq_pair
+    _, vq_winners = vq._get_winning_neurons(X, n_bmu=1)
+    _, clf_winners = clf._get_winning_neurons(X, n_bmu=1)
+    np.testing.assert_array_equal(vq_winners, clf_winners)
+
+
+def test_classifier_vq_identical_quantization_error(classifier_vq_pair):
+    """Identical weights → same quantization error."""
+    vq, clf, _, _ = classifier_vq_pair
+    assert vq.quantization_error_ == pytest.approx(clf.quantization_error_)
+
+
+def test_classifier_vq_identical_topographic_error(classifier_vq_pair):
+    """Identical weights and topology → same topographic error."""
+    vq, clf, _, _ = classifier_vq_pair
+    assert vq.topographic_error_ == pytest.approx(clf.topographic_error_)
+
+
+def test_classifier_prediction_matches_vq_majority(classifier_vq_pair):
+    """Classifier labels each neuron with the majority class of its training samples.
+
+    Tie-breaking: numpy argmax (lowest class index wins), matching the classifier's
+    own argmax over stored probabilities.
+    """
+    vq, clf, X, y = classifier_vq_pair
+    _, winners = vq._get_winning_neurons(X, n_bmu=1)
+    node_probabilities = clf._extract_values_from_graph("probabilities")
+
+    for neuron_idx in np.unique(winners):
+        mask = winners == neuron_idx
+        unique_classes, counts = np.unique(y[mask], return_counts=True)
+        majority_class = unique_classes[np.argmax(counts)]
+        predicted_class = clf.classes_[np.argmax(node_probabilities[neuron_idx])]
+        assert predicted_class == majority_class, (
+            f"Neuron {neuron_idx}: stored class doesn't match majority of its samples"
+        )
+
+
 @pytest.mark.slow
 def test_digits_training_regression():
     """Golden-value regression test: training on digits must produce stable results.
@@ -43,3 +105,48 @@ def test_digits_training_regression():
     assert som.som_.number_of_nodes() == 24
     assert som.quantization_error_ == pytest.approx(24.09, abs=0.1)
     assert som.topographic_error_ == pytest.approx(0.117, abs=0.01)
+    np.testing.assert_almost_equal(
+        actual=np.array(
+            [
+                [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    90.0,
+                    90.0,
+                    48.0,
+                    34.0,
+                    16.0,
+                    4.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                ],
+                [
+                    -1.0,
+                    -0.875,
+                    -0.75,
+                    -0.625,
+                    -0.5,
+                    -0.375,
+                    -0.25,
+                    -0.125,
+                    0.0,
+                    0.125,
+                    0.25,
+                    0.375,
+                    0.5,
+                    0.625,
+                    0.75,
+                    0.875,
+                    1.0,
+                ],
+            ],
+        ),
+        desired=som.topographic_function(X),
+    )
