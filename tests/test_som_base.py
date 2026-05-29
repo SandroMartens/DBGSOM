@@ -23,6 +23,25 @@ def classifier_vq_pair():
     return vq, clf, X, y
 
 
+def test_cosine_metric_weights_are_unit_normalized():
+    X, _ = make_blobs(n_samples=200, centers=5, n_features=4, random_state=42)
+    vq = SomVQ(random_state=42, n_iter=30, max_neurons=15, metric="cosine").fit(X)
+    norms = np.linalg.norm(vq.weights_, axis=1)
+    np.testing.assert_array_almost_equal(norms, np.ones(len(norms)), decimal=6)
+
+
+def test_cosine_metric_smoke():
+    X, y = make_blobs(n_samples=200, centers=5, n_features=4, random_state=42)
+    vq = SomVQ(random_state=42, n_iter=30, max_neurons=15, metric="cosine").fit(X)
+    assert vq.som_.number_of_nodes() >= 1
+    assert 0.0 <= vq.quantization_error_ <= 1.0
+    assert 0.0 <= vq.topographic_error_ <= 1.0
+    clf = SomClassifier(
+        random_state=42, n_iter=30, max_neurons=15, metric="cosine"
+    ).fit(X, y)
+    assert 0.0 <= clf.score(X, y) <= 1.0
+
+
 def test_classifier_entropy_criterion():
     X, y = make_blobs(
         n_samples=300, centers=5, n_features=4, cluster_std=0.3, random_state=42

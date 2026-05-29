@@ -200,6 +200,8 @@ class BaseSom(BaseEstimator, ABC):
             check_classification_targets(y)
             classes, y = np.unique(y, return_inverse=True)
             self.classes_ = np.array(classes)
+        if self.metric == "cosine":
+            X = normalize(X)
         local_qe_0 = float(np.sum(np.linalg.norm(X - X.mean(axis=0), axis=1)))
         if not hasattr(self, "qe_0_"):
             self.qe_0_ = local_qe_0
@@ -707,7 +709,22 @@ class BaseSom(BaseEstimator, ABC):
         Uses a numba-JIT kernel for n_bmu=1 (hot path: fused distance + argmin,
         no distance matrix allocated). Falls back to BLAS + argpartition for
         n_bmu > 1 (only used post-training for topographic error).
+        For cosine metric uses dot-product BLAS path (weights are unit-normalized).
         """
+        if self.metric == "cosine":
+            data = normalize(data)
+            sim_matrix = data @ self.weights_.T
+            if n_bmu == 1:
+                winners = np.argmax(sim_matrix, axis=1)
+                distances = 1.0 - sim_matrix[np.arange(len(data)), winners]
+                return distances, winners
+            dist_matrix = 1.0 - sim_matrix
+            part = np.argpartition(dist_matrix, n_bmu, axis=1)[:, :n_bmu]
+            row_idx = np.arange(len(data))[:, np.newaxis]
+            order = np.argsort(dist_matrix[row_idx, part], axis=1)
+            winners = part[row_idx, order]
+            distances = dist_matrix[row_idx, winners]
+            return distances, winners
         if n_bmu == 1:
             return numba_find_winners(data, self.weights_)
         dist_matrix = euclidean_distances(data, self.weights_)
@@ -771,8 +788,10 @@ class BaseSom(BaseEstimator, ABC):
         if np.linalg.norm(self.weights_ - new_weights) < self.convergence_threshold:
             self.converged_ = True
         self.weights_ = new_weights
+        if self.metric == "cosine":
+            self.weights_ = normalize(self.weights_)
         nx.set_node_attributes(
-            G=self.som_, values=dict(zip(self.neurons_, new_weights)), name="weight"
+            G=self.som_, values=dict(zip(self.neurons_, self.weights_)), name="weight"
         )
 
     def _calculate_gaussian_neighborhood(self) -> npt.NDArray:
