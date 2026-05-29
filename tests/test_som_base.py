@@ -23,6 +23,18 @@ def classifier_vq_pair():
     return vq, clf, X, y
 
 
+def test_classifier_entropy_criterion():
+    X, y = make_blobs(
+        n_samples=300, centers=5, n_features=4, cluster_std=0.3, random_state=42
+    )
+    clf = SomClassifier(
+        random_state=42, n_iter=30, max_neurons=15, growth_criterion="entropy"
+    )
+    clf.fit(X, y)
+    assert clf.som_.number_of_nodes() >= 4
+    assert 0.0 <= clf.score(X, y) <= 1.0
+
+
 def test_scikit_learn_compatibility():
     """Prüft vollautomatisch alle Scikit-Learn API-Konventionen."""
     check_estimator(SomClassifier(), on_fail="warn")
