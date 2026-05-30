@@ -338,6 +338,10 @@ class BaseSom(BaseEstimator, ABC):
         coefficients : np.ndarray of shape (n_samples, n_protoypes)
             Coefficients of the linear regression model.
 
+        Reference: Teuvo Kohonen, "Description of Input Patterns by
+        Linear Mixtures of SOM Models", Proceedings of the 6th International
+        Workshop on Self-Organizing Maps, 2007.
+
         """  # noqa: E501
         check_is_fitted(self)
         if y is None:
