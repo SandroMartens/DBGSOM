@@ -60,6 +60,7 @@ max-complexity = 10  # Alles über Komplexität 10 blockiert den Build
 dev = [
     "coverage>=7.14.0",
     "ipykernel>=7.2.0",
+    "minisom>=2.3.6",
     "pre-commit>=4.6.0",
     "pytest>=9.0.3",
     "ruff>=0.15.14",

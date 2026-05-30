@@ -1,6 +1,5 @@
 """Handles the core SOM functionality."""
 
-import copy
 import sys
 from abc import ABC, abstractmethod
 from math import exp, log, sqrt
@@ -166,7 +165,7 @@ class BaseSom(BaseEstimator, ABC):
         "threshold_method": [StrOptions({"classical", "se"})],
         "growth_criterion": [StrOptions({"entropy", "quantization_error"})],
         "tau_2": [Interval(Real, 0, 1, closed="neither")],
-        "metric":[StrOptions({"euclidean", "cosine"})]
+        "metric": [StrOptions({"euclidean", "cosine"})],
     }
 
     def __sklearn_tags__(self):
@@ -631,6 +630,7 @@ class BaseSom(BaseEstimator, ABC):
 
         Qu et al., "Statistics-enhanced Direct Batch Growth Self-Organizing
         Mapping for efficient DoS Attack Detection", IEEE Access, 2019.
+
         """
         if self.growth_criterion == "entropy":
             growing_threshold = self.spreading_factor
