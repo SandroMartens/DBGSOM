@@ -166,6 +166,7 @@ class BaseSom(BaseEstimator, ABC):
         "threshold_method": [StrOptions({"classical", "se"})],
         "growth_criterion": [StrOptions({"entropy", "quantization_error"})],
         "tau_2": [Interval(Real, 0, 1, closed="neither")],
+        "metric":[StrOptions({"euclidean", "cosine"})]
     }
 
     def __sklearn_tags__(self):
@@ -240,6 +241,10 @@ class BaseSom(BaseEstimator, ABC):
     def _grow_vertical(self, X: npt.NDArray, y: None | npt.NDArray = None) -> None:
         """Triggers vertical growth in the SOM by creating new instances of the DBGSOM
         class and fitting them with filtered data.
+
+        Reference: Qu et al., "Entropy-Defined Direct Batch Growing Hierarchical
+        Self-Organizing Mapping for Efficient Network Anomaly Detection",
+        IEEE Access, 2021.
         """
         # todo: refactor in sub classes
         self.vertical_growing_threshold_ = self.tau_2 * self.qe_0_
@@ -612,6 +617,21 @@ class BaseSom(BaseEstimator, ABC):
         self.neurons_ = list(self.som_.nodes)
 
     def _calculate_growing_threshold(self, data: npt.NDArray) -> float:
+        """Compute the growing threshold for neuron insertion.
+
+        The classical method uses ``-n_dim * log(spreading_factor)``.
+        The statistics-enhanced method (``threshold_method="se"``) scales by
+        the norm of the data standard deviation for data-adaptive thresholding.
+
+        References
+        ----------
+        Vasighi and Amini, "A directed batch growing approach to enhance the
+        topology preservation of self-organizing map", Applied Soft Computing,
+        2017.
+
+        Qu et al., "Statistics-enhanced Direct Batch Growth Self-Organizing
+        Mapping for efficient DoS Attack Detection", IEEE Access, 2019.
+        """
         if self.growth_criterion == "entropy":
             growing_threshold = self.spreading_factor
         else:
@@ -628,7 +648,12 @@ class BaseSom(BaseEstimator, ABC):
         return growing_threshold
 
     def _grow_som(self, data: npt.NDArray, y: npt.NDArray | None) -> None:
-        """Second training phase."""
+        """Second training phase: iterative weight update and neuron insertion.
+
+        Reference: Vasighi and Amini, "A directed batch growing approach to
+        enhance the topology preservation of self-organizing map", Applied Soft
+        Computing, 2017.
+        """
         for current_epoch in tqdm(
             iterable=range(self.n_iter),
             disable=not self.verbose,
@@ -789,8 +814,11 @@ class BaseSom(BaseEstimator, ABC):
         return h
 
     def _calculate_exp_similarity(self, distances: np.ndarray) -> npt.NDArray:
-        """Calculate the weight of each sample by calculating a exponential kernel
-        for the distance between the sample and the bmu.
+        """Calculate the weight of each sample via an exponential kernel on the
+        BMU distance, downweighting outliers to improve robustness.
+
+        Reference: D'Urso et al., "Smoothed self-organizing map for robust
+        clustering", Information Sciences, 2019.
         """
         gamma = self._total_variance**-1
         kernel = 1 - (1 - np.exp(-gamma * distances**2)) ** 0.5
@@ -802,6 +830,13 @@ class BaseSom(BaseEstimator, ABC):
     ) -> None:
         """Get the quantization error for each neuron
         and save it as "error" attribute of each node.
+
+        The entropy growth criterion uses Shannon entropy of the class
+        distribution per neuron instead of quantization error.
+
+        Reference: Qu et al., "Entropy-Defined Direct Batch Growing Hierarchical
+        Self-Organizing Mapping for Efficient Network Anomaly Detection",
+        IEEE Access, 2021.
         """
         if self.growth_criterion == "entropy":
             for winner_index, neuron in enumerate(self.neurons_):
@@ -847,6 +882,10 @@ class BaseSom(BaseEstimator, ABC):
         """Add new neurons to places where the error is above
         the growing threshold. Begin with the neuron with the largest
         error.
+
+        Reference: Vasighi and Amini, "A directed batch growing approach to
+        enhance the topology preservation of self-organizing map", Applied Soft
+        Computing, 2017.
         """
         error_values = self._extract_values_from_graph("error")
         sorted_indices = np.argsort(-error_values)
@@ -894,8 +933,12 @@ class BaseSom(BaseEstimator, ABC):
     ) -> tuple[tuple[int, int], tuple[int, int] | None]:
         """Select the free position with the highest corner-neighbor error.
 
-        Implements the directed insertion rule from Section 3.3.1.1 of the paper.
+        Implements the directed insertion rule from Section 3.3.1.1.
         Falls back to the error of the opposite neighbor when no corner neighbor exists.
+
+        Reference: Vasighi and Amini, "A directed batch growing approach to
+        enhance the topology preservation of self-organizing map", Applied Soft
+        Computing, 2017.
         """
         best_score = -1.0
         best_p = free_positions[0]
@@ -928,6 +971,10 @@ class BaseSom(BaseEstimator, ABC):
 
         Reflects the opposite neighbor through boundary_node (rules 1w/2w/3w),
         then averages with the corner neighbor when one guided the position choice.
+
+        Reference: Vasighi and Amini, "A directed batch growing approach to
+        enhance the topology preservation of self-organizing map", Applied Soft
+        Computing, 2017.
         """
         op = self._opposite_of(boundary_node, best_p)
         w_boundary = self.som_.nodes[boundary_node]["weight"]
@@ -1121,7 +1168,13 @@ class BaseSom(BaseEstimator, ABC):
         return np.vstack((phi_values, normalized_distances))
 
     def _calculate_delaunay_triangulation(self, X) -> np.ndarray:
-        """Calculate the Delaunay triangulation distance matrix."""
+        """Calculate the Delaunay triangulation distance matrix via the
+        competitive Hebbian rule: connect BMU1 and BMU2 for each input sample.
+
+        Reference: Villmann et al., "Topology preservation in self-organizing
+        feature maps: exact definition and measurement", IEEE Trans. Neural
+        Networks, 1997.
+        """
         _, bmu_indices = self._get_winning_neurons(X, n_bmu=2)
 
         n_neurons = self.som_.number_of_nodes()
