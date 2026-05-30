@@ -409,7 +409,6 @@ class BaseSom(BaseEstimator, ABC):
         nodes_df = pd.concat([coords, node_data], axis=1)
 
         for col in (
-            "label",
             "epoch_created",
             "error",
             "density",
@@ -418,6 +417,15 @@ class BaseSom(BaseEstimator, ABC):
         ):
             if col in nodes_df.columns:
                 nodes_df[col] = pd.to_numeric(nodes_df[col], errors="raise")
+
+        if "label" in nodes_df.columns:
+            if hasattr(self, "classes_"):
+                classes = self.classes_
+                nodes_df["label"] = nodes_df["label"].apply(
+                    lambda i: str(classes[int(i)]) if int(i) >= 0 else "dead"
+                )
+            else:
+                nodes_df["label"] = nodes_df["label"].astype(str)
 
         # -- Edge DataFrame (NaN-separated path) ------------------------------
         # NaN sentinels are more reliable than group= for splitting segments;
