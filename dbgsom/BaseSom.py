@@ -217,7 +217,6 @@ class BaseSom(BaseEstimator, ABC):
         self.n_features_in_ = X.shape[1]
         self._write_node_statistics(X)
         self._write_edge_statistics()
-        # self._delete_dead_neurons_from_graph(X)
         self._label_prototypes(X, y)
 
         # Vertical growing phase
@@ -312,20 +311,6 @@ class BaseSom(BaseEstimator, ABC):
             weight_y = som.nodes[v]["weight"]
             distance = np.linalg.norm(weight_x - weight_y)
             som.edges[u, v]["weight_distance"] = 1 / float(distance + 0.001)
-
-    def _delete_dead_neurons_from_graph(self, X: npt.ArrayLike) -> None:
-        """Delete all neurons which represent zero samples from the training set."""
-        som_copy = copy.deepcopy(self.som_)
-        dead_neurons = [
-            node for node in self.som_.nodes if self.som_.nodes[node]["hit_count"] == 0
-        ]
-        for node in dead_neurons:
-            som_copy.remove_node(node)
-        self.som_ = som_copy
-
-        self.neurons_ = list(self.som_.nodes)
-        self.weights_ = self._extract_values_from_graph("weight")
-        self._distance_matrix = nx.floyd_warshall_numpy(self.som_)
 
     def _extract_values_from_graph(self, attribute: str) -> np.ndarray:
         """Return an array with some given attribute of the nodes."""
