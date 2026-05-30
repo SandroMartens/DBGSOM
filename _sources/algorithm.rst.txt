@@ -90,19 +90,64 @@ _Currently not implemented._
 
 Runtime complexity
 ------------------
-The space complexity `S` of a SOM is:
+
+The following variables are used throughout:
+
+* `n` — number of data samples
+* `m` — number of neurons (grows dynamically; refers to the final neuron count)
+* `d` — data dimension
+* `e` — number of training epochs
+
+Space complexity
+****************
+
+The weight matrix and the input data each contribute :math:`O(m \cdot d)` and :math:`O(n \cdot d)`.
+Additionally, the Floyd–Warshall distance matrix between all neuron pairs is stored as an
+:math:`m \times m` array, adding :math:`O(m^2)`:
 
 .. math::
-    S = O(d*(m+n))
+    S = O(d \cdot (m + n) + m^2)
 
-There are different ways to estimate the time complexity. A rough estimate for `T` is:
+The :math:`m^2` term dominates the space cost when `d` is small relative to `m`.
+
+Time complexity (fit)
+*********************
+
+Each training epoch involves three operations with distinct costs:
+
+**BMU search** — for every sample, the nearest neuron is found by comparing against all `m`
+weight vectors across `d` dimensions (implemented as a fused Numba JIT kernel):
 
 .. math::
-    T = O(nmde)
+    T_{\text{BMU}} = O(n \cdot m \cdot d) \text{ per epoch}
 
-where
+**Batch weight update** — the new weights are computed via a matrix multiplication of the
+:math:`m \times m` neighbourhood kernel with the :math:`m \times d` Voronoi centre matrix:
 
-* `n` is the number of data samples
-* `m` is the number of neurons
-* `d` is the data dimension and
-* `e` is the number of training epochs
+.. math::
+    T_{\text{update}} = O(m^2 \cdot d) \text{ per epoch}
+
+**Floyd–Warshall recomputation** — whenever a new neuron is inserted the graph distance
+matrix is recomputed from scratch. With up to `m` growth steps and an :math:`O(m^3)` cost
+per step, the cumulative growth overhead is:
+
+.. math::
+    T_{\text{growth}} = O(m^4)
+
+The total fit complexity is therefore:
+
+.. math::
+    T_{\text{fit}} = O\!\left(e \cdot (n \cdot m \cdot d + m^2 \cdot d) + m^4\right)
+
+* When :math:`n \gg m` the BMU search dominates: :math:`O(n \cdot m \cdot d \cdot e)`.
+* When :math:`m \gg n` the weight update dominates: :math:`O(m^2 \cdot d \cdot e)`.
+* The :math:`m^4` Floyd–Warshall term is independent of `n` and `e` and is bounded by
+  ``max_neurons``.
+
+Time complexity (predict)
+*************************
+
+Prediction requires only a single BMU search over the fitted weight matrix:
+
+.. math::
+    T_{\text{predict}} = O(n \cdot m \cdot d)

@@ -318,23 +318,66 @@ by the user.</p>
 </section>
 <section id="runtime-complexity">
 <h2>Runtime complexity<a class="headerlink" href="#runtime-complexity" title="Link to this heading">¶</a></h2>
-<p>The space complexity <cite>S</cite> of a SOM is:</p>
-<div class="math-wrapper docutils container">
-<div class="math notranslate nohighlight">
-\[S = O(d*(m+n))\]</div>
-</div>
-<p>There are different ways to estimate the time complexity. A rough estimate for <cite>T</cite> is:</p>
-<div class="math-wrapper docutils container">
-<div class="math notranslate nohighlight">
-\[T = O(nmde)\]</div>
-</div>
-<p>where</p>
+<p>The following variables are used throughout:</p>
 <ul class="simple">
-<li><p><cite>n</cite> is the number of data samples</p></li>
-<li><p><cite>m</cite> is the number of neurons</p></li>
-<li><p><cite>d</cite> is the data dimension and</p></li>
-<li><p><cite>e</cite> is the number of training epochs</p></li>
+<li><p><cite>n</cite> — number of data samples</p></li>
+<li><p><cite>m</cite> — number of neurons (grows dynamically; refers to the final neuron count)</p></li>
+<li><p><cite>d</cite> — data dimension</p></li>
+<li><p><cite>e</cite> — number of training epochs</p></li>
 </ul>
+<section id="space-complexity">
+<h3>Space complexity<a class="headerlink" href="#space-complexity" title="Link to this heading">¶</a></h3>
+<p>The weight matrix and the input data each contribute <span class="math notranslate nohighlight">\(O(m \cdot d)\)</span> and <span class="math notranslate nohighlight">\(O(n \cdot d)\)</span>.
+Additionally, the Floyd–Warshall distance matrix between all neuron pairs is stored as an
+<span class="math notranslate nohighlight">\(m \times m\)</span> array, adding <span class="math notranslate nohighlight">\(O(m^2)\)</span>:</p>
+<div class="math-wrapper docutils container">
+<div class="math notranslate nohighlight">
+\[S = O(d \cdot (m + n) + m^2)\]</div>
+</div>
+<p>The <span class="math notranslate nohighlight">\(m^2\)</span> term dominates the space cost when <cite>d</cite> is small relative to <cite>m</cite>.</p>
+</section>
+<section id="time-complexity-fit">
+<h3>Time complexity (fit)<a class="headerlink" href="#time-complexity-fit" title="Link to this heading">¶</a></h3>
+<p>Each training epoch involves three operations with distinct costs:</p>
+<p><strong>BMU search</strong> — for every sample, the nearest neuron is found by comparing against all <cite>m</cite>
+weight vectors across <cite>d</cite> dimensions (implemented as a fused Numba JIT kernel):</p>
+<div class="math-wrapper docutils container">
+<div class="math notranslate nohighlight">
+\[T_{\text{BMU}} = O(n \cdot m \cdot d) \text{ per epoch}\]</div>
+</div>
+<p><strong>Batch weight update</strong> — the new weights are computed via a matrix multiplication of the
+<span class="math notranslate nohighlight">\(m \times m\)</span> neighbourhood kernel with the <span class="math notranslate nohighlight">\(m \times d\)</span> Voronoi centre matrix:</p>
+<div class="math-wrapper docutils container">
+<div class="math notranslate nohighlight">
+\[T_{\text{update}} = O(m^2 \cdot d) \text{ per epoch}\]</div>
+</div>
+<p><strong>Floyd–Warshall recomputation</strong> — whenever a new neuron is inserted the graph distance
+matrix is recomputed from scratch. With up to <cite>m</cite> growth steps and an <span class="math notranslate nohighlight">\(O(m^3)\)</span> cost
+per step, the cumulative growth overhead is:</p>
+<div class="math-wrapper docutils container">
+<div class="math notranslate nohighlight">
+\[T_{\text{growth}} = O(m^4)\]</div>
+</div>
+<p>The total fit complexity is therefore:</p>
+<div class="math-wrapper docutils container">
+<div class="math notranslate nohighlight">
+\[T_{\text{fit}} = O\!\left(e \cdot (n \cdot m \cdot d + m^2 \cdot d) + m^4\right)\]</div>
+</div>
+<ul class="simple">
+<li><p>When <span class="math notranslate nohighlight">\(n \gg m\)</span> the BMU search dominates: <span class="math notranslate nohighlight">\(O(n \cdot m \cdot d \cdot e)\)</span>.</p></li>
+<li><p>When <span class="math notranslate nohighlight">\(m \gg n\)</span> the weight update dominates: <span class="math notranslate nohighlight">\(O(m^2 \cdot d \cdot e)\)</span>.</p></li>
+<li><p>The <span class="math notranslate nohighlight">\(m^4\)</span> Floyd–Warshall term is independent of <cite>n</cite> and <cite>e</cite> and is bounded by
+<code class="docutils literal notranslate"><span class="pre">max_neurons</span></code>.</p></li>
+</ul>
+</section>
+<section id="time-complexity-predict">
+<h3>Time complexity (predict)<a class="headerlink" href="#time-complexity-predict" title="Link to this heading">¶</a></h3>
+<p>Prediction requires only a single BMU search over the fitted weight matrix:</p>
+<div class="math-wrapper docutils container">
+<div class="math notranslate nohighlight">
+\[T_{\text{predict}} = O(n \cdot m \cdot d)\]</div>
+</div>
+</section>
 </section>
 </section>
 
@@ -409,7 +452,12 @@ by the user.</p>
 </li>
 </ul>
 </li>
-<li><a class="reference internal" href="#runtime-complexity">Runtime complexity</a></li>
+<li><a class="reference internal" href="#runtime-complexity">Runtime complexity</a><ul>
+<li><a class="reference internal" href="#space-complexity">Space complexity</a></li>
+<li><a class="reference internal" href="#time-complexity-fit">Time complexity (fit)</a></li>
+<li><a class="reference internal" href="#time-complexity-predict">Time complexity (predict)</a></li>
+</ul>
+</li>
 </ul>
 </li>
 </ul>
