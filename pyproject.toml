@@ -31,7 +31,7 @@ dependencies = [
 
 [project.urls]
 "Homepage" = "https://github.com/SandroMartens/DBGSOM"
-"Docmentation" = "https://dbgsom.readthedocs.io/en/latest/"
+"Docmentation" = "https://dbgsom.readthedocs.io/"
 
 [tool.pytest.ini_options]
 markers = [
