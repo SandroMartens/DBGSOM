@@ -248,6 +248,7 @@ class BaseSom(BaseEstimator, ABC):
         # todo: refactor in sub classes
         self.vertical_growing_threshold_ = self.tau_2 * self.qe_0_
         _, winners = self._get_winning_neurons(X, n_bmu=1)
+        node_to_idx = {node: i for i, node in enumerate(self.neurons_)}
         relevant_nodes = [
             node
             for (node, error) in self.som_.nodes(data="error")
@@ -256,9 +257,10 @@ class BaseSom(BaseEstimator, ABC):
         for node in relevant_nodes:
             new_som = clone(self)
             new_som.qe_0_ = self.qe_0_
-            X_filtered = X[winners == node]
+            node_idx = node_to_idx[node]
+            X_filtered = X[winners == node_idx]
             if y is not None:
-                y_filtered = y[winners == node]
+                y_filtered = y[winners == node_idx]
             else:
                 y_filtered = None
             if X_filtered.shape[0] > self.min_samples_vertical_growth:

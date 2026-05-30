@@ -210,6 +210,8 @@ class SomClassifier(TransformerMixin, ClassifierMixin, BaseSom):
         X : {array-like, sparse matrix} of shape (n_samples, n_features)
             New data to predict.
 
+        y : Ignored. Only accepted for API compliance.
+
         Returns
         -------
         Probabilities: array of shape (n_samples, n_classes)
@@ -230,9 +232,11 @@ class SomClassifier(TransformerMixin, ClassifierMixin, BaseSom):
         for sample, winner in zip(X, winners):
             node = self.neurons_[winner]
             if "som" in self.som_.nodes[node]:
-                proba = self.som_.nodes[node]["som"].predict_proba(
-                    sample.reshape(1, -1)
-                )[0]
+                child_som = self.som_.nodes[node]["som"]
+                child_proba = child_som.predict_proba(sample.reshape(1, -1))[0]
+                proba = np.zeros(len(self.classes_))
+                child_indices = np.searchsorted(self.classes_, child_som.classes_)
+                proba[child_indices] = child_proba
             else:
                 proba = node_probabilities[winner]
             probabilities_rows.append(proba)
