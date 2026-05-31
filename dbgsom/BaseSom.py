@@ -619,6 +619,7 @@ class BaseSom(BaseEstimator, ABC):
         """
         self._current_epoch = 0
         self.converged_ = False
+        self._last_growth_epoch = -1
         self._training_phase = "coarse"
         self.growing_threshold_ = self._calculate_growing_threshold(data)
         self._total_variance = np.var(data, axis=0).sum()
@@ -691,13 +692,19 @@ class BaseSom(BaseEstimator, ABC):
             if self.converged_ and self._training_phase == "fine":
                 break
 
+            epochs_since_growth = current_epoch - self._last_growth_epoch
             if (
                 self._training_phase == "coarse"
                 and len(self.neurons_) < self.max_neurons
-                and current_epoch % self.convergence_iter == self.convergence_iter - 1
+                and (self.converged_ or epochs_since_growth >= self.convergence_iter)
             ):
+                converged_triggered = self.converged_
                 self._distribute_errors()
                 self._add_new_neurons()
+                self.converged_ = False
+                self._last_growth_epoch = current_epoch
+                if converged_triggered and not self._neurons_added:
+                    break
 
     def _create_som(self, data: npt.NDArray) -> nx.Graph:
         """Create a graph containing the first four neurons in a square. Each neuron has a weight vector randomly chosen from the training samples."""  # noqa: E501
@@ -1306,7 +1313,7 @@ def numba_find_winners(
     n_neurons = weights.shape[0]
     winners = np.empty(n_samples, dtype=np.int64)
     distances = np.empty(n_samples, dtype=np.float64)
-    for i in nb.prange(n_samples):  # type: ignore[attr-defined]
+    for i in nb.prange(n_samples):  # ty:ignore[not-iterable]
         best_dist_sq = np.inf
         best_j = 0
         for j in range(n_neurons):
