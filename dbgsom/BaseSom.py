@@ -730,18 +730,15 @@ class BaseSom(BaseEstimator, ABC):
     ) -> tuple[npt.NDArray, npt.NDArray]:
         """Return distances and indices of the n_bmu nearest prototypes per sample.
 
-        Uses a numba-JIT kernel for n_bmu=1 (hot path: fused distance + argmin,
+        Uses a numba-JIT kernel for n_bmu=1 (hot path: fused distance + argmin/argmax,
         no distance matrix allocated). Falls back to BLAS + argpartition for
         n_bmu > 1 (only used post-training for topographic error).
-        For cosine metric uses dot-product BLAS path (weights are unit-normalized).
         """
         if self.metric == "cosine":
             data = normalize(data)
-            sim_matrix = data @ self.weights_.T
             if n_bmu == 1:
-                winners = np.argmax(sim_matrix, axis=1)
-                distances = 1.0 - sim_matrix[np.arange(len(data)), winners]
-                return distances, winners
+                return numba_find_winners_cosine(data, self.weights_)
+            sim_matrix = data @ self.weights_.T
             dist_matrix = 1.0 - sim_matrix
             part = np.argpartition(dist_matrix, n_bmu, axis=1)[:, :n_bmu]
             row_idx = np.arange(len(data))[:, np.newaxis]
@@ -1268,6 +1265,35 @@ def numba_voronoi_set_centers(
             voronoi_set_centers[i, j] = mean_samples
 
     return voronoi_set_centers
+
+
+@nb.njit(cache=True, parallel=True, fastmath=True)
+def numba_find_winners_cosine(
+    data: npt.NDArray, weights: npt.NDArray
+) -> tuple[npt.NDArray, npt.NDArray]:
+    """Find the most similar weight vector per sample via fused dot-product + argmax.
+
+    Assumes data and weights are already L2-normalised (unit vectors).
+    No n×m similarity matrix is allocated.
+    """
+    n_samples = data.shape[0]
+    n_features = data.shape[1]
+    n_neurons = weights.shape[0]
+    winners = np.empty(n_samples, dtype=np.int64)
+    distances = np.empty(n_samples, dtype=np.float64)
+    for i in nb.prange(n_samples):  # type: ignore[attr-defined]
+        best_sim = -np.inf
+        best_j = 0
+        for j in range(n_neurons):
+            sim = 0.0
+            for k in range(n_features):
+                sim += data[i, k] * weights[j, k]
+            if sim > best_sim:
+                best_sim = sim
+                best_j = j
+        winners[i] = best_j
+        distances[i] = 1.0 - best_sim
+    return distances, winners
 
 
 @nb.njit(cache=True, parallel=True, fastmath=True)
