@@ -620,6 +620,7 @@ class BaseSom(BaseEstimator, ABC):
         self._current_epoch = 0
         self.converged_ = False
         self._last_growth_epoch = -1
+        self._sigma_coarse: float | None = None
         self._training_phase = "coarse"
         self.growing_threshold_ = self._calculate_growing_threshold(data)
         self._total_variance = np.var(data, axis=0).sum()
@@ -703,8 +704,9 @@ class BaseSom(BaseEstimator, ABC):
                 self._add_new_neurons()
                 self.converged_ = False
                 self._last_growth_epoch = current_epoch
+                self._sigma_coarse = self._compute_decayed_sigma(current_epoch)
                 if converged_triggered and not self._neurons_added:
-                    break
+                    self._training_phase = "fine"
 
     def _create_som(self, data: npt.NDArray) -> nx.Graph:
         """Create a graph containing the first four neurons in a square. Each neuron has a weight vector randomly chosen from the training samples."""  # noqa: E501
@@ -813,11 +815,11 @@ class BaseSom(BaseEstimator, ABC):
         new_weights[zero_denom] = self.weights_[zero_denom]
 
         # Step 5
+        if self.metric == "cosine":
+            new_weights = normalize(new_weights)
         if np.linalg.norm(self.weights_ - new_weights) < self.convergence_threshold:
             self.converged_ = True
         self.weights_ = new_weights
-        if self.metric == "cosine":
-            self.weights_ = normalize(self.weights_)
         nx.set_node_attributes(
             G=self.som_, values=dict(zip(self.neurons_, self.weights_)), name="weight"
         )
@@ -1066,18 +1068,33 @@ class BaseSom(BaseEstimator, ABC):
             sigma_end = self.sigma_end
 
         if self._training_phase == "coarse":
-            decay_fn = _DECAY_FUNCTIONS[self.decay_function]
-            sigma = decay_fn(
-                sigma_end=sigma_end,
-                sigma_start=sigma_start,
-                max_iter=self.n_iter,
-                current_iter=epoch / self.coarse_training_frac,
-                learning_rate=self.learning_rate,
-            )
+            if self._sigma_coarse is None:
+                self._sigma_coarse = sigma_start
+            return self._sigma_coarse
         else:
             sigma = sigma_end
 
         return sigma
+
+    def _compute_decayed_sigma(self, epoch: int) -> float:
+        """Return the decay-function sigma value at a given epoch."""
+        n_neurons = self.som_.number_of_nodes()
+        sigma_start = (
+            0.2 * sqrt(n_neurons) if self.sigma_start is None else self.sigma_start
+        )
+        sigma_end = (
+            max(0.7, 0.05 * sqrt(n_neurons))
+            if self.sigma_end is None
+            else self.sigma_end
+        )
+        decay_fn = _DECAY_FUNCTIONS[self.decay_function]
+        return decay_fn(
+            sigma_end=sigma_end,
+            sigma_start=sigma_start,
+            max_iter=self.n_iter,
+            current_iter=epoch / self.coarse_training_frac,
+            learning_rate=self.learning_rate,
+        )
 
     def calculate_quantization_error(self, X: npt.ArrayLike) -> float:
         """Return the average distance from each sample to the nearest prototype.
