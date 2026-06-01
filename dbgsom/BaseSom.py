@@ -208,13 +208,19 @@ class BaseSom(BaseEstimator, ABC):
         # Initialization
 
         if y is None:
-            X = validate_data(self, X, dtype=None, ensure_min_samples=4)
+            X = validate_data(self, X, dtype="numeric", ensure_min_samples=4)
 
         elif y is not None:
-            X, y = validate_data(self, X, y, dtype=None, ensure_min_samples=4)
+            X, y = validate_data(self, X, y, dtype="numeric", ensure_min_samples=4)
             check_classification_targets(y)
             classes, y = np.unique(y, return_inverse=True)
             self.classes_ = np.array(classes)
+        if self.sigma_fine is not None and self.sigma_end is not None:
+            if self.sigma_fine > self.sigma_end:
+                raise ValueError(
+                    f"sigma_fine={self.sigma_fine} must be"
+                    f" <= sigma_end={self.sigma_end}."
+                )
         if self.metric == "cosine":
             X = normalize(X)
         local_qe_0 = float(np.sum(np.linalg.norm(X - X.mean(axis=0), axis=1)))
@@ -690,7 +696,7 @@ class BaseSom(BaseEstimator, ABC):
             disable=not self.verbose,
             unit=" epochs",
         ):
-            print(self._calculate_current_sigma())
+            # print(self._calculate_current_sigma())
             self._current_epoch = current_epoch
             if current_epoch > self.coarse_training_frac * self.n_iter:
                 self._training_phase = "fine"
@@ -833,7 +839,8 @@ class BaseSom(BaseEstimator, ABC):
         # Step 5
         if self.metric == "cosine":
             new_weights = normalize(new_weights)
-        if np.linalg.norm(self.weights_ - new_weights) < self.convergence_threshold:
+        delta = self.weights_.astype(np.float64) - new_weights.astype(np.float64)
+        if np.linalg.norm(delta) < self.convergence_threshold:
             self.converged_ = True
         self.weights_ = new_weights
         nx.set_node_attributes(
@@ -1307,7 +1314,7 @@ def numba_voronoi_set_centers(
     index: npt.NDArray,
 ) -> np.ndarray:
     """Calculate the centers of the Voronoi regions based on the winners and data arrays."""
-    voronoi_set_centers = np.zeros(shape=shape)
+    voronoi_set_centers = np.zeros(shape=shape, dtype=data.dtype)
     for i in nb.prange(groups.size):
         group_start = offsets[i]
         group_end = offsets[i + 1] if i + 1 < groups.size else index.size
@@ -1341,7 +1348,7 @@ def numba_find_winners_cosine(
     n_features = data.shape[1]
     n_neurons = weights.shape[0]
     winners = np.empty(n_samples, dtype=np.int64)
-    distances = np.empty(n_samples, dtype=np.float64)
+    distances = np.empty(n_samples, dtype=data.dtype)
     for i in nb.prange(n_samples):  # type: ignore[attr-defined]
         best_sim = -np.inf
         best_j = 0
@@ -1366,7 +1373,7 @@ def numba_find_winners(
     n_features = data.shape[1]
     n_neurons = weights.shape[0]
     winners = np.empty(n_samples, dtype=np.int64)
-    distances = np.empty(n_samples, dtype=np.float64)
+    distances = np.empty(n_samples, dtype=data.dtype)
     for i in nb.prange(n_samples):  # ty:ignore[not-iterable]
         best_dist_sq = np.inf
         best_j = 0
