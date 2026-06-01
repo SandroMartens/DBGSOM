@@ -109,13 +109,14 @@ class BaseSom(BaseEstimator, ABC):
 
     def __init__(
         self,
-        n_iter: int = 200,
-        convergence_iter: int = 1,
+        n_iter: int = 500,
+        convergence_iter: int = 50,
         spreading_factor: float = 0.5,
         sigma_start: float | None = None,
         sigma_end: float | None = None,
         vertical_growth: bool = False,
         decay_function: str = "exponential",
+        neighborhood_function: str = "gaussian",
         learning_rate: float = 0.02,
         verbose: bool = False,
         coarse_training_frac: float = 0.5,
@@ -136,6 +137,7 @@ class BaseSom(BaseEstimator, ABC):
         self.sigma_start = sigma_start
         self.sigma_end = sigma_end
         self.decay_function = decay_function
+        self.neighborhood_function = neighborhood_function
         self.learning_rate = learning_rate
         self.verbose = verbose
         self.coarse_training_frac = coarse_training_frac
@@ -162,6 +164,7 @@ class BaseSom(BaseEstimator, ABC):
         "sigma_start": [Interval(Real, 0, None, closed="neither"), None],
         "sigma_end": [Interval(Real, 0, None, closed="neither"), None],
         "decay_function": [StrOptions({"exponential", "linear"})],
+        "neighborhood_function": [StrOptions({"gaussian", "cutgauss"})],
         "threshold_method": [StrOptions({"classical", "se"})],
         "growth_criterion": [StrOptions({"entropy", "quantization_error"})],
         "tau_2": [Interval(Real, 0, 1, closed="neither")],
@@ -193,10 +196,10 @@ class BaseSom(BaseEstimator, ABC):
         # Initialization
 
         if y is None:
-            X = validate_data(self, X, ensure_min_samples=4)
+            X = validate_data(self, X, dtype=None, ensure_min_samples=4)
 
         elif y is not None:
-            X, y = validate_data(self, X, y, ensure_min_samples=4)
+            X, y = validate_data(self, X, y, dtype=None, ensure_min_samples=4)
             check_classification_targets(y)
             classes, y = np.unique(y, return_inverse=True)
             self.classes_ = np.array(classes)
@@ -825,12 +828,15 @@ class BaseSom(BaseEstimator, ABC):
         )
 
     def _calculate_gaussian_neighborhood(self) -> npt.NDArray:
-        """Calculate the gaussian neighborhood function for all neuron
-        pairs using the distance matrix.
+        """Calculate the neighborhood function for all neuron pairs.
+
+        "gaussian"  : standard Gaussian over graph distances
+        "cutgauss"  : Gaussian with flanks set to zero beyond 2 * sigma
         """
         sigma = self._calculate_current_sigma()
         h = np.exp(-(self._distance_matrix**2 / (2 * sigma**2)))
-
+        if self.neighborhood_function == "cutgauss":
+            h *= self._distance_matrix <= 2 * sigma
         return h
 
     def _calculate_exp_similarity(self, distances: np.ndarray) -> npt.NDArray:
@@ -1063,7 +1069,7 @@ class BaseSom(BaseEstimator, ABC):
             sigma_start = self.sigma_start
 
         if self.sigma_end is None:
-            sigma_end = max(0.7, 0.05 * sqrt(n_neurons))
+            sigma_end = max(1, 0.05 * sqrt(n_neurons))
         else:
             sigma_end = self.sigma_end
 
