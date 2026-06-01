@@ -45,11 +45,12 @@ class BaseSom(BaseEstimator, ABC):
 
     Parameters
     ----------
-    n_iter : int, default=200
+    n_iter : int, default=500
         Maximum number of iterations for training.
 
-    convergence_iter : int, default=1
-        Number of iterations to check for convergence.
+    convergence_iter : int, default=50
+        Number of epochs without growth before a convergence check triggers
+        the next growth step or the transition to fine training.
 
     spreading_factor : float, default=0.5
         Factor controlling the spread of neuron activation.
@@ -58,7 +59,14 @@ class BaseSom(BaseEstimator, ABC):
         Initial standard deviation for the neighborhood function.
 
     sigma_end : float or None, default=None
-        Final standard deviation for the neighborhood function.
+        Minimum standard deviation reached at the end of the coarse training
+        phase. Controls how tight the neighborhood gets before each growth
+        step. Defaults to ``max(1, 0.05 * sqrt(n_neurons))``.
+
+    sigma_fine : float or None, default=None
+        Fixed standard deviation used throughout the fine training phase.
+        Small values (~0.1) concentrate updates on the BMU and minimise the
+        quantization error, as recommended by Kohonen. Defaults to 0.1.
 
     vertical_growth : bool, default=False
         Whether to allow vertical growth of the map.
@@ -114,6 +122,7 @@ class BaseSom(BaseEstimator, ABC):
         spreading_factor: float = 0.5,
         sigma_start: float | None = None,
         sigma_end: float | None = None,
+        sigma_fine: float | None = None,
         vertical_growth: bool = False,
         decay_function: str = "exponential",
         neighborhood_function: str = "gaussian",
@@ -136,6 +145,7 @@ class BaseSom(BaseEstimator, ABC):
         self.convergence_iter = convergence_iter
         self.sigma_start = sigma_start
         self.sigma_end = sigma_end
+        self.sigma_fine = sigma_fine
         self.decay_function = decay_function
         self.neighborhood_function = neighborhood_function
         self.learning_rate = learning_rate
@@ -163,6 +173,7 @@ class BaseSom(BaseEstimator, ABC):
         "convergence_threshold": [Interval(Real, 0, None, closed="neither")],
         "sigma_start": [Interval(Real, 0, None, closed="neither"), None],
         "sigma_end": [Interval(Real, 0, None, closed="neither"), None],
+        "sigma_fine": [Interval(Real, 0, None, closed="neither"), None],
         "decay_function": [StrOptions({"exponential", "linear"})],
         "neighborhood_function": [StrOptions({"gaussian", "cutgauss"})],
         "threshold_method": [StrOptions({"classical", "se"})],
@@ -678,6 +689,7 @@ class BaseSom(BaseEstimator, ABC):
             disable=not self.verbose,
             unit=" epochs",
         ):
+            print(self._calculate_current_sigma())
             self._current_epoch = current_epoch
             if current_epoch > self.coarse_training_frac * self.n_iter:
                 self._training_phase = "fine"
@@ -1051,55 +1063,73 @@ class BaseSom(BaseEstimator, ABC):
                 self.som_.add_edge(node, nbr)
 
     def _calculate_current_sigma(self) -> float:
-        """Return the neighborhood bandwidth for each epoch.
-        If no sigma is given, the starting bandwidth is set to
-        0.2 * sqrt(n_neurons) and the ending bandwidth is set to
-        max(0,7, 0.05 * sqrt(n_neurons)) where n_neurons is the
-        number of neurons in the graph in the current epoch.
+        """Return the neighborhood bandwidth for the current epoch.
 
-        Returns:
-            float: The neighborhood bandwidth for each epoch.
+        Coarse phase: returns ``_sigma_coarse``, which is reset to a
+        decayed value via ``_compute_decayed_sigma`` after each growth step.
+        Defaults to ``0.2 * sqrt(n_neurons)`` at the start.
+
+        Fine phase: returns ``sigma_fine`` if set, otherwise 0.1.
+
+        Returns
+        -------
+        float
+            Neighborhood bandwidth for the current epoch.
 
         """
-        epoch = self._current_epoch
         n_neurons = self.som_.number_of_nodes()
-        if self.sigma_start is None:
-            sigma_start = 0.2 * sqrt(n_neurons)
-        else:
-            sigma_start = self.sigma_start
-
-        if self.sigma_end is None:
-            sigma_end = max(1, 0.05 * sqrt(n_neurons))
-        else:
-            sigma_end = self.sigma_end
+        sigma_start = (
+            0.2 * sqrt(n_neurons) if self.sigma_start is None else self.sigma_start
+        )
 
         if self._training_phase == "coarse":
             if self._sigma_coarse is None:
                 self._sigma_coarse = sigma_start
             return self._sigma_coarse
         else:
-            sigma = sigma_end
-
-        return sigma
+            return self.sigma_fine if self.sigma_fine is not None else 0.1
 
     def _compute_decayed_sigma(self, epoch: int) -> float:
-        """Return the decay-function sigma value at a given epoch."""
+        """Return the new ``_sigma_coarse`` value after a growth step.
+
+        Called once per growth step. Applies the configured decay function
+        (exponential or linear) to interpolate between ``sigma_start`` and
+        ``sigma_end`` based on the current epoch, so the coarse neighborhood
+        shrinks progressively as the map grows.
+
+        The epoch is normalized so that ``current_iter = n_iter`` at the end
+        of the coarse phase (``epoch = coarse_training_frac * n_iter``).
+        For exponential decay the learning rate is derived from ``n_iter`` so
+        that exactly 99 % of the drop from ``sigma_start`` to ``sigma_end``
+        is completed by that point: ``lr = log(100) / n_iter``.
+
+        Parameters
+        ----------
+        epoch : int
+            Current training epoch at the time of the growth step.
+
+        Returns
+        -------
+        float
+            Decayed sigma value to assign to ``_sigma_coarse``.
+
+        """
         n_neurons = self.som_.number_of_nodes()
         sigma_start = (
             0.2 * sqrt(n_neurons) if self.sigma_start is None else self.sigma_start
         )
         sigma_end = (
-            max(0.7, 0.05 * sqrt(n_neurons))
-            if self.sigma_end is None
-            else self.sigma_end
+            max(1, 0.05 * sqrt(n_neurons)) if self.sigma_end is None else self.sigma_end
         )
+        # lr chosen so exp(-lr * n_iter) = 0.01, i.e. 99 % decay at end of coarse phase
+        normalized_lr = log(100) / self.n_iter * self.coarse_training_frac
         decay_fn = _DECAY_FUNCTIONS[self.decay_function]
         return decay_fn(
             sigma_end=sigma_end,
             sigma_start=sigma_start,
             max_iter=self.n_iter,
             current_iter=epoch / self.coarse_training_frac,
-            learning_rate=self.learning_rate,
+            learning_rate=normalized_lr,
         )
 
     def calculate_quantization_error(self, X: npt.ArrayLike) -> float:
