@@ -1122,7 +1122,7 @@ class BaseSom(BaseEstimator, ABC):
             max(1, 0.05 * sqrt(n_neurons)) if self.sigma_end is None else self.sigma_end
         )
         # lr chosen so exp(-lr * n_iter) = 0.01, i.e. 99 % decay at end of coarse phase
-        normalized_lr = log(100) / self.n_iter * self.coarse_training_frac
+        normalized_lr = log(100) / self.n_iter
         decay_fn = _DECAY_FUNCTIONS[self.decay_function]
         return decay_fn(
             sigma_end=sigma_end,
