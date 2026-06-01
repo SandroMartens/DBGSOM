@@ -56,17 +56,18 @@ class BaseSom(BaseEstimator, ABC):
         Factor controlling the spread of neuron activation.
 
     sigma_start : float or None, default=None
-        Initial standard deviation for the neighborhood function.
+        Initial standard deviation of the neighborhood function at the start
+        of coarse training. Defaults to ``0.2 * sqrt(self.n_neurons)``
 
     sigma_end : float or None, default=None
-        Minimum standard deviation reached at the end of the coarse training
-        phase. Controls how tight the neighborhood gets before each growth
-        step. Defaults to ``max(1, 0.05 * sqrt(n_neurons))``.
+        Target standard deviation at the end of coarse training. Defaults to
+        ``0.05 * sqrt(self.n_neurons)`` (~5% of map length).
 
     sigma_fine : float or None, default=None
         Fixed standard deviation used throughout the fine training phase.
+        If set to None is gets set to sigma_end.
         Small values (~0.1) concentrate updates on the BMU and minimise the
-        quantization error, as recommended by Kohonen. Defaults to 0.1.
+        quantization error, as recommended by Kohonen.
 
     vertical_growth : bool, default=False
         Whether to allow vertical growth of the map.
@@ -1079,7 +1080,9 @@ class BaseSom(BaseEstimator, ABC):
         """
         n_neurons = self.som_.number_of_nodes()
         sigma_start = (
-            0.2 * sqrt(n_neurons) if self.sigma_start is None else self.sigma_start
+            0.2 * (sqrt(n_neurons) - 1)
+            if self.sigma_start is None
+            else self.sigma_start
         )
 
         if self._training_phase == "coarse":
@@ -1087,7 +1090,7 @@ class BaseSom(BaseEstimator, ABC):
                 self._sigma_coarse = sigma_start
             return self._sigma_coarse
         else:
-            return self.sigma_fine if self.sigma_fine is not None else 0.1
+            return self._sigma_coarse if self.sigma_fine is None else 0.1
 
     def _compute_decayed_sigma(self, epoch: int) -> float:
         """Return the new ``_sigma_coarse`` value after a growth step.
@@ -1118,9 +1121,7 @@ class BaseSom(BaseEstimator, ABC):
         sigma_start = (
             0.2 * sqrt(n_neurons) if self.sigma_start is None else self.sigma_start
         )
-        sigma_end = (
-            max(1, 0.05 * sqrt(n_neurons)) if self.sigma_end is None else self.sigma_end
-        )
+        sigma_end = 0.05 * sqrt(n_neurons) if self.sigma_end is None else self.sigma_end
         # lr chosen so exp(-lr * n_iter) = 0.01, i.e. 99 % decay at end of coarse phase
         normalized_lr = log(100) / self.n_iter
         decay_fn = _DECAY_FUNCTIONS[self.decay_function]
