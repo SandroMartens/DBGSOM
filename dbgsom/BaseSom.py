@@ -175,6 +175,7 @@ class BaseSom(BaseEstimator, ABC):
         "sigma_start": [Interval(Real, 0, None, closed="neither"), None],
         "sigma_end": [Interval(Real, 0, None, closed="neither"), None],
         "sigma_fine": [Interval(Real, 0, None, closed="neither"), None],
+        # "sigma_fine": [Interval(Real, 0, self.sigma_end, closed="neither"), None],
         "decay_function": [StrOptions({"exponential", "linear"})],
         "neighborhood_function": [StrOptions({"gaussian", "cutgauss"})],
         "threshold_method": [StrOptions({"classical", "se"})],
@@ -205,7 +206,7 @@ class BaseSom(BaseEstimator, ABC):
             Trained estimator
 
         """
-        # Initialization
+        self._validate_params()
 
         if y is None:
             X = validate_data(self, X, dtype="numeric", ensure_min_samples=4)
