@@ -48,10 +48,6 @@ class BaseSom(BaseEstimator, ABC):
     n_iter : int, default=500
         Maximum number of iterations for training.
 
-    convergence_iter : int, default=50
-        Number of epochs without growth before a convergence check triggers
-        the next growth step or the transition to fine training.
-
     spreading_factor : float, default=0.5
         Factor controlling the spread of neuron activation.
 
@@ -74,9 +70,6 @@ class BaseSom(BaseEstimator, ABC):
 
     decay_function : str, default="exponential"
         Decay function for the learning rate and neighborhood. Options: "exponential", "linear".
-
-    learning_rate : float, default=0.02
-        Learning rate for weight updates.
 
     verbose : bool, default=False
         Whether to print training progress.
@@ -119,7 +112,6 @@ class BaseSom(BaseEstimator, ABC):
     def __init__(
         self,
         n_iter: int = 500,
-        convergence_iter: int = 50,
         spreading_factor: float = 0.5,
         sigma_start: float | None = None,
         sigma_end: float | None = None,
@@ -127,7 +119,6 @@ class BaseSom(BaseEstimator, ABC):
         vertical_growth: bool = False,
         decay_function: str = "exponential",
         neighborhood_function: str = "gaussian",
-        learning_rate: float = 0.02,
         verbose: bool = False,
         coarse_training_frac: float = 0.5,
         random_state: int | None | np.random.RandomState = None,
@@ -143,13 +134,11 @@ class BaseSom(BaseEstimator, ABC):
         super().__init__()
         self.spreading_factor = spreading_factor
         self.n_iter = n_iter
-        self.convergence_iter = convergence_iter
         self.sigma_start = sigma_start
         self.sigma_end = sigma_end
         self.sigma_fine = sigma_fine
         self.decay_function = decay_function
         self.neighborhood_function = neighborhood_function
-        self.learning_rate = learning_rate
         self.verbose = verbose
         self.coarse_training_frac = coarse_training_frac
         self.random_state = random_state
@@ -165,11 +154,9 @@ class BaseSom(BaseEstimator, ABC):
 
     _parameter_constraints = {
         "n_iter": [Interval(Integral, 1, None, closed="left")],
-        "convergence_iter": [Interval(Integral, 1, None, closed="left")],
         "max_neurons": [Interval(Integral, 4, None, closed="left")],
         "min_samples_vertical_growth": [Interval(Integral, 1, None, closed="left")],
         "spreading_factor": [Interval(Real, 0, 1, closed="neither")],
-        "learning_rate": [Interval(Real, 0, None, closed="neither")],
         "coarse_training_frac": [Interval(Real, 0, 1, closed="neither")],
         "convergence_threshold": [Interval(Real, 0, None, closed="neither")],
         "sigma_start": [Interval(Real, 0, None, closed="neither"), None],
@@ -210,12 +197,12 @@ class BaseSom(BaseEstimator, ABC):
 
         if y is None:
             X = validate_data(self, X, dtype="numeric", ensure_min_samples=4)
-
         elif y is not None:
             X, y = validate_data(self, X, y, dtype="numeric", ensure_min_samples=4)
             check_classification_targets(y)
             classes, y = np.unique(y, return_inverse=True)
             self.classes_ = np.array(classes)
+
         if self.sigma_fine is not None and self.sigma_end is not None:
             if self.sigma_fine > self.sigma_end:
                 raise ValueError(
@@ -224,6 +211,7 @@ class BaseSom(BaseEstimator, ABC):
                 )
         if self.metric == "cosine":
             X = normalize(X)
+
         local_qe_0 = float(np.sum(np.linalg.norm(X - X.mean(axis=0), axis=1)))
         if not hasattr(self, "qe_0_"):
             self.qe_0_ = local_qe_0
@@ -232,6 +220,15 @@ class BaseSom(BaseEstimator, ABC):
 
         # Horizontal growing phase
         self._grow_som(X, y)
+        if len(self.neurons_) == 4:
+            import warnings
+
+            warnings.warn(
+                "No growth occurred during training. The map stayed at 4 neurons. "
+                "Consider lowering convergence_threshold or increasing spreading_factor.",
+                UserWarning,
+                stacklevel=2,
+            )
         # self.rep = self._calculate_rep(X)
         self.topographic_error_ = self._calculate_topographic_error(X)
         distances, _ = self._get_winning_neurons(X, n_bmu=1)
@@ -641,7 +638,6 @@ class BaseSom(BaseEstimator, ABC):
         """
         self._current_epoch = 0
         self.converged_ = False
-        self._last_growth_epoch = -1
         self._sigma_coarse: float | None = None
         self._training_phase = "coarse"
         self.growing_threshold_ = self._calculate_growing_threshold(data)
@@ -716,17 +712,15 @@ class BaseSom(BaseEstimator, ABC):
             if self.converged_ and self._training_phase == "fine":
                 break
 
-            epochs_since_growth = current_epoch - self._last_growth_epoch
             if (
                 self._training_phase == "coarse"
                 and len(self.neurons_) < self.max_neurons
-                and (self.converged_ or epochs_since_growth >= self.convergence_iter)
+                and self.converged_
             ):
                 converged_triggered = self.converged_
                 self._distribute_errors()
                 self._add_new_neurons()
                 self.converged_ = False
-                self._last_growth_epoch = current_epoch
                 self._sigma_coarse = self._compute_decayed_sigma(current_epoch)
                 if converged_triggered and not self._neurons_added:
                     self._training_phase = "fine"
