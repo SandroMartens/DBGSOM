@@ -484,7 +484,7 @@ contained subobjects that are estimators.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="dbgsom.SomVQ.SomVQ.plot">
-<span class="sig-name descname"><span class="pre">plot</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">color</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pointsize</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">layout</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'grid'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">palette</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'magma_r'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dbgsom.SomVQ.SomVQ.plot" title="Link to this definition">¶</a></dt>
+<span class="sig-name descname"><span class="pre">plot</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">color</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pointsize</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">layout</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'grid'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">palette</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'magma_r'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">X</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dbgsom.SomVQ.SomVQ.plot" title="Link to this definition">¶</a></dt>
 <dd><p>Plot the SOM neurons and their neighbourhood edges using seaborn objects.</p>
 <p>Edges are drawn first as grey lines; nodes are drawn on top and can be
 colour- and size-coded by any node attribute stored in the graph.</p>
@@ -517,6 +517,11 @@ reflect the principal directions of variance in feature space.</p>
 </dl>
 </p></li>
 <li><p><strong>palette</strong> (str, default <code class="docutils literal notranslate"><span class="pre">'magma_r'</span></code>) – Seaborn / Matplotlib colormap name applied to the colour mapping.</p></li>
+<li><p><strong>X</strong> (<em>array-like</em><em> of </em><em>shape</em><em> (</em><em>n_samples</em><em>, </em><em>n_features</em><em>)</em><em>, </em><em>optional</em>) – Training data used to fit the PCA basis when <code class="docutils literal notranslate"><span class="pre">color='pca_rgb'</span></code>
+or <code class="docutils literal notranslate"><span class="pre">layout='pca'</span></code>.  When provided, PCA is fit on <em>X</em> and the
+weight vectors are projected into that space, yielding components
+aligned with the true data variance.  When <code class="docutils literal notranslate"><span class="pre">None</span></code> (default),
+PCA is fit directly on the weight vectors.</p></li>
 </ul>
 </dd>
 </dl>
@@ -870,7 +875,7 @@ contained subobjects that are estimators.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="dbgsom.SomClassifier.SomClassifier.plot">
-<span class="sig-name descname"><span class="pre">plot</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">color</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pointsize</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">layout</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'grid'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">palette</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'magma_r'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dbgsom.SomClassifier.SomClassifier.plot" title="Link to this definition">¶</a></dt>
+<span class="sig-name descname"><span class="pre">plot</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">color</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pointsize</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">layout</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'grid'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">palette</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'magma_r'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">X</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dbgsom.SomClassifier.SomClassifier.plot" title="Link to this definition">¶</a></dt>
 <dd><p>Plot the SOM neurons and their neighbourhood edges using seaborn objects.</p>
 <p>Edges are drawn first as grey lines; nodes are drawn on top and can be
 colour- and size-coded by any node attribute stored in the graph.</p>
@@ -903,6 +908,11 @@ reflect the principal directions of variance in feature space.</p>
 </dl>
 </p></li>
 <li><p><strong>palette</strong> (str, default <code class="docutils literal notranslate"><span class="pre">'magma_r'</span></code>) – Seaborn / Matplotlib colormap name applied to the colour mapping.</p></li>
+<li><p><strong>X</strong> (<em>array-like</em><em> of </em><em>shape</em><em> (</em><em>n_samples</em><em>, </em><em>n_features</em><em>)</em><em>, </em><em>optional</em>) – Training data used to fit the PCA basis when <code class="docutils literal notranslate"><span class="pre">color='pca_rgb'</span></code>
+or <code class="docutils literal notranslate"><span class="pre">layout='pca'</span></code>.  When provided, PCA is fit on <em>X</em> and the
+weight vectors are projected into that space, yielding components
+aligned with the true data variance.  When <code class="docutils literal notranslate"><span class="pre">None</span></code> (default),
+PCA is fit directly on the weight vectors.</p></li>
 </ul>
 </dd>
 </dl>
