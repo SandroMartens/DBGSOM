@@ -383,6 +383,7 @@ class BaseSom(BaseEstimator, ABC):
         pointsize: str | None = None,
         layout: str = "grid",
         palette: str = "magma_r",
+        X: np.ndarray | None = None,
     ) -> so.Plot:
         """Plot the SOM neurons and their neighbourhood edges using seaborn objects.
 
@@ -420,11 +421,18 @@ class BaseSom(BaseEstimator, ABC):
         palette : str, default ``'magma_r'``
             Seaborn / Matplotlib colormap name applied to the colour mapping.
 
+        X : array-like of shape (n_samples, n_features), optional
+            Training data used to fit the PCA basis when ``color='pca_rgb'``
+            or ``layout='pca'``.  When provided, PCA is fit on *X* and the
+            weight vectors are projected into that space, yielding components
+            aligned with the true data variance.  When ``None`` (default),
+            PCA is fit directly on the weight vectors.
+
         """
         check_is_fitted(self)
 
         nodes = list(self.som_.nodes)
-        pos = self._compute_graph_layout(layout, nodes)
+        pos = self._compute_graph_layout(layout, nodes, X=X)
 
         # -- Node DataFrame ---------------------------------------------------
         node_data = pd.DataFrame(dict(self.som_.nodes)).T.reset_index(drop=True)
@@ -467,7 +475,9 @@ class BaseSom(BaseEstimator, ABC):
         # -- Aesthetic mappings -----------------------------------------------
         node_aesthetics: dict[str, str] = {}
 
-        color_col, color_scale = self._resolve_color_aesthetic(nodes_df, color, palette)
+        color_col, color_scale = self._resolve_color_aesthetic(
+            nodes_df, color, palette, X=X
+        )
         if color_col is not None:
             node_aesthetics["color"] = color_col
 
@@ -500,6 +510,7 @@ class BaseSom(BaseEstimator, ABC):
         nodes_df: pd.DataFrame,
         color: str | None,
         palette: str,
+        X: np.ndarray | None = None,
     ) -> tuple[str | None, "so.Scale | None"]:
         """Resolve the colour aesthetic and build the matching seaborn scale.
 
@@ -513,7 +524,7 @@ class BaseSom(BaseEstimator, ABC):
 
         """
         if color == "pca_rgb":
-            hex_colors = self._compute_pca_rgb_colors()
+            hex_colors = self._compute_pca_rgb_colors(X=X)
             nodes_df["pca_rgb"] = hex_colors
             return "pca_rgb", so.Nominal(values={c: c for c in hex_colors})
 
@@ -546,7 +557,7 @@ class BaseSom(BaseEstimator, ABC):
         colors = sns.color_palette(palette, n_colors=series.nunique())
         return so.Nominal(values=list(colors))
 
-    def _compute_pca_rgb_colors(self) -> list[str]:
+    def _compute_pca_rgb_colors(self, X: np.ndarray | None = None) -> list[str]:
         """Project weight vectors to 3-D with PCA and map to RGB hex strings.
 
         Each of the three principal components is independently min-max
@@ -554,6 +565,12 @@ class BaseSom(BaseEstimator, ABC):
         respectively.  Neurons with similar weight vectors receive similar
         colours; the resulting colour pattern reveals the topological
         structure of the feature space.
+
+        Parameters
+        ----------
+        X : array-like of shape (n_samples, n_features), optional
+            When provided, PCA is fit on *X* and the weights are projected
+            into that space.  When ``None``, PCA is fit on the weights directly.
 
         Returns
         -------
@@ -564,8 +581,10 @@ class BaseSom(BaseEstimator, ABC):
         """
         from sklearn.decomposition import PCA
 
-        n_components = min(3, self.weights_.shape[1], self.weights_.shape[0])
-        components = PCA(n_components=n_components).fit_transform(self.weights_)
+        fit_data = X if X is not None else self.weights_
+        n_components = min(3, self.weights_.shape[1], fit_data.shape[0])
+        pca = PCA(n_components=n_components).fit(fit_data)
+        components = pca.transform(self.weights_)
 
         # Min-max normalise each component independently to [0, 1]
         col_min = components.min(axis=0)
@@ -583,14 +602,17 @@ class BaseSom(BaseEstimator, ABC):
             for r, g, b in components_norm
         ]
 
-    def _compute_graph_layout(self, layout: str, nodes: list) -> dict:
+    def _compute_graph_layout(
+        self, layout: str, nodes: list, X: np.ndarray | None = None
+    ) -> dict:
         """Return a ``{node: (x, y)}`` position dict for the given layout strategy."""
         if layout == "grid":
             return {n: n for n in nodes}
         if layout == "pca":
             from sklearn.decomposition import PCA
 
-            coords = PCA(n_components=2).fit_transform(self.weights_)
+            fit_data = X if X is not None else self.weights_
+            coords = PCA(n_components=2).fit(fit_data).transform(self.weights_)
             return {n: coords[i] for i, n in enumerate(nodes)}
         raise ValueError(f"Unknown layout {layout!r}. Choose from 'grid', 'pca'.")
 
@@ -1072,7 +1094,7 @@ class BaseSom(BaseEstimator, ABC):
         decayed value via ``_compute_decayed_sigma`` after each growth step.
         Defaults to ``0.2 * sqrt(n_neurons)`` at the start.
 
-        Fine phase: returns ``sigma_fine`` if set, otherwise 0.1.
+        Fine phase: returns ``sigma_fine`` if set, otherwise _sigma_coarse.
 
         Returns
         -------
@@ -1092,7 +1114,7 @@ class BaseSom(BaseEstimator, ABC):
                 self._sigma_coarse = sigma_start
             return self._sigma_coarse
         else:
-            return self._sigma_coarse if self.sigma_fine is None else 0.1
+            return self._sigma_coarse if self.sigma_fine is None else self.sigma_fine
 
     def _compute_decayed_sigma(self, epoch: int) -> float:
         """Return the new ``_sigma_coarse`` value after a growth step.
