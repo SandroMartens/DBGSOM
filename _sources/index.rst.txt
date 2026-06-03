@@ -31,7 +31,7 @@ User Guide
    user_guide
    plotting
    algorithm
-   examples
+   auto_examples/index
    api
 
 

@@ -3,10 +3,10 @@
   <head><meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
-<link rel="index" title="Index" href="genindex.html"><link rel="search" title="Search" href="search.html"><link rel="next" title="Plotting Results" href="plotting.html"><link rel="prev" title="Welcome to DBGSOM’s documentation!" href="index.html">
+<link rel="index" title="Index" href="genindex.html"><link rel="search" title="Search" href="search.html">
 
     <!-- Generated with Sphinx 9.1.0 and Furo 2025.12.19 -->
-        <title>User Guide - DBGSOM 1.2.3 documentation</title>
+        <title>Computation times - DBGSOM 1.2.3 documentation</title>
       <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="_static/styles/furo.css?v=7bdb33bb" />
     <link rel="stylesheet" type="text/css" href="_static/sg_gallery.css?v=fd6457a4" />
@@ -176,7 +176,7 @@
           <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
         </button>
       </div>
-      <label class="toc-overlay-icon toc-header-icon" for="__toc">
+      <label class="toc-overlay-icon toc-header-icon no-toc" for="__toc">
         <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
       </label>
     </div>
@@ -195,8 +195,8 @@
 </form>
 <div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
   <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
-<ul class="current">
-<li class="toctree-l1 current current-page"><a class="current reference internal" href="#">User Guide</a></li>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="user_guide.html">User Guide</a></li>
 <li class="toctree-l1"><a class="reference internal" href="plotting.html">Plotting Results</a></li>
 <li class="toctree-l1"><a class="reference internal" href="algorithm.html">Algorithm</a></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="auto_examples/index.html">Examples</a><input aria-label="Toggle navigation of Examples" class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
@@ -225,7 +225,7 @@
         </a>
         <div class="content-icon-container">
           <div class="view-this-page">
-  <a class="muted-link" href="_sources/user_guide.rst.txt" title="View this page">
+  <a class="muted-link" href="_sources/sg_execution_times.rst.txt" title="View this page">
     <svg><use href="#svg-eye"></use></svg>
     <span class="visually-hidden">View this page</span>
   </a>
@@ -238,90 +238,47 @@
               <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
             </button>
           </div>
-          <label class="toc-overlay-icon toc-content-icon" for="__toc">
+          <label class="toc-overlay-icon toc-content-icon no-toc" for="__toc">
             <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
           </label>
         </div>
         <article role="main" id="furo-main-content">
-          <section id="user-guide">
-<h1>User Guide<a class="headerlink" href="#user-guide" title="Link to this heading">¶</a></h1>
-<p>Both <code class="docutils literal notranslate"><span class="pre">SomClassifier</span></code> and <code class="docutils literal notranslate"><span class="pre">SomVQ</span></code> implement the scikit-learn API and can be used as drop-in replacements for other scikit-learn estimators, including full compatibility with <code class="docutils literal notranslate"><span class="pre">Pipeline</span></code>, <code class="docutils literal notranslate"><span class="pre">GridSearchCV</span></code>, and <code class="docutils literal notranslate"><span class="pre">cross_val_score</span></code>.</p>
-<section id="key-parameters">
-<h2>Key Parameters<a class="headerlink" href="#key-parameters" title="Link to this heading">¶</a></h2>
-<p>Both estimators share the following most important parameters:</p>
-<ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">spreading_factor</span></code> (default 0.5) — controls the growing threshold. Higher values produce more neurons and finer resolution; lower values produce fewer neurons.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">max_neurons</span></code> (default 100) — hard upper limit on the number of neurons.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">n_iter</span></code> (default 500) — maximum number of training epochs.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">metric</span></code> (default <code class="docutils literal notranslate"><span class="pre">&quot;euclidean&quot;</span></code>) — distance metric; <code class="docutils literal notranslate"><span class="pre">&quot;cosine&quot;</span></code> is also supported.</p></li>
-</ul>
-</section>
-<section id="classification">
-<h2>Classification<a class="headerlink" href="#classification" title="Link to this heading">¶</a></h2>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">dbgsom</span><span class="w"> </span><span class="kn">import</span> <span class="n">SomClassifier</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">sklearn.datasets</span><span class="w"> </span><span class="kn">import</span> <span class="n">load_digits</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">sklearn.model_selection</span><span class="w"> </span><span class="kn">import</span> <span class="n">train_test_split</span>
-
-<span class="n">X</span><span class="p">,</span> <span class="n">y</span> <span class="o">=</span> <span class="n">load_digits</span><span class="p">(</span><span class="n">return_X_y</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-<span class="n">X_train</span><span class="p">,</span> <span class="n">X_test</span><span class="p">,</span> <span class="n">y_train</span><span class="p">,</span> <span class="n">y_test</span> <span class="o">=</span> <span class="n">train_test_split</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">random_state</span><span class="o">=</span><span class="mi">42</span><span class="p">)</span>
-
-<span class="n">clf</span> <span class="o">=</span> <span class="n">SomClassifier</span><span class="p">(</span><span class="n">spreading_factor</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">max_neurons</span><span class="o">=</span><span class="mi">80</span><span class="p">)</span>
-<span class="n">clf</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">X_train</span><span class="p">,</span> <span class="n">y_train</span><span class="p">)</span>
-<span class="n">clf</span><span class="o">.</span><span class="n">score</span><span class="p">(</span><span class="n">X_test</span><span class="p">,</span> <span class="n">y_test</span><span class="p">)</span>
-</pre></div>
+          <section id="computation-times">
+<span id="sphx-glr-sg-execution-times"></span><h1>Computation times<a class="headerlink" href="#computation-times" title="Link to this heading">¶</a></h1>
+<p><strong>00:09.858</strong> total execution time for 2 files <strong>from all galleries</strong>:</p>
+<div class="docutils container">
+<style scoped>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet" />
+<link href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css" rel="stylesheet" />
+</style>
+<script src="https://code.jquery.com/jquery-3.7.0.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
+<script type="text/javascript" class="init">
+$(document).ready( function () {
+    $('table.sg-datatable').DataTable({order: [[1, 'desc']]});
+} );
+</script><div class="table-wrapper table table-striped sg-datatable docutils container">
+<table class="table table-striped sg-datatable docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Example</p></th>
+<th class="head"><p>Time</p></th>
+<th class="head"><p>Mem (MB)</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><a class="reference internal" href="auto_examples/plot_digit_classification.html#sphx-glr-auto-examples-plot-digit-classification-py"><span class="std std-ref">Digit Classification with SomClassifier</span></a> (<code class="docutils literal notranslate"><span class="pre">../../examples/plot_digit_classification.py</span></code>)</p></td>
+<td><p>00:09.451</p></td>
+<td><p>0.0</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="auto_examples/plot_2d_clustering.html#sphx-glr-auto-examples-plot-2d-clustering-py"><span class="std std-ref">2D Clustering with SomVQ</span></a> (<code class="docutils literal notranslate"><span class="pre">../../examples/plot_2d_clustering.py</span></code>)</p></td>
+<td><p>00:00.407</p></td>
+<td><p>0.0</p></td>
+</tr>
+</tbody>
+</table>
 </div>
-<div class="highlight-pycon notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="mf">0.9333</span><span class="o">...</span>
-</pre></div>
 </div>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">clf</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">X_test</span><span class="p">)</span>
-</pre></div>
-</div>
-<div class="highlight-pycon notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">array</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">8</span><span class="p">,</span> <span class="o">...</span><span class="p">,</span> <span class="mi">8</span><span class="p">,</span> <span class="mi">9</span><span class="p">,</span> <span class="mi">6</span><span class="p">])</span>
-</pre></div>
-</div>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">clf</span><span class="o">.</span><span class="n">predict_proba</span><span class="p">(</span><span class="n">X_test</span><span class="p">)</span>   <span class="c1"># class probability per sample</span>
-</pre></div>
-</div>
-</section>
-<section id="clustering-vector-quantization">
-<h2>Clustering / Vector Quantization<a class="headerlink" href="#clustering-vector-quantization" title="Link to this heading">¶</a></h2>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">dbgsom</span><span class="w"> </span><span class="kn">import</span> <span class="n">SomVQ</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">sklearn.datasets</span><span class="w"> </span><span class="kn">import</span> <span class="n">load_digits</span>
-
-<span class="n">X</span><span class="p">,</span> <span class="n">y</span> <span class="o">=</span> <span class="n">load_digits</span><span class="p">(</span><span class="n">return_X_y</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-
-<span class="n">som</span> <span class="o">=</span> <span class="n">SomVQ</span><span class="p">(</span><span class="n">spreading_factor</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">max_neurons</span><span class="o">=</span><span class="mi">80</span><span class="p">)</span>
-<span class="n">labels</span> <span class="o">=</span> <span class="n">som</span><span class="o">.</span><span class="n">fit_predict</span><span class="p">(</span><span class="n">X</span><span class="p">)</span>   <span class="c1"># fit and assign cluster labels in one step</span>
-</pre></div>
-</div>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">som</span><span class="o">.</span><span class="n">quantization_error_</span>   <span class="c1"># average distance from samples to their prototype</span>
-<span class="n">som</span><span class="o">.</span><span class="n">topographic_error_</span>    <span class="c1"># fraction of samples with topographic errors</span>
-<span class="n">som</span><span class="o">.</span><span class="n">n_iter_</span>               <span class="c1"># number of epochs actually used</span>
-</pre></div>
-</div>
-</section>
-<section id="transform">
-<h2>Transform<a class="headerlink" href="#transform" title="Link to this heading">¶</a></h2>
-<p>Both estimators implement <code class="docutils literal notranslate"><span class="pre">transform()</span></code>, which represents each sample as a sparse non-negative linear combination of the prototype weight vectors. This yields an <code class="docutils literal notranslate"><span class="pre">(n_samples,</span> <span class="pre">n_prototypes)</span></code> coefficient matrix useful for downstream tasks.</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">coefs</span> <span class="o">=</span> <span class="n">som</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">X</span><span class="p">)</span>   <span class="c1"># shape (n_samples, n_prototypes)</span>
-</pre></div>
-</div>
-<p>Reference: Teuvo Kohonen, <em>Description of Input Patterns by Linear Mixtures of SOM Models</em>, 2007.</p>
-</section>
-<section id="scikit-learn-integration">
-<h2>scikit-learn Integration<a class="headerlink" href="#scikit-learn-integration" title="Link to this heading">¶</a></h2>
-<p>Because both estimators follow the scikit-learn API, they work with standard tools:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">sklearn.pipeline</span><span class="w"> </span><span class="kn">import</span> <span class="n">Pipeline</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">sklearn.preprocessing</span><span class="w"> </span><span class="kn">import</span> <span class="n">StandardScaler</span>
-
-<span class="n">pipe</span> <span class="o">=</span> <span class="n">Pipeline</span><span class="p">([</span>
-    <span class="p">(</span><span class="s2">&quot;scaler&quot;</span><span class="p">,</span> <span class="n">StandardScaler</span><span class="p">()),</span>
-    <span class="p">(</span><span class="s2">&quot;som&quot;</span><span class="p">,</span> <span class="n">SomVQ</span><span class="p">(</span><span class="n">spreading_factor</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">max_neurons</span><span class="o">=</span><span class="mi">80</span><span class="p">)),</span>
-<span class="p">])</span>
-<span class="n">pipe</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">X</span><span class="p">)</span>
-</pre></div>
-</div>
-</section>
 </section>
 
         </article>
@@ -329,26 +286,8 @@
       <footer>
         
         <div class="related-pages">
-          <a class="next-page" href="plotting.html">
-              <div class="page-info">
-                <div class="context">
-                  <span>Next</span>
-                </div>
-                <div class="title">Plotting Results</div>
-              </div>
-              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
-            </a>
-          <a class="prev-page" href="index.html">
-              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
-              <div class="page-info">
-                <div class="context">
-                  <span>Previous</span>
-                </div>
-                
-                <div class="title">Home</div>
-                
-              </div>
-            </a>
+          
+          
         </div>
         <div class="bottom-of-page">
           <div class="left-details">
@@ -367,31 +306,8 @@
         
       </footer>
     </div>
-    <aside class="toc-drawer">
+    <aside class="toc-drawer no-toc">
       
-      
-      <div class="toc-sticky toc-scroll">
-        <div class="toc-title-container">
-          <span class="toc-title">
-            On this page
-          </span>
-        </div>
-        <div class="toc-tree-container">
-          <div class="toc-tree">
-            <ul>
-<li><a class="reference internal" href="#">User Guide</a><ul>
-<li><a class="reference internal" href="#key-parameters">Key Parameters</a></li>
-<li><a class="reference internal" href="#classification">Classification</a></li>
-<li><a class="reference internal" href="#clustering-vector-quantization">Clustering / Vector Quantization</a></li>
-<li><a class="reference internal" href="#transform">Transform</a></li>
-<li><a class="reference internal" href="#scikit-learn-integration">scikit-learn Integration</a></li>
-</ul>
-</li>
-</ul>
-
-          </div>
-        </div>
-      </div>
       
       
     </aside>

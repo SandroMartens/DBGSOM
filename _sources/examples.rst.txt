@@ -1,3 +1,6 @@
+:orphan:
+
 Examples
 ========
-Here are a dew example how to use the SOM in practical use cases.
+
+See :doc:`auto_examples/index` for the full example gallery.
