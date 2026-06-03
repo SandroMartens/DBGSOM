@@ -26,9 +26,15 @@ extensions = [
     "sphinx.ext.autodoc",
     "sphinx.ext.autosummary",
     "sphinx_autodoc_typehints",
-    "sphinx.ext.napoleon",  # <-- Einfach hier reinschreiben, fertig!
+    "sphinx.ext.napoleon",
+    "sphinx_gallery.gen_gallery",
 ]
 numpydoc_class_members_toctree = False
+
+sphinx_gallery_conf = {
+    "examples_dirs": "../../examples",
+    "gallery_dirs": "auto_examples",
+}
 templates_path = ["_templates"]
 exclude_patterns = []
 root_doc = "index"

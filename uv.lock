@@ -424,9 +424,12 @@ dev = [
 docs = [
     { name = "babel" },
     { name = "furo" },
+    { name = "matplotlib" },
     { name = "numpydoc" },
+    { name = "pillow" },
     { name = "sphinx" },
     { name = "sphinx-autodoc-typehints" },
+    { name = "sphinx-gallery" },
 ]
 examples = [
     { name = "ipykernel" },
@@ -461,9 +464,12 @@ dev = [
 docs = [
     { name = "babel", specifier = ">=2.18.0" },
     { name = "furo", specifier = ">=2025.12.19" },
+    { name = "matplotlib", specifier = ">=3.9.0" },
     { name = "numpydoc", specifier = ">=1.10.0" },
+    { name = "pillow", specifier = ">=11.0.0" },
     { name = "sphinx", specifier = ">=9.0.4" },
     { name = "sphinx-autodoc-typehints", specifier = ">=3.6.1" },
+    { name = "sphinx-gallery", specifier = ">=0.18.0" },
 ]
 examples = [
     { name = "ipykernel", specifier = ">=7.2.0" },
@@ -1903,6 +1909,19 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/98/0b/a866924ded68efec7a1759587a4e478aec7559d8165fac8b2ad1c0e774d6/sphinx_basic_ng-1.0.0b2.tar.gz", hash = "sha256:9ec55a47c90c8c002b5960c57492ec3021f5193cb26cebc2dc4ea226848651c9", size = 20736, upload-time = "2023-07-08T18:40:54.166Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/3c/dd/018ce05c532a22007ac58d4f45232514cd9d6dd0ee1dc374e309db830983/sphinx_basic_ng-1.0.0b2-py3-none-any.whl", hash = "sha256:eb09aedbabfb650607e9b4b68c9d240b90b1e1be221d6ad71d61c52e29f7932b", size = 22496, upload-time = "2023-07-08T18:40:52.659Z" },
+]
+
+[[package]]
+name = "sphinx-gallery"
+version = "0.21.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "pillow" },
+    { name = "sphinx" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/fb/9d/91334ba9370de74564c8a1e0c54ce1bc638b35e00177cc02cb25c9c14348/sphinx_gallery-0.21.0.tar.gz", hash = "sha256:72a7734ad9100878345b8b65c249148cc0f1cd0e274adf3e3900214e4c2c5bee", size = 483616, upload-time = "2026-04-24T03:09:28.173Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/b8/dd/d95843947392524418aa9fc4e8d205e82b4261ab2d2fab4abce7a14ee7c0/sphinx_gallery-0.21.0-py3-none-any.whl", hash = "sha256:f37bea4012f1cd7439c7782081e4259945207cf179e79b81330a6db3b18bca8b", size = 466808, upload-time = "2026-04-24T03:09:25.992Z" },
 ]
 
 [[package]]
