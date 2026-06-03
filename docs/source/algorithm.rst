@@ -4,88 +4,164 @@ Algorithm
 DBGSOM Framework
 --------------------
 
-The SOM algorithm performs in two steps. First, competition among the neurons to find the winner and second, adaptation of the weight vector of the winner neuron and its topological neighbors. Instead of being confined to a redetermined number of neurons, DBGGSOM offers a flexible structure and requires less number of epochs compared to the original SOM which enable the ability to learn the nonlinear manifolds in high dimensional feature space.
+The SOM algorithm performs in two steps. First, competition among the neurons to find the winner and second, adaptation of the weight vector of the winner neuron and its topological neighbors. Instead of being confined to a predetermined number of neurons, DBGSOM offers a flexible structure and requires fewer epochs compared to the original SOM, which enables the ability to learn the nonlinear manifolds in high-dimensional feature space.
 
-Training of the DBGGSOM starts from a small number of initial neurons to a larger map by adding new neurons inside the network. In the DBGSOM a batch growing approach for SOM called directed batch growing self-organizing map is used. It uses the accumulative error of the neurons on the grid to direct the growing phase in term of position and weight initialization of new neurons. New neurons can be added from boundaries by filling one of the adjacent free positions and assigning a proper weight vector in order to improve the topographic quality of the map and help the map to learn the manifold of the data in high dimensional feature space.
+Training of the DBGSOM starts from a small number of initial neurons to a larger map by adding new neurons inside the network. A batch growing approach for SOM called Directed Batch Growing Self-Organizing Map is used. It uses the accumulative error of the neurons on the grid to direct the growing phase in terms of position and weight initialization of new neurons. New neurons can be added from boundaries by filling one of the adjacent free positions and assigning a proper weight vector in order to improve the topographic quality of the map and help the map to learn the manifold of the data in high-dimensional feature space.
 
 Batch Learning Algorithm
 ************************
 
-For a training data, the batch learning algorithm for SOMs can be performed by presentation of an input vector :math:`x_j` to all the neurons at the same time and finds a winner neuron which the weight vector :math:`w_c` has the minimum distance to :math:`x_j`. The new weights are then calculated as
+For a training dataset, the batch learning algorithm presents all input vectors :math:`x_j` to all neurons simultaneously and finds the winner neuron whose weight vector :math:`w_c` has the minimum distance to :math:`x_j`. The new weights are then calculated as
 
 .. math::
-    w_i^{new} = \frac{\sum_{j=1}^{k}h_{c_{j, i}} x_j}{\sum_{j=1}^{k}h_{c_{j, i}}}
+    w_i^{new} = \frac{\sum_{j=1}^{k}h_{c_{j, i}} \cdot s_j \cdot x_j}{\sum_{j=1}^{k}h_{c_{j, i}} \cdot s_j}
 
-where :math:`h_{c_{j, i}}` is the Gaussian neighborhood function defined as:
+where :math:`h_{c_{j, i}}` is the neighborhood function (see below) and :math:`s_j` is a per-sample robustness weight (see `Robustness Weighting`_).
+
+Two-Phase Training
+##################
+
+Training is divided into a **coarse phase** and a **fine phase**, controlled by ``coarse_training_frac`` (default 0.5):
+
+- **Coarse phase** (first ``coarse_training_frac * n_iter`` epochs): the map grows. The neighborhood bandwidth :math:`\sigma` starts at ``sigma_start`` (default :math:`0.2 \cdot \sqrt{m}`, where :math:`m` is the current neuron count) and decays toward ``sigma_end`` (default :math:`0.05 \cdot \sqrt{m}`) after each growth step.
+- **Fine phase** (remaining epochs): no further growth. :math:`\sigma` is fixed to ``sigma_fine`` if set, otherwise the last coarse value is kept. Small values (~0.1) concentrate updates on the BMU and minimize quantization error, as recommended by Kohonen.
+
+The decay from ``sigma_start`` to ``sigma_end`` follows either an **exponential** or **linear** schedule (``decay_function`` parameter). For exponential decay the learning rate is chosen so that 99% of the drop from ``sigma_start`` to ``sigma_end`` is completed by the end of the coarse phase.
+
+Neighborhood Functions
+######################
+
+Two neighborhood functions are available via the ``neighborhood_function`` parameter:
+
+**Gaussian** (default, ``"gaussian"``)
 
 .. math::
-    h_{c_{j, i}} = \exp \left(- \frac{{\lvert w_i - w_{c_j} \rvert}^2}{2{\sigma}^2(t)}\right)
+    h_{c_{j, i}} = \exp \left(- \frac{d_{ij}^2}{2{\sigma}^2}\right)
 
-where :math:`w_i` is the weight vectors of the `i` th neuron and :math:`w_{c_j}` is the weight vector of winning neuron `c` for `j` th input vector. :math:`\lvert w_i - w_{c_j} \rvert` is the distance between these two prototype on the grid. :math:`\sigma` is the width of the Gaussian function which controls the cooperation of neighbor neurons in the learning process. The value of :math:`\sigma(t)` decreases with time. This procedure can be repeated a number of times specified
-by the user.
+where :math:`d_{ij}` is the graph distance between neurons :math:`i` and :math:`c_j` on the SOM grid, computed via Floyd–Warshall.
+
+**Cut Gaussian** (``"cutgauss"``)
+
+Same as Gaussian, but set to zero for all neuron pairs with graph distance :math:`d_{ij} > 2\sigma`. This concentrates updates on a well-defined neighborhood and suppresses long-range interference.
+
+Robustness Weighting
+********************
+
+Before the batch weight update, each sample :math:`x_j` is assigned a robustness weight
+
+.. math::
+    s_j = 1 - \left(1 - \exp\!\left(-\gamma \, \lVert x_j - w_{c_j} \rVert^2\right)\right)^{1/2}, \quad \gamma = \frac{1}{\operatorname{Var}(X)}
+
+Samples far from their BMU (outliers) receive lower weights, making the map more robust to noise. Samples close to their BMU receive a weight near 1.
+
+Reference: D'Urso et al., *Smoothed self-organizing map for robust clustering*, Information Sciences, 2019.
+
+Distance Metrics
+****************
+
+Two distance metrics are supported via the ``metric`` parameter:
+
+- ``"euclidean"`` (default): standard Euclidean distance; BMU search via Numba JIT kernel (fused distance + argmin, no n×m matrix allocated).
+- ``"cosine"``: cosine dissimilarity :math:`1 - \langle x, w \rangle`; data and weights are L2-normalised before training and at each update step. BMU search via a separate Numba JIT dot-product kernel.
 
 Directed Horizontal Growth
 **************************
 
-We calculate a growing threshold `GT` as 
+Growing Threshold
+#################
+
+Two methods are available for computing the growing threshold ``GT`` via ``threshold_method``:
+
+**Statistics-Enhanced** (default, ``"se"``)
 
 .. math::
-    GT = -\log(sf) * d
+    GT = 150 \cdot (-\log sf) \cdot \left\lVert \operatorname{std}(X) \right\rVert
 
-where `sf` as the spreading factor chosen by the user and `d` is the dimensionality of the data. After each training epoch the accumulative error (:math:`E_i`) for each neuron is calculated as:
+where :math:`sf` is the ``spreading_factor`` and :math:`\operatorname{std}(X)` is the per-feature standard deviation of the training data. This data-adaptive formulation reflects the scale and spread of the dataset.
+
+Reference: Qu et al., *Statistics-enhanced Direct Batch Growth Self-Organizing Mapping for efficient DoS Attack Detection*, IEEE Access, 2019.
+
+**Classical** (``"classical"``)
 
 .. math::
-    E_i = \sum_{p=1}^k \lvert x_p - w_i \rvert
+    GT = -d \cdot \log(sf)
 
-where :math:`w_i` is the weight vector of the neuron `i` and `k` is the number of input vectors mapped on `i`. 
+where :math:`d` is the dimensionality of the data.
 
-For each non boundary neuron :math:`n_i` where :math:`E_i > GT`, :math:`0.5 E_i` is distributed to neighboring boundary neurons. Then a new neuron is added to a free position to all boundary neurons where :math:`E_i > GT`. The position and weight of the new neuron are described in the paper.
+Growth Triggering
+#################
 
-First classification
+Growth is **convergence-triggered**, not epoch-triggered. After each batch weight update, the change in the weight matrix is compared against ``convergence_threshold``. When the change falls below this threshold, the map is considered converged and — if still in the coarse phase and below ``max_neurons`` — a growth step is performed:
+
+1. The accumulative error :math:`E_i` for each neuron is evaluated.
+2. For each non-boundary neuron :math:`n_i` where :math:`E_i > GT`, half its error is distributed to neighboring boundary neurons.
+3. New neurons are inserted at all boundary positions where :math:`E_i > GT`, starting with the highest-error neuron.
+
+The position and weight of each new neuron are determined by the directed insertion rule (Vasighi and Amini, Section 3.3.1.1): the free adjacent position whose corner neighbor has the highest error is selected, and the new weight is initialized by reflecting the opposite neighbor through the boundary neuron.
+
+After a growth step, :math:`\sigma` is updated via the decay function and ``converged_`` is reset to ``False``, restarting the convergence check.
+
+Growth Criterion
+################
+
+The default growth criterion is the **quantization error** of each neuron (sum of distances from mapped samples to the prototype). Alternatively, ``growth_criterion="entropy"`` uses the Shannon entropy of the class distribution per neuron, so the map grows where classification is poorest.
+
+First Classification
 ********************
 
-For a sample classification, each neuron :math:`n_i` gets assigned a label :math:`L_i`. That label is decided as the most common class label `l` of all samples represented by that prototype: 
+For sample classification, each neuron :math:`n_i` gets assigned a label :math:`L_i` as the most common class label :math:`l` of all samples represented by that prototype:
 
 .. math::
-    L_i = mode(l_1 \ldots l_n)
+    L_i = \operatorname{mode}(l_1, \ldots, l_n)
 
 Extensions
 ----------
 
-There are currently three extensions to the original DBGSOM implemented: 
+There are currently three extensions to the original DBGSOM implemented:
 
-- Hierarchical SOM (HSOM), 
-- Statistics Enhanced DBGGSOM (SE-DBGSOM) and
+- Hierarchical SOM (HSOM)
+- Statistics Enhanced DBGSOM (SE-DBGSOM)
 - Entropy Defined DBGSOM (ED-DBGSOM)
 
-The HSOM can handle deeply bunched data samples, that cannot be distinguished by more neuron growth. A new, smaller SOM is created only for one neuron of the original SOM. The SE-DBGSOM uses the standard deviation of the input features to control the growth and fine classification, while the ED-DBGSOM uses the entropy of the classses of each prototype and the entropy of the features in each sample.
+The HSOM handles densely clustered data samples that cannot be distinguished by further neuron growth. A new, smaller SOM is created for neurons whose error remains high after the horizontal growth phase. The SE-DBGSOM uses the standard deviation of the input features to control the growth threshold, while the ED-DBGSOM uses the entropy of the class distribution per prototype as the growth criterion.
 
 Hierarchical DBGSOM
 *******************
-We calculate a vertical growing threshold as :math:`VGT = 1.5 * GT`. After the horizontal growth phase is finished, for each neuron :math:`n_i` where :math:`E_i > VGT`, a new SOM is created and trained on all samples mapped to :math:`n_i`. This is done recursively.
+
+After the horizontal growth phase, each neuron :math:`n_i` whose quantization error exceeds a vertical growing threshold triggers the creation of a child SOM trained on all samples mapped to :math:`n_i`. The vertical growing threshold is:
+
+.. math::
+    VGT = \tau_2 \cdot QE_0
+
+where :math:`\tau_2` is the ``tau_2`` parameter (default 0.5) and :math:`QE_0` is the quantization error of a single-neuron SOM whose weight equals the mean of all training data. This formulation follows the GHSOM stopping criterion.
+
+A child SOM is only created when the number of samples mapped to the neuron exceeds ``min_samples_vertical_growth``.
+
+Reference: Qu et al., *Entropy-Defined Direct Batch Growing Hierarchical Self-Organizing Mapping for Efficient Network Anomaly Detection*, IEEE Access, 2021.
 
 Statistics Enhanced DBGSOM
 ***************************
-The SE-DBGSOM calculates the growing threshold depending on the standard deviation of the input features:
+
+The SE-DBGSOM variant selects ``threshold_method="se"`` (the default in this implementation) and thereby computes the growing threshold depending on the standard deviation of the input features:
 
 .. math::
-    GT = 150 * -\log(spreading\_factor) * \sqrt{\sum_{i=1}^D std_i^2}
+    GT = 150 \cdot (-\log sf) \cdot \left\lVert \operatorname{std}(X) \right\rVert
 
-where :math:`std_i` denotes the Standard deviation of all samples in the the `i` th input dimension. This improved approach makes it possible to reflect various datasets more accurately.
+where :math:`\operatorname{std}_i` denotes the standard deviation of all samples in the :math:`i`-th input dimension. This improved approach adapts the threshold to the scale of the dataset.
+
+Reference: Qu et al., *Statistics-enhanced Direct Batch Growth Self-Organizing Mapping for efficient DoS Attack Detection*, IEEE Access, 2019.
 
 Entropy Defined DBGSOM
 **********************
 
-Instead of the quantization error, the entropy is used a growing criterion. The entropy of each neuron :math:`n_i` is given by:
+Selected via ``growth_criterion="entropy"``. Instead of the quantization error, the Shannon entropy of the class distribution per neuron is used as the growth criterion:
 
 .. math::
-    E_i = \sum_{x \in s(x)} -p_i(x) * \log_2 p_i(x)
+    E_i = -\sum_{x \in \mathcal{S}} p_i(x) \log_2 p_i(x)
 
-Here, subscript `i` denotes the neuron serial, :math:`p_i(x)` denotes the probability of the data vectors labeled `x`, `s(x)` denotes the set of all data labels. So the SOM grows in the direction where the classification of the samples is bad.
+where :math:`p_i(x)` is the fraction of samples mapped to neuron :math:`i` that carry label :math:`x`, and :math:`\mathcal{S}` is the set of all class labels. The map therefore grows in directions where classification is most uncertain.
 
-Fine Grained Classification
-###########################
-_Currently not implemented._
+Reference: Qu et al., *Entropy-Defined Direct Batch Growing Hierarchical Self-Organizing Mapping for Efficient Network Anomaly Detection*, IEEE Access, 2021.
 
 
 Runtime complexity
