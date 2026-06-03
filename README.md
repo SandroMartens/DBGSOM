@@ -145,11 +145,14 @@ Supported attributes for `color` / `pointsize`:
 - NetworkX
 - tqdm
 - scikit-learn
-- scikit-image
 - seaborn
-- matplotlib
 - pandas
-- scipy
+
+## Citation
+
+If you use DBGSOM in your research, please cite:
+
+Martens, S. (2025). DBGSOM: A Python implementation of the Directed Batch Growing Self-Organizing Map. Zenodo. <https://doi.org/10.5281/zenodo.20525611>
 
 ## References
 

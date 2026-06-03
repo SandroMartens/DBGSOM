@@ -1,0 +1,31 @@
+cff-version: 1.2.0
+title: "DBGSOM: A Python implementation of the Directed Batch Growing Self-Organizing Map"
+type: software
+authors:
+  - family-names: Martens
+    given-names: Sandro
+    email: sandro.martens@web.de
+repository-code: https://github.com/SandroMartens/DBGSOM
+url: https://dbgsom.readthedocs.io/
+license: MIT
+version: 1.2.2
+doi: 10.5281/zenodo.20525611
+date-released: "2025-06-03"
+keywords:
+  - self-organizing map
+  - SOM
+  - unsupervised learning
+  - clustering
+  - vector quantization
+  - scikit-learn
+references:
+  - type: article
+    authors:
+      - family-names: Vasighi
+        given-names: Mahdi
+      - family-names: Amini
+        given-names: Homa
+    title: "A directed batch growing approach to enhance the topology preservation of self-organizing map"
+    year: 2017
+    doi: 10.1016/j.asoc.2017.02.015
+    journal: Applied Soft Computing
