@@ -237,11 +237,17 @@
         <article role="main" id="furo-main-content">
           <section id="welcome-to-dbgsom-s-documentation">
 <h1>Welcome to DBGSOM’s documentation!<a class="headerlink" href="#welcome-to-dbgsom-s-documentation" title="Link to this heading">¶</a></h1>
-<p>DBGSOM is short for <em>Directed Batch Growing Self-Organizing Map</em>. A SOM is a type of artificial neural network that is used to to produce a low-dimensional representation of a higher dimensional data set while preserving the topological structure of the data. It can be used for supervised and unsupervised vector quantization, classification and many different data visualization tasks. DBGSOM implements the SomClassifier and SomVQ for classification and clustering/vector quantization respectively.</p>
+<p>DBGSOM is short for <em>Directed Batch Growing Self-Organizing Map</em>. A SOM is a type of artificial neural network that is used to produce a low-dimensional representation of a higher-dimensional data set while preserving the topological structure of the data. It can be used for supervised and unsupervised vector quantization, classification and many different data visualization tasks. DBGSOM implements the <code class="docutils literal notranslate"><span class="pre">SomClassifier</span></code> and <code class="docutils literal notranslate"><span class="pre">SomVQ</span></code> for classification and clustering/vector quantization respectively.</p>
 <section id="installation">
 <h2>Installation<a class="headerlink" href="#installation" title="Link to this heading">¶</a></h2>
-<p>DBGSOM can be installed via pip:
-<code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">dbgsom</span></code></p>
+<p>Install via <code class="docutils literal notranslate"><span class="pre">uv</span></code> (recommended):</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>uv<span class="w"> </span>add<span class="w"> </span>dbgsom
+</pre></div>
+</div>
+<p>or with pip:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pip<span class="w"> </span>install<span class="w"> </span>dbgsom
+</pre></div>
+</div>
 </section>
 <section id="user-guide">
 <h2>User Guide<a class="headerlink" href="#user-guide" title="Link to this heading">¶</a></h2>
@@ -249,12 +255,20 @@
 <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="user_guide.html">User Guide</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="user_guide.html#key-parameters">Key Parameters</a></li>
 <li class="toctree-l2"><a class="reference internal" href="user_guide.html#classification">Classification</a></li>
-<li class="toctree-l2"><a class="reference internal" href="user_guide.html#clustering">Clustering</a></li>
+<li class="toctree-l2"><a class="reference internal" href="user_guide.html#clustering-vector-quantization">Clustering / Vector Quantization</a></li>
+<li class="toctree-l2"><a class="reference internal" href="user_guide.html#transform">Transform</a></li>
+<li class="toctree-l2"><a class="reference internal" href="user_guide.html#scikit-learn-integration">scikit-learn Integration</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="plotting.html">Plotting Results</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="plotting.html#additional-attributes">Additional attributes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="plotting.html#basic-usage">Basic Usage</a></li>
+<li class="toctree-l2"><a class="reference internal" href="plotting.html#node-attributes">Node Attributes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="plotting.html#color-and-size-encoding">Color and Size Encoding</a></li>
+<li class="toctree-l2"><a class="reference internal" href="plotting.html#rgb-colour-from-pca">RGB Colour from PCA</a></li>
+<li class="toctree-l2"><a class="reference internal" href="plotting.html#layout-options">Layout Options</a></li>
+<li class="toctree-l2"><a class="reference internal" href="plotting.html#data-aligned-pca">Data-Aligned PCA</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="algorithm.html">Algorithm</a><ul>

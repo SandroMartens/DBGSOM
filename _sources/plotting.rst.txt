@@ -1,43 +1,76 @@
 Plotting Results
 ================
 
-One of the mayor features of a SOM is the ability to project the high dimensional input data in a two dimensional output space. It shares some properties with nonlinear projection methods such as multidimensional scaling (MDS), especially the Sammon projection. However, the SOM is quantized. The model may not be a replica of any input item but only a local average over a subset of items that are most similar to it. The resolution of the projection depends on the number of neurons trained. We can use this property to calculate additional statistical information about the neurons, which can then be plotted. 
+One of the major features of a SOM is the ability to project high-dimensional input data into a two-dimensional output space. It shares some properties with nonlinear projection methods such as multidimensional scaling (MDS). However, the SOM is quantized: each neuron represents a local average over the subset of samples most similar to it. The resolution of the projection depends on the number of neurons trained.
 
-Each neuron has a 2d coordinate, which allows us to visualize the graph as a simple scatter plot. Note that this visualization does not show any distances in the input space.
+Each neuron has a 2D coordinate on the grid, which allows us to visualize the map as a scatter plot. Note that the default grid layout does not show distances in the input space — use ``layout='pca'`` for a layout that reflects input-space distances.
 
-We need a trained `som` object. We then call the `plot` function on that object:
+Basic Usage
+-----------
 
 .. code-block:: python
 
-    from dbgsom.dbgsom_ import DBGSOM
+    from dbgsom import SomVQ
     from sklearn.datasets import load_digits
-    digits_X, digits_y = load_digits(return_X_y=True)
 
-    som = DBGSOM()
-    som.fit(digits_X)
+    X, y = load_digits(return_X_y=True)
+
+    som = SomVQ(spreading_factor=0.5, max_neurons=80)
+    som.fit(X)
     som.plot()
 
+Node Attributes
+---------------
 
-Additional attributes
----------------------
+During training, the following attributes are computed for each neuron and can be used for colour or size encoding:
 
-We can use the `color` and `size` parameters to enhance the basic visualization. During computation, different data are computed for each neuron, which can be coded als color or size of the scatter plot. In `DBGSOM` six attributes are currently implemented:
+- ``label`` — majority class label (supervised training only)
+- ``epoch_created`` — training epoch in which the neuron was added
+- ``error`` — quantization error or entropy per neuron, depending on ``growth_criterion``
+- ``average_distance`` — average distance to neighbouring neurons in input space (U-matrix)
+- ``density`` — kernel density estimate around each neuron
+- ``hit_count`` — number of training samples the neuron represents
 
-- `label`
-    Label of the prototype when trained supervised.
-- `epoch_created`
-    Training epoch in which a neuron was added.
-- `error`
-    Quantization error or entropy, depending on the growth criterion used.
-- `average_distance`
-    Distance to neighboring neurons in the input space. The creates a U matrix.
-- `density`
-    A local density estimate around each neuron.
-- `hit_count`
-    Number of samples the prototype represents.
+Color and Size Encoding
+-----------------------
 
-We can plot two attributes at the same time by using one value for the color and one for the size of each node. The `palette` parameter accepts all valid seaborn/matplotlib color scales.
+Use the ``color`` and ``pointsize`` parameters to encode node attributes. Numeric attributes use a continuous colour scale; categorical attributes (≤ 20 unique values) use a legend.
 
 .. code-block:: python
 
-    som.plot(color="density", size="error", palette="viridis")
+    som.plot(color="density", pointsize="error", palette="viridis")
+
+The ``palette`` parameter accepts any Matplotlib / seaborn colormap name.
+
+RGB Colour from PCA
+-------------------
+
+Pass ``color='pca_rgb'`` to colour each neuron by its position in the first three principal components of the weight space (PC1 → R, PC2 → G, PC3 → B). Similar colours indicate similar weight vectors; the pattern reveals the topological structure of the feature space.
+
+.. code-block:: python
+
+    som.plot(color="pca_rgb")
+
+Layout Options
+--------------
+
+Two layout algorithms are available via the ``layout`` parameter:
+
+``'grid'`` (default)
+    Neurons are placed at their integer SOM grid coordinates. Preserves the topological map structure but does not reflect distances in input space.
+
+``'pca'``
+    Weight vectors are projected to 2D with PCA. Node positions reflect the principal directions of variance in feature space, giving a sense of input-space distances between prototypes.
+
+.. code-block:: python
+
+    som.plot(color="density", layout="pca")
+
+Data-Aligned PCA
+----------------
+
+When using ``layout='pca'`` or ``color='pca_rgb'``, you can pass the training data ``X`` to align the PCA basis with the data variance rather than the weight variance. This is useful when the weight vectors span a subspace of the data manifold.
+
+.. code-block:: python
+
+    som.plot(color="pca_rgb", layout="pca", X=X)

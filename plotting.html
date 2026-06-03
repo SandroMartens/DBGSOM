@@ -237,55 +237,65 @@
         <article role="main" id="furo-main-content">
           <section id="plotting-results">
 <h1>Plotting Results<a class="headerlink" href="#plotting-results" title="Link to this heading">¶</a></h1>
-<p>One of the mayor features of a SOM is the ability to project the high dimensional input data in a two dimensional output space. It shares some properties with nonlinear projection methods such as multidimensional scaling (MDS), especially the Sammon projection. However, the SOM is quantized. The model may not be a replica of any input item but only a local average over a subset of items that are most similar to it. The resolution of the projection depends on the number of neurons trained. We can use this property to calculate additional statistical information about the neurons, which can then be plotted.</p>
-<p>Each neuron has a 2d coordinate, which allows us to visualize the graph as a simple scatter plot. Note that this visualization does not show any distances in the input space.</p>
-<p>We need a trained <cite>som</cite> object. We then call the <cite>plot</cite> function on that object:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">dbgsom.dbgsom_</span><span class="w"> </span><span class="kn">import</span> <span class="n">DBGSOM</span>
+<p>One of the major features of a SOM is the ability to project high-dimensional input data into a two-dimensional output space. It shares some properties with nonlinear projection methods such as multidimensional scaling (MDS). However, the SOM is quantized: each neuron represents a local average over the subset of samples most similar to it. The resolution of the projection depends on the number of neurons trained.</p>
+<p>Each neuron has a 2D coordinate on the grid, which allows us to visualize the map as a scatter plot. Note that the default grid layout does not show distances in the input space — use <code class="docutils literal notranslate"><span class="pre">layout='pca'</span></code> for a layout that reflects input-space distances.</p>
+<section id="basic-usage">
+<h2>Basic Usage<a class="headerlink" href="#basic-usage" title="Link to this heading">¶</a></h2>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">dbgsom</span><span class="w"> </span><span class="kn">import</span> <span class="n">SomVQ</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">sklearn.datasets</span><span class="w"> </span><span class="kn">import</span> <span class="n">load_digits</span>
-<span class="n">digits_X</span><span class="p">,</span> <span class="n">digits_y</span> <span class="o">=</span> <span class="n">load_digits</span><span class="p">(</span><span class="n">return_X_y</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 
-<span class="n">som</span> <span class="o">=</span> <span class="n">DBGSOM</span><span class="p">()</span>
-<span class="n">som</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">digits_X</span><span class="p">)</span>
+<span class="n">X</span><span class="p">,</span> <span class="n">y</span> <span class="o">=</span> <span class="n">load_digits</span><span class="p">(</span><span class="n">return_X_y</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+<span class="n">som</span> <span class="o">=</span> <span class="n">SomVQ</span><span class="p">(</span><span class="n">spreading_factor</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">max_neurons</span><span class="o">=</span><span class="mi">80</span><span class="p">)</span>
+<span class="n">som</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">X</span><span class="p">)</span>
 <span class="n">som</span><span class="o">.</span><span class="n">plot</span><span class="p">()</span>
 </pre></div>
 </div>
-<section id="additional-attributes">
-<h2>Additional attributes<a class="headerlink" href="#additional-attributes" title="Link to this heading">¶</a></h2>
-<p>We can use the <cite>color</cite> and <cite>size</cite> parameters to enhance the basic visualization. During computation, different data are computed for each neuron, which can be coded als color or size of the scatter plot. In <cite>DBGSOM</cite> six attributes are currently implemented:</p>
+</section>
+<section id="node-attributes">
+<h2>Node Attributes<a class="headerlink" href="#node-attributes" title="Link to this heading">¶</a></h2>
+<p>During training, the following attributes are computed for each neuron and can be used for colour or size encoding:</p>
 <ul class="simple">
-<li><dl class="simple">
-<dt><cite>label</cite></dt><dd><p>Label of the prototype when trained supervised.</p>
-</dd>
-</dl>
-</li>
-<li><dl class="simple">
-<dt><cite>epoch_created</cite></dt><dd><p>Training epoch in which a neuron was added.</p>
-</dd>
-</dl>
-</li>
-<li><dl class="simple">
-<dt><cite>error</cite></dt><dd><p>Quantization error or entropy, depending on the growth criterion used.</p>
-</dd>
-</dl>
-</li>
-<li><dl class="simple">
-<dt><cite>average_distance</cite></dt><dd><p>Distance to neighboring neurons in the input space. The creates a U matrix.</p>
-</dd>
-</dl>
-</li>
-<li><dl class="simple">
-<dt><cite>density</cite></dt><dd><p>A local density estimate around each neuron.</p>
-</dd>
-</dl>
-</li>
-<li><dl class="simple">
-<dt><cite>hit_count</cite></dt><dd><p>Number of samples the prototype represents.</p>
-</dd>
-</dl>
-</li>
+<li><p><code class="docutils literal notranslate"><span class="pre">label</span></code> — majority class label (supervised training only)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">epoch_created</span></code> — training epoch in which the neuron was added</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">error</span></code> — quantization error or entropy per neuron, depending on <code class="docutils literal notranslate"><span class="pre">growth_criterion</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">average_distance</span></code> — average distance to neighbouring neurons in input space (U-matrix)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">density</span></code> — kernel density estimate around each neuron</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">hit_count</span></code> — number of training samples the neuron represents</p></li>
 </ul>
-<p>We can plot two attributes at the same time by using one value for the color and one for the size of each node. The <cite>palette</cite> parameter accepts all valid seaborn/matplotlib color scales.</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">som</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">color</span><span class="o">=</span><span class="s2">&quot;density&quot;</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="s2">&quot;error&quot;</span><span class="p">,</span> <span class="n">palette</span><span class="o">=</span><span class="s2">&quot;viridis&quot;</span><span class="p">)</span>
+</section>
+<section id="color-and-size-encoding">
+<h2>Color and Size Encoding<a class="headerlink" href="#color-and-size-encoding" title="Link to this heading">¶</a></h2>
+<p>Use the <code class="docutils literal notranslate"><span class="pre">color</span></code> and <code class="docutils literal notranslate"><span class="pre">pointsize</span></code> parameters to encode node attributes. Numeric attributes use a continuous colour scale; categorical attributes (≤ 20 unique values) use a legend.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">som</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">color</span><span class="o">=</span><span class="s2">&quot;density&quot;</span><span class="p">,</span> <span class="n">pointsize</span><span class="o">=</span><span class="s2">&quot;error&quot;</span><span class="p">,</span> <span class="n">palette</span><span class="o">=</span><span class="s2">&quot;viridis&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The <code class="docutils literal notranslate"><span class="pre">palette</span></code> parameter accepts any Matplotlib / seaborn colormap name.</p>
+</section>
+<section id="rgb-colour-from-pca">
+<h2>RGB Colour from PCA<a class="headerlink" href="#rgb-colour-from-pca" title="Link to this heading">¶</a></h2>
+<p>Pass <code class="docutils literal notranslate"><span class="pre">color='pca_rgb'</span></code> to colour each neuron by its position in the first three principal components of the weight space (PC1 → R, PC2 → G, PC3 → B). Similar colours indicate similar weight vectors; the pattern reveals the topological structure of the feature space.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">som</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">color</span><span class="o">=</span><span class="s2">&quot;pca_rgb&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="layout-options">
+<h2>Layout Options<a class="headerlink" href="#layout-options" title="Link to this heading">¶</a></h2>
+<p>Two layout algorithms are available via the <code class="docutils literal notranslate"><span class="pre">layout</span></code> parameter:</p>
+<dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">'grid'</span></code> (default)</dt><dd><p>Neurons are placed at their integer SOM grid coordinates. Preserves the topological map structure but does not reflect distances in input space.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">'pca'</span></code></dt><dd><p>Weight vectors are projected to 2D with PCA. Node positions reflect the principal directions of variance in feature space, giving a sense of input-space distances between prototypes.</p>
+</dd>
+</dl>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">som</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">color</span><span class="o">=</span><span class="s2">&quot;density&quot;</span><span class="p">,</span> <span class="n">layout</span><span class="o">=</span><span class="s2">&quot;pca&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="data-aligned-pca">
+<h2>Data-Aligned PCA<a class="headerlink" href="#data-aligned-pca" title="Link to this heading">¶</a></h2>
+<p>When using <code class="docutils literal notranslate"><span class="pre">layout='pca'</span></code> or <code class="docutils literal notranslate"><span class="pre">color='pca_rgb'</span></code>, you can pass the training data <code class="docutils literal notranslate"><span class="pre">X</span></code> to align the PCA basis with the data variance rather than the weight variance. This is useful when the weight vectors span a subspace of the data manifold.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">som</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">color</span><span class="o">=</span><span class="s2">&quot;pca_rgb&quot;</span><span class="p">,</span> <span class="n">layout</span><span class="o">=</span><span class="s2">&quot;pca&quot;</span><span class="p">,</span> <span class="n">X</span><span class="o">=</span><span class="n">X</span><span class="p">)</span>
 </pre></div>
 </div>
 </section>
@@ -347,7 +357,12 @@
           <div class="toc-tree">
             <ul>
 <li><a class="reference internal" href="#">Plotting Results</a><ul>
-<li><a class="reference internal" href="#additional-attributes">Additional attributes</a></li>
+<li><a class="reference internal" href="#basic-usage">Basic Usage</a></li>
+<li><a class="reference internal" href="#node-attributes">Node Attributes</a></li>
+<li><a class="reference internal" href="#color-and-size-encoding">Color and Size Encoding</a></li>
+<li><a class="reference internal" href="#rgb-colour-from-pca">RGB Colour from PCA</a></li>
+<li><a class="reference internal" href="#layout-options">Layout Options</a></li>
+<li><a class="reference internal" href="#data-aligned-pca">Data-Aligned PCA</a></li>
 </ul>
 </li>
 </ul>

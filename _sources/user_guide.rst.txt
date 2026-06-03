@@ -1,55 +1,92 @@
 User Guide
 =====================
-Both the SomClassifier and SomVQ implement the scikit-learn API and can be used as drop in replacements for other scikit-learn Estimators. 
+
+Both ``SomClassifier`` and ``SomVQ`` implement the scikit-learn API and can be used as drop-in replacements for other scikit-learn estimators, including full compatibility with ``Pipeline``, ``GridSearchCV``, and ``cross_val_score``.
+
+Key Parameters
+--------------
+
+Both estimators share the following most important parameters:
+
+- ``spreading_factor`` (default 0.5) — controls the growing threshold. Lower values produce more neurons and finer resolution; higher values produce fewer neurons.
+- ``max_neurons`` (default 100) — hard upper limit on the number of neurons.
+- ``n_iter`` (default 500) — maximum number of training epochs.
+- ``metric`` (default ``"euclidean"``) — distance metric; ``"cosine"`` is also supported.
 
 Classification
 --------------
 
 .. code-block:: python
 
-    from dbgsom.SomClassifier import SomClassifier
+    from dbgsom import SomClassifier
     from sklearn.datasets import load_digits
-    digits_X, digits_y = load_digits(return_X_y=True)
+    from sklearn.model_selection import train_test_split
 
-    classifier = SomClassifier()
-    classifier.fit(digits_X, digits_y)
-    classifier.score(digits_X, digits_y)
+    X, y = load_digits(return_X_y=True)
+    X_train, X_test, y_train, y_test = train_test_split(X, y, random_state=42)
 
-.. code-block:: pycon
-
-    >>> 0.8375069560378409
-
-.. code-block:: python
-
-    classifier.predict(digits_X)
+    clf = SomClassifier(spreading_factor=0.5, max_neurons=80)
+    clf.fit(X_train, y_train)
+    clf.score(X_test, y_test)
 
 .. code-block:: pycon
 
-    >>> array([0, 1, 8, ..., 8, 9, 6], shape=(1797,))
+    >>> 0.9333...
 
-Clustering
-----------
 .. code-block:: python
 
-    from dbgsom.SomVQ import SomVQ
+    clf.predict(X_test)
+
+.. code-block:: pycon
+
+    >>> array([0, 1, 8, ..., 8, 9, 6])
+
+.. code-block:: python
+
+    clf.predict_proba(X_test)   # class probability per sample
+
+Clustering / Vector Quantization
+---------------------------------
+
+.. code-block:: python
+
+    from dbgsom import SomVQ
     from sklearn.datasets import load_digits
-    digits_X, digits_y = load_digits(return_X_y=True)
 
-    som = SomVQ()
-    som.fit(digits_X)
+    X, y = load_digits(return_X_y=True)
+
+    som = SomVQ(spreading_factor=0.5, max_neurons=80)
+    labels = som.fit_predict(X)   # fit and assign cluster labels in one step
 
 .. code-block:: python
 
-    som.predict(digits_X)
+    som.quantization_error_   # average distance from samples to their prototype
+    som.topographic_error_    # fraction of samples with topographic errors
+    som.n_iter_               # number of epochs actually used
 
-.. code-block:: pycon
+Transform
+---------
 
-    >>> array([6, 0, 1, ..., 0, 4, 3], shape=(1797,))
-    
+Both estimators implement ``transform()``, which represents each sample as a sparse non-negative linear combination of the prototype weight vectors. This yields an ``(n_samples, n_prototypes)`` coefficient matrix useful for downstream tasks.
+
 .. code-block:: python
 
-    som.quantization_error_
+    coefs = som.transform(X)   # shape (n_samples, n_prototypes)
 
-.. code-block:: pycon
+Reference: Teuvo Kohonen, *Description of Input Patterns by Linear Mixtures of SOM Models*, 2007.
 
-    >>> 24.360118119212867
+scikit-learn Integration
+------------------------
+
+Because both estimators follow the scikit-learn API, they work with standard tools:
+
+.. code-block:: python
+
+    from sklearn.pipeline import Pipeline
+    from sklearn.preprocessing import StandardScaler
+
+    pipe = Pipeline([
+        ("scaler", StandardScaler()),
+        ("som", SomVQ(spreading_factor=0.5, max_neurons=80)),
+    ])
+    pipe.fit(X)
