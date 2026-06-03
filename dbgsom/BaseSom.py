@@ -1143,7 +1143,9 @@ class BaseSom(BaseEstimator, ABC):
         """
         n_neurons = self.som_.number_of_nodes()
         sigma_start = (
-            0.2 * sqrt(n_neurons) if self.sigma_start is None else self.sigma_start
+            0.2 * (sqrt(n_neurons) - 1)
+            if self.sigma_start is None
+            else self.sigma_start
         )
         sigma_end = 0.05 * sqrt(n_neurons) if self.sigma_end is None else self.sigma_end
         # lr chosen so exp(-lr * n_iter) = 0.01, i.e. 99 % decay at end of coarse phase

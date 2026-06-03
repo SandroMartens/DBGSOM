@@ -154,3 +154,8 @@ requirements*
 
 # Claude
 .claude
+
+
+#Agents
+.agents
+skills-lock.json

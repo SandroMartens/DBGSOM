@@ -69,6 +69,7 @@ examples = [
     "ipywidgets>=8.0.0",
     "minisom>=2.3.6",
     "scikit-image>=0.23.0",
+    "susi>=1.4.3",
     "umap-learn>=0.5.12",
 ]
 docs = [

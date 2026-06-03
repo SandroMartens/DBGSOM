@@ -436,6 +436,7 @@ examples = [
     { name = "ipywidgets" },
     { name = "minisom" },
     { name = "scikit-image" },
+    { name = "susi" },
     { name = "umap-learn" },
 ]
 
@@ -476,6 +477,7 @@ examples = [
     { name = "ipywidgets", specifier = ">=8.0.0" },
     { name = "minisom", specifier = ">=2.3.6" },
     { name = "scikit-image", specifier = ">=0.23.0" },
+    { name = "susi", specifier = ">=1.4.3" },
     { name = "umap-learn", specifier = ">=0.5.12" },
 ]
 
@@ -1995,6 +1997,20 @@ sdist = { url = "https://files.pythonhosted.org/packages/28/e3/55dcc2cfbc3ca9c29
 wheels = [
     { url = "https://files.pythonhosted.org/packages/f1/7b/ce1eafaf1a76852e2ec9b22edecf1daa58175c090266e9f6c64afcd81d91/stack_data-0.6.3-py3-none-any.whl", hash = "sha256:d5558e0c25a4cb0853cddad3d77da9891a08cb85dd9f9f91b9f8cd66e511e695", size = 24521, upload-time = "2023-09-30T13:58:03.53Z" },
 ]
+
+[[package]]
+name = "susi"
+version = "1.4.3"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "joblib" },
+    { name = "matplotlib" },
+    { name = "numpy" },
+    { name = "scikit-learn" },
+    { name = "scipy" },
+    { name = "tqdm" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/d3/e6/11fc32afa80d2382479e5fdb51d87210fa2e76e7b1fb16a8b25a7122e3e2/susi-1.4.3.zip", hash = "sha256:cc73733132f9085a55abdde71c0d8893b1f8f2dad1f1b49772977ecd85335231", size = 45353, upload-time = "2025-01-12T20:26:01.715Z" }
 
 [[package]]
 name = "sympy"
