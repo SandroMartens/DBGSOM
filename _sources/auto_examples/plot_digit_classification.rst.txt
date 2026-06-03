@@ -1672,7 +1672,7 @@ during both ``fit`` and ``predict``.
            <tr class="default">
                <td class="param"><a class="param-doc-link" style="text-decoration:none;">n_iter_</a></td>
                <td class="fitted-att-type">int</td>
-               <td>185</td>
+               <td>167</td>
 
 
            </tr>
@@ -1699,7 +1699,7 @@ during both ``fit`` and ``predict``.
            <tr class="default">
                <td class="param"><a class="param-doc-link" style="text-decoration:none;">quantization_error_</a></td>
                <td class="fitted-att-type">float</td>
-               <td>5.095</td>
+               <td>5.218</td>
 
 
            </tr>
@@ -1708,7 +1708,7 @@ during both ``fit`` and ``predict``.
            <tr class="default">
                <td class="param"><a class="param-doc-link" style="text-decoration:none;">random_state_</a></td>
                <td class="fitted-att-type">RandomState</td>
-               <td>RandomState(M...0x7F4CCB3DA640</td>
+               <td>RandomState(M...0x7FB9A3B42640</td>
 
 
            </tr>
@@ -1717,7 +1717,7 @@ during both ``fit`` and ``predict``.
            <tr class="default">
                <td class="param"><a class="param-doc-link" style="text-decoration:none;">som_</a></td>
                <td class="fitted-att-type">Graph</td>
-               <td>&lt;networkx.cla...x7f4cd5970980&gt;</td>
+               <td>&lt;networkx.cla...x7fb9aed563f0&gt;</td>
 
 
            </tr>
@@ -1726,7 +1726,7 @@ during both ``fit`` and ``predict``.
            <tr class="default">
                <td class="param"><a class="param-doc-link" style="text-decoration:none;">topographic_error_</a></td>
                <td class="fitted-att-type">float</td>
-               <td>0.1809</td>
+               <td>0.2181</td>
 
 
            </tr>
@@ -1734,14 +1734,14 @@ during both ``fit`` and ``predict``.
 
            <tr class="default">
                <td class="param"><a class="param-doc-link" style="text-decoration:none;">weights_</a></td>
-               <td class="fitted-att-type">ndarray[float64](29, 64)</td>
-               <td>[[ 0.  ,-0.33,-0.94,..., 0.58,-0.01,-0.17],
-     [ 0.  ,-0.31,-0.49,..., 0.56, 0.02,-0.19],
-     [ 0.  ,-0.29,-0.43,...,-0.27,-0.35,-0.19],
+               <td class="fitted-att-type">ndarray[float64](24, 64)</td>
+               <td>[[ 0.  ,-0.33,-0.92,..., 0.59, 0.03,-0.18],
+     [ 0.  ,-0.25, 0.03,..., 0.46,-0.27,-0.19],
+     [ 0.  ,-0.32,-0.43,...,-0.1 ,-0.1 , 0.07],
      ...,
-     [ 0.  ,-0.34,-1.  ,..., 1.15, 0.81,-0.14],
-     [ 0.  , 0.17, 0.66,..., 0.64,-0.04,-0.19],
-     [ 0.  ,-0.31,-0.3 ,...,-0.07, 1.03, 1.84]]</td>
+     [ 0.  ,-0.24, 0.11,..., 0.01,-0.29,-0.19],
+     [ 0.  ,-0.34,-1.09,...,-0.48,-0.5 ,-0.2 ],
+     [ 0.  ,-0.17,-0.26,...,-0.57,-0.47,-0.2 ]]</td>
 
 
            </tr>
@@ -1948,9 +1948,9 @@ Print accuracy and topographic quality metrics.
 
  .. code-block:: none
 
-    Accuracy:           0.8753
-    Topographic error:  0.1809
-    Quantization error: 5.0955
+    Accuracy:           0.8642
+    Topographic error:  0.2181
+    Quantization error: 5.2184
 
 
 
@@ -2009,7 +2009,7 @@ Reveals the structure of the learned representation in weight space.
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** (0 minutes 10.502 seconds)
+   **Total running time of the script:** (0 minutes 10.131 seconds)
 
 
 .. _sphx_glr_download_auto_examples_plot_digit_classification.py:
