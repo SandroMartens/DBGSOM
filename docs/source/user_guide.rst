@@ -8,7 +8,7 @@ Key Parameters
 
 Both estimators share the following most important parameters:
 
-- ``spreading_factor`` (default 0.5) — controls the growing threshold. Lower values produce more neurons and finer resolution; higher values produce fewer neurons.
+- ``spreading_factor`` (default 0.5) — controls the growing threshold. Higher values produce more neurons and finer resolution; lower values produce fewer neurons.
 - ``max_neurons`` (default 100) — hard upper limit on the number of neurons.
 - ``n_iter`` (default 500) — maximum number of training epochs.
 - ``metric`` (default ``"euclidean"``) — distance metric; ``"cosine"`` is also supported.

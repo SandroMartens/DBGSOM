@@ -8,6 +8,8 @@ The SOM algorithm performs in two steps. First, competition among the neurons to
 
 Training of the DBGSOM starts from a small number of initial neurons to a larger map by adding new neurons inside the network. A batch growing approach for SOM called Directed Batch Growing Self-Organizing Map is used. It uses the accumulative error of the neurons on the grid to direct the growing phase in terms of position and weight initialization of new neurons. New neurons can be added from boundaries by filling one of the adjacent free positions and assigning a proper weight vector in order to improve the topographic quality of the map and help the map to learn the manifold of the data in high-dimensional feature space.
 
+This design is motivated by two well-established properties: BMU search costs :math:`O(n \cdot m \cdot d)` and the weight update costs :math:`O(m^2 \cdot d)` per epoch, so a small map with few neurons converges in significantly less compute time than a large one. Growing a large map incrementally from a small initialisation is therefore both faster and less sensitive to initialisation than training a large map from scratch (Kohonen, 2014).
+
 Batch Learning Algorithm
 ************************
 
@@ -24,7 +26,7 @@ Two-Phase Training
 Training is divided into a **coarse phase** and a **fine phase**, controlled by ``coarse_training_frac`` (default 0.5):
 
 - **Coarse phase** (first ``coarse_training_frac * n_iter`` epochs): the map grows. The neighborhood bandwidth :math:`\sigma` starts at ``sigma_start`` (default :math:`0.2 \cdot \sqrt{m}`, where :math:`m` is the current neuron count) and decays toward ``sigma_end`` (default :math:`0.05 \cdot \sqrt{m}`) after each growth step.
-- **Fine phase** (remaining epochs): no further growth. :math:`\sigma` is fixed to ``sigma_fine`` if set, otherwise the last coarse value is kept. Small values (~0.1) concentrate updates on the BMU and minimize quantization error, as recommended by Kohonen.
+- **Fine phase** (remaining epochs): no further growth. :math:`\sigma` is fixed to ``sigma_fine`` if set, otherwise the last coarse value is kept. Small values (~0.1) concentrate updates on the BMU and minimize quantization error, as recommended by Kohonen. A SOM with a fixed (non-decaying) :math:`\sigma` is empirically known to converge in a finite number of steps (Kohonen, 2014), which guarantees termination of the fine phase.
 
 The decay from ``sigma_start`` to ``sigma_end`` follows either an **exponential** or **linear** schedule (``decay_function`` parameter). For exponential decay the learning rate is chosen so that 99% of the drop from ``sigma_start`` to ``sigma_end`` is completed by the end of the coarse phase.
 
@@ -97,7 +99,9 @@ Growth is **convergence-triggered**, not epoch-triggered. After each batch weigh
 2. For each non-boundary neuron :math:`n_i` where :math:`E_i > GT`, half its error is distributed to neighboring boundary neurons.
 3. New neurons are inserted at all boundary positions where :math:`E_i > GT`, starting with the highest-error neuron.
 
-The position and weight of each new neuron are determined by the directed insertion rule (Vasighi and Amini, Section 3.3.1.1): the free adjacent position whose corner neighbor has the highest error is selected, and the new weight is initialized by reflecting the opposite neighbor through the boundary neuron.
+Waiting for convergence before inserting neurons is deliberate: only once the map has converged do the per-neuron error values constitute stable estimates of the true quantization error. Growing from a transient training state would make the error distribution unreliable and could direct new neurons to the wrong positions (Kohonen, 2014).
+
+The position and weight of each new neuron are determined by the directed insertion rule (Vasighi and Amini, Section 3.3.1.1): the free adjacent position whose corner neighbor has the highest error is selected, and the new weight is initialized by reflecting the opposite neighbor through the boundary neuron. Because each inserted neuron inherits a weight derived from its already-trained neighbours, the map remains partially ordered after growth. A partially ordered map is empirically known to converge significantly faster than a randomly initialised one (Kohonen, 2001), which is why the weight initialisation rule is central to the algorithm's efficiency.
 
 After a growth step, :math:`\sigma` is updated via the decay function and ``converged_`` is reset to ``False``, restarting the convergence check.
 
