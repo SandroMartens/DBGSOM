@@ -1,5 +1,6 @@
 ![license](https://img.shields.io/github/license/SandroMartens/DBGSOM)
 ![readthedocs](https://img.shields.io/readthedocs/dbgsom)
+[![DOI](https://zenodo.org/badge/454955249.svg)](https://doi.org/10.5281/zenodo.20525611)
 [![Python package](https://github.com/SandroMartens/DBGSOM/actions/workflows/python-package.yml/badge.svg)](https://github.com/SandroMartens/DBGSOM/actions/workflows/python-package.yml)
 [![Publish to PyPI](https://github.com/SandroMartens/DBGSOM/actions/workflows/publish.yml/badge.svg)](https://github.com/SandroMartens/DBGSOM/actions/workflows/publish.yml)
 [![CodeQL Advanced](https://github.com/SandroMartens/DBGSOM/actions/workflows/codeql.yml/badge.svg)](https://github.com/SandroMartens/DBGSOM/actions/workflows/codeql.yml)
@@ -120,12 +121,12 @@ vq.plot(color="pca_rgb")                       # RGB colour from PCA of weight v
 Supported attributes for `color` / `pointsize`:
 `'label'`, `'epoch_created'`, `'error'`, `'average_distance'`, `'density'`, `'hit_count'`
 
-| Parameter | Options | Description |
-| --- | --- | --- |
-| `color` | any node attribute | Numeric attributes → continuous colour scale; int/str with ≤ 20 unique values → legend |
-| `pointsize` | any numeric attribute | Node size proportional to attribute value |
-| `layout` | `'grid'` _(default)_, `'pca'` | Node placement algorithm |
-| `palette` | any Matplotlib colormap | Applied to the colour mapping |
+| Parameter   | Options                       | Description                                                                            |
+| ----------- | ----------------------------- | -------------------------------------------------------------------------------------- |
+| `color`     | any node attribute            | Numeric attributes → continuous colour scale; int/str with ≤ 20 unique values → legend |
+| `pointsize` | any numeric attribute         | Node size proportional to attribute value                                              |
+| `layout`    | `'grid'` _(default)_, `'pca'` | Node placement algorithm                                                               |
+| `palette`   | any Matplotlib colormap       | Applied to the colour mapping                                                          |
 
 ## Examples
 
