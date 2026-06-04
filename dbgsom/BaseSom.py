@@ -778,9 +778,9 @@ class BaseSom(BaseEstimator, ABC):
     ) -> tuple[npt.NDArray, npt.NDArray]:
         """Return distances and indices of the n_bmu nearest prototypes per sample.
 
-        Uses a numba-JIT kernel for n_bmu=1 (hot path: fused distance + argmin/argmax,
-        no distance matrix allocated). Falls back to BLAS + argpartition for
-        n_bmu > 1 (only used post-training for topographic error).
+        Uses BLAS via euclidean_distances for both n_bmu=1 and n_bmu>1.
+        n_bmu=1: argmin over full distance matrix (training hot path).
+        n_bmu>1: argpartition (post-training topographic error only).
         """
         if self.metric == "cosine":
             data = normalize(data)
@@ -795,7 +795,10 @@ class BaseSom(BaseEstimator, ABC):
             distances = dist_matrix[row_idx, winners]
             return distances, winners
         if n_bmu == 1:
-            return numba_find_winners(data, self.weights_)
+            dist_matrix = euclidean_distances(data, self.weights_)
+            winners = np.argmin(dist_matrix, axis=1).astype(np.int64)
+            distances = dist_matrix[np.arange(len(data)), winners]
+            return distances, winners
         dist_matrix = euclidean_distances(data, self.weights_)
         part = np.argpartition(dist_matrix, n_bmu, axis=1)[:, :n_bmu]
         row_idx = np.arange(len(data))[:, np.newaxis]
@@ -1384,32 +1387,6 @@ def numba_find_winners_cosine(
                 best_j = j
         winners[i] = best_j
         distances[i] = 1.0 - best_sim
-    return distances, winners
-
-
-@nb.njit(cache=True, parallel=True, fastmath=True)
-def numba_find_winners(
-    data: npt.NDArray, weights: npt.NDArray
-) -> tuple[npt.NDArray, npt.NDArray]:
-    """Find the nearest weight vector for each sample (fused distance + argmin)."""
-    n_samples = data.shape[0]
-    n_features = data.shape[1]
-    n_neurons = weights.shape[0]
-    winners = np.empty(n_samples, dtype=np.int64)
-    distances = np.empty(n_samples, dtype=data.dtype)
-    for i in nb.prange(n_samples):  # ty:ignore[not-iterable]
-        best_dist_sq = np.inf
-        best_j = 0
-        for j in range(n_neurons):
-            d_sq = 0.0
-            for k in range(n_features):
-                diff = data[i, k] - weights[j, k]
-                d_sq += diff * diff
-            if d_sq < best_dist_sq:
-                best_dist_sq = d_sq
-                best_j = j
-        winners[i] = best_j
-        distances[i] = np.sqrt(best_dist_sq)
     return distances, winners
 
 
