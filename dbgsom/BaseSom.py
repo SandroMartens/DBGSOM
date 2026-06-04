@@ -768,7 +768,7 @@ class BaseSom(BaseEstimator, ABC):
                 delta = np.linalg.norm(
                     self.weights_.astype(np.float64) - new_weights.astype(np.float64)
                 )
-                self.converged_ = delta < self.convergence_threshold
+                self.converged_ = delta < self._scaled_convergence_threshold()
                 self.weights_ = new_weights
                 nx.set_node_attributes(
                     self.som_,
@@ -910,7 +910,7 @@ class BaseSom(BaseEstimator, ABC):
         if self.metric == "cosine":
             new_weights = normalize(new_weights)
         delta = self.weights_.astype(np.float64) - new_weights.astype(np.float64)
-        if np.linalg.norm(delta) < self.convergence_threshold:
+        if np.linalg.norm(delta) < self._scaled_convergence_threshold():
             self.converged_ = True
         self.weights_ = new_weights
         nx.set_node_attributes(
@@ -1140,6 +1140,14 @@ class BaseSom(BaseEstimator, ABC):
             if nbr in self.som_.nodes:
                 self.som_.add_edge(node, nbr)
 
+    def _scaled_convergence_threshold(self) -> float:
+        """Return convergence_threshold scaled by the current sigma.
+
+        As sigma shrinks during training, so does the threshold — requiring
+        finer weight changes to count as convergence in the fine phase.
+        """
+        return self.convergence_threshold * self._calculate_current_sigma()
+
     def _calculate_current_sigma(self) -> float:
         """Return the neighborhood bandwidth for the current epoch.
 
@@ -1314,7 +1322,7 @@ class BaseSom(BaseEstimator, ABC):
         if max_dist >= 1:
             phi_values[max_dist] = phi_values[max_dist - 1] + phi_values[max_dist + 1]
 
-        N = self.som_.number_of_nodes()
+        N = len(self.neurons_)
         normalizer = N * (N - 6)  # N(N - 3p) with p=2 for 2D SOM
         if normalizer > 0:
             phi_values = phi_values / normalizer
@@ -1450,22 +1458,23 @@ def numba_voronoi_set_centers(
         weight_sum = np.sum(kernel[group_index])
         n_s = group_index.shape[0]
         n_f = shape[1]
+        neuron_idx = groups[i]
         if weight_sum == 0.0:
             # All kernel weights underflowed: fall back to unweighted mean.
             for s in range(n_s):
                 row = data[group_index[s]]
                 for j in range(n_f):
-                    voronoi_set_centers[i, j] += row[j]
+                    voronoi_set_centers[neuron_idx, j] += row[j]
             for j in range(n_f):
-                voronoi_set_centers[i, j] /= n_s
+                voronoi_set_centers[neuron_idx, j] /= n_s
         else:
             for s in range(n_s):
                 w = kernel[group_index[s]]
                 row = data[group_index[s]]
                 for j in range(n_f):
-                    voronoi_set_centers[i, j] += w * row[j]
+                    voronoi_set_centers[neuron_idx, j] += w * row[j]
             for j in range(n_f):
-                voronoi_set_centers[i, j] /= weight_sum
+                voronoi_set_centers[neuron_idx, j] /= weight_sum
 
     return voronoi_set_centers
 

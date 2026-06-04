@@ -134,8 +134,8 @@ def test_digits_training_regression():
     quantizer.fit(X)
 
     assert quantizer.som_.number_of_nodes() == 18
-    assert quantizer.quantization_error_ == pytest.approx(22.91, abs=0.1)
-    assert quantizer.topographic_error_ == pytest.approx(0.572, abs=0.01)
+    assert quantizer.quantization_error_ == pytest.approx(22.81, abs=0.1)
+    assert quantizer.topographic_error_ == pytest.approx(0.429, abs=0.01)
 
     clf = SomClassifier(random_state=42, n_iter=500, max_neurons=30, verbose=False)
     clf.fit(X, y)
@@ -153,13 +153,13 @@ def test_digits_training_regression():
                     0.0,
                     0.0,
                     0.0,
-                    6.0,
-                    114.0,
-                    108.0,
-                    68.0,
-                    36.0,
-                    16.0,
-                    2.0,
+                    2 / 216,
+                    98 / 216,
+                    96 / 216,
+                    62 / 216,
+                    42 / 216,
+                    20 / 216,
+                    4 / 216,
                     0.0,
                 ],
                 [
