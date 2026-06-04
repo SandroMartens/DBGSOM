@@ -899,7 +899,7 @@ Key hyperparameters:
                               this.parentElement.nextElementSibling)"
                 ></i></td>
                 <td class="param">convergence_threshold</td>
-                <td class="value">1e-05</td>
+                <td class="value">0.001</td>
             </tr>
     
 
@@ -972,6 +972,16 @@ Key hyperparameters:
                 <td class="value">None</td>
             </tr>
     
+
+            <tr class="default">
+                <td><i class="copy-paste-icon"
+                     onclick="copyToClipboard('winner_stability_threshold',
+                              this.parentElement.nextElementSibling)"
+                ></i></td>
+                <td class="param">winner_stability_threshold</td>
+                <td class="value">0.01</td>
+            </tr>
+    
                       </tbody>
                     </table>
                 </details>
@@ -1009,7 +1019,7 @@ Key hyperparameters:
            <tr class="default">
                <td class="param"><a class="param-doc-link" style="text-decoration:none;">labels_</a></td>
                <td class="fitted-att-type">ndarray[int64](2309,)</td>
-               <td>[21,27,25,...,29,26,41]</td>
+               <td>[37,47,55,...,63,52,32]</td>
 
 
            </tr>
@@ -1027,7 +1037,7 @@ Key hyperparameters:
            <tr class="default">
                <td class="param"><a class="param-doc-link" style="text-decoration:none;">n_iter_</a></td>
                <td class="fitted-att-type">int</td>
-               <td>258</td>
+               <td>192</td>
 
 
            </tr>
@@ -1054,7 +1064,7 @@ Key hyperparameters:
            <tr class="default">
                <td class="param"><a class="param-doc-link" style="text-decoration:none;">quantization_error_</a></td>
                <td class="fitted-att-type">float</td>
-               <td>0.2349</td>
+               <td>0.19</td>
 
 
            </tr>
@@ -1063,7 +1073,7 @@ Key hyperparameters:
            <tr class="default">
                <td class="param"><a class="param-doc-link" style="text-decoration:none;">random_state_</a></td>
                <td class="fitted-att-type">RandomState</td>
-               <td>RandomState(M...0x7F0731D3BE40</td>
+               <td>RandomState(M...0x7F44EC68C940</td>
 
 
            </tr>
@@ -1072,7 +1082,7 @@ Key hyperparameters:
            <tr class="default">
                <td class="param"><a class="param-doc-link" style="text-decoration:none;">som_</a></td>
                <td class="fitted-att-type">Graph</td>
-               <td>&lt;networkx.cla...x7f072e4d22d0&gt;</td>
+               <td>&lt;networkx.cla...x7f44ec76f590&gt;</td>
 
 
            </tr>
@@ -1081,7 +1091,7 @@ Key hyperparameters:
            <tr class="default">
                <td class="param"><a class="param-doc-link" style="text-decoration:none;">topographic_error_</a></td>
                <td class="fitted-att-type">float</td>
-               <td>0.139</td>
+               <td>0.09485</td>
 
 
            </tr>
@@ -1090,7 +1100,7 @@ Key hyperparameters:
            <tr class="default">
                <td class="param"><a class="param-doc-link" style="text-decoration:none;">topographic_product_</a></td>
                <td class="fitted-att-type">float</td>
-               <td>0.01034</td>
+               <td>0.006934</td>
 
 
            </tr>
@@ -1098,14 +1108,14 @@ Key hyperparameters:
 
            <tr class="default">
                <td class="param"><a class="param-doc-link" style="text-decoration:none;">weights_</a></td>
-               <td class="fitted-att-type">ndarray[float64](46, 2)</td>
-               <td>[[-0.28,-0.05],
-     [-0.18, 0.22],
-     [ 0.11,-0.3 ],
+               <td class="fitted-att-type">ndarray[float64](64, 2)</td>
+               <td>[[-0.42, 0.28],
+     [-0.08, 0.37],
+     [-0.29,-0.1 ],
      ...,
-     [ 0.48,-0.86],
-     [-1.21, 0.93],
-     [ 1.14, 0.83]]</td>
+     [-1.32,-1.19],
+     [ 1.43, 1.47],
+     [ 1.88,-1.04]]</td>
 
 
            </tr>
@@ -1415,7 +1425,7 @@ Lower values indicate better topology preservation.
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** (0 minutes 0.592 seconds)
+   **Total running time of the script:** (0 minutes 0.588 seconds)
 
 
 .. _sphx_glr_download_auto_examples_plot_2d_clustering.py:
