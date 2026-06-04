@@ -130,7 +130,6 @@ class BaseSom(BaseEstimator, ABC):
         min_samples_vertical_growth: int = 100,
         tau_2: float = 0.5,
         n_jobs: int = 1,
-        batch_size: int | None = None,
         winner_stability_threshold: float | None = 0.01,
     ) -> None:
         super().__init__()
@@ -153,7 +152,6 @@ class BaseSom(BaseEstimator, ABC):
         self.tau_2 = tau_2
         self.vertical_growth = vertical_growth
         self.n_jobs = n_jobs
-        self.batch_size = batch_size
         self.winner_stability_threshold = winner_stability_threshold
 
     _parameter_constraints = {
@@ -677,6 +675,7 @@ class BaseSom(BaseEstimator, ABC):
         self._distance_matrix = nx.floyd_warshall_numpy(self.som_)
         self.weights_ = self._extract_values_from_graph("weight")
         self.neurons_ = list(self.som_.nodes)
+        self._build_neighbor_matrix()
 
     def _calculate_growing_threshold(self, data: npt.NDArray) -> float:
         """Compute the growing threshold for neuron insertion.
@@ -733,73 +732,20 @@ class BaseSom(BaseEstimator, ABC):
                 self.weights_ = self._extract_values_from_graph("weight")
                 self._neurons_added = False
                 self._prev_winners = None  # neuron indices changed — invalidate
+                self._build_neighbor_matrix()
 
-            if self.batch_size is not None:
-                # Chunked batch: accumulate Voronoi numerator/denominator across
-                # all chunks, then apply Gaussian neighborhood once per epoch.
-                # Mathematically equivalent to full-batch; uses B×K memory instead of N×K.  # noqa: E501
-                K, D = self.weights_.shape
-                voronoi_num = np.zeros((K, D), dtype=np.float64)
-                voronoi_den = np.zeros(K, dtype=np.float64)
-                neuron_count = np.zeros(K, dtype=np.int64)
-                all_winners = np.empty(len(data), dtype=np.int64)
-                for start in range(0, len(data), self.batch_size):
-                    batch = data[start : start + self.batch_size]
-                    y_batch = (
-                        y[start : start + self.batch_size] if y is not None else None
-                    )
-                    distances, winners = self._get_winning_neurons(batch, n_bmu=1)
-                    all_winners[start : start + self.batch_size] = winners
-                    sample_weights = self._calculate_exp_similarity(distances)
-                    np.add.at(voronoi_num, winners, sample_weights[:, None] * batch)
-                    np.add.at(voronoi_den, winners, sample_weights)
-                    np.add.at(neuron_count, winners, 1)
-                    self._write_accumulative_error(winners, y_batch, distances)
-                # voronoi centers: weighted mean per neuron
-                voronoi_centers = self.weights_.copy()
-                active = voronoi_den > 0
-                voronoi_centers[active] = (
-                    voronoi_num[active] / voronoi_den[active, None]
-                )
-                # gaussian neighborhood update — identical to _update_weights steps 3-5
-                gaussian_kernel = self._calculate_gaussian_neighborhood()
-                weighted = gaussian_kernel * neuron_count
-                numerator = weighted @ voronoi_centers
-                denominator = weighted.sum(axis=1, keepdims=True)
-                zero_denom = (denominator == 0).squeeze()
-                safe_denom = np.where(denominator == 0, 1.0, denominator)
-                new_weights = numerator / safe_denom
-                new_weights[zero_denom] = self.weights_[zero_denom]
-                if self.metric == "cosine":
-                    new_weights = normalize(new_weights)
-                delta = np.linalg.norm(
-                    self.weights_.astype(np.float64) - new_weights.astype(np.float64)
-                )
-                use_stability = self.winner_stability_threshold is not None
-                if self._training_phase == "coarse" and use_stability:
-                    if self._prev_winners is not None:
-                        change_rate = np.mean(all_winners != self._prev_winners)
-                        self.converged_ = change_rate < self.winner_stability_threshold
-                    self._prev_winners = all_winners
-                else:
-                    self.converged_ = delta < self._scaled_convergence_threshold()
-                self.weights_ = new_weights
-                nx.set_node_attributes(
-                    self.som_,
-                    values=dict(zip(self.neurons_, self.weights_)),
-                    name="weight",
-                )
-            else:
-                distances, winners = self._get_winning_neurons(data, n_bmu=1)
-                sample_weights = self._calculate_exp_similarity(distances)
-                self._update_weights(sample_weights, winners, data)
-                self._write_accumulative_error(winners, y, distances)
-                use_stability = self.winner_stability_threshold is not None
-                if self._training_phase == "coarse" and use_stability:
-                    if self._prev_winners is not None:
-                        change_rate = np.mean(winners != self._prev_winners)
-                        self.converged_ = change_rate < self.winner_stability_threshold
-                    self._prev_winners = winners
+            distances, winners = self._get_winning_neurons(
+                data, n_bmu=1, prev_winners=self._prev_winners
+            )
+            sample_weights = self._calculate_exp_similarity(distances)
+            self._update_weights(sample_weights, winners, data)
+            self._write_accumulative_error(winners, y, distances)
+            use_stability = self.winner_stability_threshold is not None
+            if self._training_phase == "coarse" and use_stability:
+                if self._prev_winners is not None:
+                    change_rate = np.mean(winners != self._prev_winners)
+                    self.converged_ = change_rate < self.winner_stability_threshold
+                self._prev_winners = winners
 
             if self.converged_ and self._training_phase == "fine":
                 break
@@ -843,8 +789,19 @@ class BaseSom(BaseEstimator, ABC):
 
         return som
 
+    def _build_neighbor_matrix(self) -> None:
+        """Build padded (K × max_degree) array of neighbor indices for pointer search."""
+        neuron_to_idx = {n: i for i, n in enumerate(self.neurons_)}
+        K = len(self.neurons_)
+        max_deg = max(dict(self.som_.degree()).values(), default=1)
+        mat = np.full((K, max_deg), -1, dtype=np.int64)
+        for i, node in enumerate(self.neurons_):
+            nbrs = [neuron_to_idx[n] for n in self.som_.neighbors(node)]
+            mat[i, : len(nbrs)] = nbrs
+        self._neighbor_matrix = mat
+
     def _get_winning_neurons(
-        self, data: npt.NDArray, n_bmu: int
+        self, data: npt.NDArray, n_bmu: int, prev_winners: npt.NDArray | None = None
     ) -> tuple[npt.NDArray, npt.NDArray]:
         """Return distances and indices of the n_bmu nearest prototypes per sample.
 
@@ -852,6 +809,13 @@ class BaseSom(BaseEstimator, ABC):
         Cosine n_bmu=1: numba_find_winners_cosine (fused JIT, no matrix alloc).
         n_bmu>1: argpartition (post-training topographic error only).
         """
+        if (
+            prev_winners is not None and n_bmu == 1 and self.metric != "cosine"
+            # and self._training_phase == "fine"
+        ):
+            return numba_find_winners_pointer(
+                data, self.weights_, prev_winners, self._neighbor_matrix
+            )
         if self.metric == "cosine":
             data = normalize(data)
             if n_bmu == 1:
@@ -1544,6 +1508,34 @@ def numba_find_winners_cosine(
                 best_j = j
         winners[i] = best_j
         distances[i] = 1.0 - best_sim
+    return distances, winners
+
+
+@nb.njit(cache=True, parallel=True, fastmath=True)
+def numba_find_winners_pointer(
+    data: npt.NDArray,
+    weights: npt.NDArray,
+    prev_winners: npt.NDArray,
+    neighbor_matrix: npt.NDArray,
+) -> tuple[npt.NDArray, npt.NDArray]:
+    """Find BMU per sample by searching only prev_winner + its graph neighbors."""
+    n = data.shape[0]
+    winners = np.empty(n, np.int64)
+    distances = np.empty(n, np.float64)
+    for i in nb.prange(n):
+        pw = prev_winners[i]
+        best_d = np.sum((data[i] - weights[pw]) ** 2)
+        best_idx = pw
+        for j in range(neighbor_matrix.shape[1]):
+            nidx = neighbor_matrix[pw, j]
+            if nidx < 0:
+                break
+            d = np.sum((data[i] - weights[nidx]) ** 2)
+            if d < best_d:
+                best_d = d
+                best_idx = nidx
+        winners[i] = best_idx
+        distances[i] = np.sqrt(best_d)
     return distances, winners
 
 
