@@ -930,8 +930,12 @@ class BaseSom(BaseEstimator, ABC):
         if self.metric == "cosine":
             new_weights = normalize(new_weights)
         delta = self.weights_.astype(np.float64) - new_weights.astype(np.float64)
-        if np.linalg.norm(delta) < self._scaled_convergence_threshold():
-            self.converged_ = True
+        use_weight_delta = (
+            self._training_phase == "fine" or self.winner_stability_threshold is None
+        )
+        if use_weight_delta:
+            if np.linalg.norm(delta) < self._scaled_convergence_threshold():
+                self.converged_ = True
         self.weights_ = new_weights
         nx.set_node_attributes(
             G=self.som_, values=dict(zip(self.neurons_, self.weights_)), name="weight"
