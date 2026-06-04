@@ -235,6 +235,7 @@ class BaseSom(BaseEstimator, ABC):
         self.topographic_error_ = self._calculate_topographic_error(X)
         distances, _ = self._get_winning_neurons(X, n_bmu=1)
         self.quantization_error_ = float(np.mean(distances))
+        self.topographic_product_ = self._compute_topographic_product()
         self.n_features_in_ = X.shape[1]
         self._write_node_statistics(X)
         self._write_edge_statistics()
@@ -827,8 +828,8 @@ class BaseSom(BaseEstimator, ABC):
     ) -> tuple[npt.NDArray, npt.NDArray]:
         """Return distances and indices of the n_bmu nearest prototypes per sample.
 
-        Uses BLAS via euclidean_distances for both n_bmu=1 and n_bmu>1.
-        n_bmu=1: argmin over full distance matrix (training hot path).
+        Euclidean: BLAS euclidean_distances for both n_bmu=1 and n_bmu>1.
+        Cosine n_bmu=1: numba_find_winners_cosine (fused JIT, no matrix alloc).
         n_bmu>1: argpartition (post-training topographic error only).
         """
         if self.metric == "cosine":
@@ -1313,9 +1314,68 @@ class BaseSom(BaseEstimator, ABC):
         if max_dist >= 1:
             phi_values[max_dist] = phi_values[max_dist - 1] + phi_values[max_dist + 1]
 
+        N = self.som_.number_of_nodes()
+        normalizer = N * (N - 6)  # N(N - 3p) with p=2 for 2D SOM
+        if normalizer > 0:
+            phi_values = phi_values / normalizer
+
         normalized_distances = k_values / max_dist if max_dist > 0 else k_values
 
         return np.vstack((phi_values, normalized_distances))
+
+    def _compute_topographic_product(self) -> float:
+        """Compute the Topographic Product P of the trained map.
+
+        P measures whether the map's output dimensionality matches the intrinsic
+        dimensionality of the data. P < 0 indicates the map is too small
+        (under-expanded); P > 0 indicates the map is too large (over-expanded);
+        P = 0 indicates a perfect topology match.
+
+        Returns
+        -------
+        P : float
+            Topographic product scalar.
+
+        References
+        ----------
+        Bauer, H.-U. & Pawelzik, K. R., "Quantifying the neighborhood
+        preservation of self-organizing feature maps", IEEE Trans. Neural
+        Networks, 1992.
+
+        """
+        check_is_fitted(self)
+        N = len(self.neurons_)
+
+        dist_V = euclidean_distances(self.weights_)  # (N, N)
+        dist_A = self._distance_matrix  # (N, N)
+
+        dist_V_tmp = dist_V.copy()
+        np.fill_diagonal(dist_V_tmp, np.inf)
+        dist_A_tmp = dist_A.copy()
+        np.fill_diagonal(dist_A_tmp, np.inf)
+
+        nn_V = np.argsort(dist_V_tmp, axis=1)  # (N, N) sorted by weight dist
+        nn_A = np.argsort(dist_A_tmp, axis=1)  # (N, N) sorted by grid dist
+
+        rows = np.arange(N)[:, None]
+        dV_of_A = dist_V[rows, nn_A]  # d^V to k-th grid-neighbor    (N, N)
+        dV_of_V = dist_V[rows, nn_V]  # d^V to k-th weight-neighbor  (N, N)
+        dA_of_A = dist_A[rows, nn_A]  # d^A to k-th grid-neighbor    (N, N)
+        dA_of_V = dist_A[rows, nn_V]  # d^A to k-th weight-neighbor  (N, N)
+
+        # log(Q1) + log(Q2) for k=1..N-1; col N-1 = self (inf dist), excluded by :N-1
+        # Suppress divide-by-zero/invalid: zeros from coincident neurons are
+        # replaced by nan_to_num → treated as neutral (0) contribution.
+        with np.errstate(divide="ignore", invalid="ignore"):
+            log_Q = (
+                np.log(dV_of_A) - np.log(dV_of_V) + np.log(dA_of_A) - np.log(dA_of_V)
+            )[:, : N - 1]  # (N, N-1)
+        log_Q = np.nan_to_num(log_Q, nan=0.0, posinf=0.0, neginf=0.0)
+
+        k_vals = np.arange(1, N, dtype=float)  # (N-1,)
+        log_P3 = np.cumsum(log_Q, axis=1) / k_vals  # (N, N-1)
+
+        return float(log_P3.sum() / (N * (N - 1)))
 
     def _calculate_delaunay_triangulation(self, X) -> np.ndarray:
         """Calculate the Delaunay triangulation distance matrix via the
