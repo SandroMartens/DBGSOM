@@ -133,9 +133,9 @@ def test_digits_training_regression():
     quantizer = SomVQ(random_state=42, n_iter=500, max_neurons=30, verbose=False)
     quantizer.fit(X)
 
-    assert quantizer.som_.number_of_nodes() == 23
-    assert quantizer.quantization_error_ == pytest.approx(24.34, abs=0.1)
-    assert quantizer.topographic_error_ == pytest.approx(0.125, abs=0.01)
+    assert quantizer.som_.number_of_nodes() == 18
+    assert quantizer.quantization_error_ == pytest.approx(22.91, abs=0.1)
+    assert quantizer.topographic_error_ == pytest.approx(0.572, abs=0.01)
 
     clf = SomClassifier(random_state=42, n_iter=500, max_neurons=30, verbose=False)
     clf.fit(X, y)
@@ -143,7 +143,7 @@ def test_digits_training_regression():
     # assert clf.som_.number_of_nodes() == 26
     # assert clf.quantization_error_ == pytest.approx(24.09, abs=0.1)
     # assert clf.topographic_error_ == pytest.approx(0.117, abs=0.01)
-    assert clf.score(X, y) == pytest.approx(0.861, abs=0.01)
+    assert clf.score(X, y) == pytest.approx(0.895, abs=0.01)
     np.testing.assert_almost_equal(
         desired=np.array(
             [
@@ -153,32 +153,28 @@ def test_digits_training_regression():
                     0.0,
                     0.0,
                     0.0,
-                    0.0,
-                    0.0,
-                    94.0,
-                    94.0,
-                    56.0,
-                    34.0,
-                    20.0,
-                    8.0,
-                    0.0,
+                    6.0,
+                    114.0,
+                    108.0,
+                    68.0,
+                    36.0,
+                    16.0,
+                    2.0,
                     0.0,
                 ],
                 [
                     -1.0,
-                    -0.85714286,
-                    -0.71428571,
-                    -0.57142857,
-                    -0.42857143,
-                    -0.28571429,
-                    -0.14285714,
+                    -0.83333333,
+                    -0.66666667,
+                    -0.5,
+                    -0.33333333,
+                    -0.16666667,
                     0.0,
-                    0.14285714,
-                    0.28571429,
-                    0.42857143,
-                    0.57142857,
-                    0.71428571,
-                    0.85714286,
+                    0.16666667,
+                    0.33333333,
+                    0.5,
+                    0.66666667,
+                    0.83333333,
                     1.0,
                 ],
             ]

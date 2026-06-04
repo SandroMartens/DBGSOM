@@ -130,6 +130,7 @@ class BaseSom(BaseEstimator, ABC):
         min_samples_vertical_growth: int = 100,
         tau_2: float = 0.5,
         n_jobs: int = 1,
+        batch_size: int | None = None,
     ) -> None:
         super().__init__()
         self.spreading_factor = spreading_factor
@@ -151,6 +152,7 @@ class BaseSom(BaseEstimator, ABC):
         self.tau_2 = tau_2
         self.vertical_growth = vertical_growth
         self.n_jobs = n_jobs
+        self.batch_size = batch_size
 
     _parameter_constraints = {
         "n_iter": [Interval(Integral, 1, None, closed="left")],
@@ -726,11 +728,58 @@ class BaseSom(BaseEstimator, ABC):
                 self.weights_ = self._extract_values_from_graph("weight")
                 self._neurons_added = False
 
-            distances, winners = self._get_winning_neurons(data, n_bmu=1)
-            sample_weights = self._calculate_exp_similarity(distances)
+            if self.batch_size is not None:
+                # Chunked batch: accumulate Voronoi numerator/denominator across
+                # all chunks, then apply Gaussian neighborhood once per epoch.
+                # Mathematically equivalent to full-batch; uses B×K memory instead of N×K.  # noqa: E501
+                K, D = self.weights_.shape
+                voronoi_num = np.zeros((K, D), dtype=np.float64)
+                voronoi_den = np.zeros(K, dtype=np.float64)
+                neuron_count = np.zeros(K, dtype=np.int64)
+                for start in range(0, len(data), self.batch_size):
+                    batch = data[start : start + self.batch_size]
+                    y_batch = (
+                        y[start : start + self.batch_size] if y is not None else None
+                    )
+                    distances, winners = self._get_winning_neurons(batch, n_bmu=1)
+                    sample_weights = self._calculate_exp_similarity(distances)
+                    np.add.at(voronoi_num, winners, sample_weights[:, None] * batch)
+                    np.add.at(voronoi_den, winners, sample_weights)
+                    np.add.at(neuron_count, winners, 1)
+                    self._write_accumulative_error(winners, y_batch, distances)
+                # voronoi centers: weighted mean per neuron
+                voronoi_centers = self.weights_.copy()
+                active = voronoi_den > 0
+                voronoi_centers[active] = (
+                    voronoi_num[active] / voronoi_den[active, None]
+                )
+                # gaussian neighborhood update — identical to _update_weights steps 3-5
+                gaussian_kernel = self._calculate_gaussian_neighborhood()
+                weighted = gaussian_kernel * neuron_count
+                numerator = weighted @ voronoi_centers
+                denominator = weighted.sum(axis=1, keepdims=True)
+                zero_denom = (denominator == 0).squeeze()
+                safe_denom = np.where(denominator == 0, 1.0, denominator)
+                new_weights = numerator / safe_denom
+                new_weights[zero_denom] = self.weights_[zero_denom]
+                if self.metric == "cosine":
+                    new_weights = normalize(new_weights)
+                delta = np.linalg.norm(
+                    self.weights_.astype(np.float64) - new_weights.astype(np.float64)
+                )
+                self.converged_ = delta < self.convergence_threshold
+                self.weights_ = new_weights
+                nx.set_node_attributes(
+                    self.som_,
+                    values=dict(zip(self.neurons_, self.weights_)),
+                    name="weight",
+                )
+            else:
+                distances, winners = self._get_winning_neurons(data, n_bmu=1)
+                sample_weights = self._calculate_exp_similarity(distances)
+                self._update_weights(sample_weights, winners, data)
+                self._write_accumulative_error(winners, y, distances)
 
-            self._update_weights(sample_weights, winners, data)
-            self._write_accumulative_error(winners, y, distances)
             if self.converged_ and self._training_phase == "fine":
                 break
 
