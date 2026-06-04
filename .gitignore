@@ -159,3 +159,5 @@ requirements*
 #Agents
 .agents
 skills-lock.json
+
+benchmarks/profile_training.py

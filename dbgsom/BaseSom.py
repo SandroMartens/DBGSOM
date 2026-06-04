@@ -1320,10 +1320,7 @@ _DECAY_FUNCTIONS: dict[str, Callable[..., float]] = {
 }
 
 
-@nb.njit(
-    parallel=True,
-    fastmath=True,
-)
+@nb.njit(cache=True, parallel=True, fastmath=True)
 def numba_voronoi_set_centers(
     kernel,
     data: npt.NDArray,
@@ -1338,18 +1335,25 @@ def numba_voronoi_set_centers(
         group_start = offsets[i]
         group_end = offsets[i + 1] if i + 1 < groups.size else index.size
         group_index = index[group_start:group_end]
-        samples = data[group_index]
-        weights = kernel[group_index]
-        weight_sum = np.sum(weights)
-        for j in nb.prange(samples.shape[1]):
-            if weight_sum == 0.0:
-                # All kernel weights underflowed to zero (very large distances
-                # relative to the data variance). Fall back to an unweighted mean
-                # so the weight vector still moves toward the Voronoi centroid.
-                mean_samples = np.mean(samples[:, j])
-            else:
-                mean_samples = np.average(samples[:, j], weights=weights)
-            voronoi_set_centers[i, j] = mean_samples
+        weight_sum = np.sum(kernel[group_index])
+        n_s = group_index.shape[0]
+        n_f = shape[1]
+        if weight_sum == 0.0:
+            # All kernel weights underflowed: fall back to unweighted mean.
+            for s in range(n_s):
+                row = data[group_index[s]]
+                for j in range(n_f):
+                    voronoi_set_centers[i, j] += row[j]
+            for j in range(n_f):
+                voronoi_set_centers[i, j] /= n_s
+        else:
+            for s in range(n_s):
+                w = kernel[group_index[s]]
+                row = data[group_index[s]]
+                for j in range(n_f):
+                    voronoi_set_centers[i, j] += w * row[j]
+            for j in range(n_f):
+                voronoi_set_centers[i, j] /= weight_sum
 
     return voronoi_set_centers
 
