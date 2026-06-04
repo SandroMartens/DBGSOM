@@ -1053,7 +1053,7 @@ Key hyperparameters:
            <tr class="default">
                <td class="param"><a class="param-doc-link" style="text-decoration:none;">random_state_</a></td>
                <td class="fitted-att-type">RandomState</td>
-               <td>RandomState(M...0x7FF23BDABA40</td>
+               <td>RandomState(M...0x7FCA30C57A40</td>
 
 
            </tr>
@@ -1062,7 +1062,7 @@ Key hyperparameters:
            <tr class="default">
                <td class="param"><a class="param-doc-link" style="text-decoration:none;">som_</a></td>
                <td class="fitted-att-type">Graph</td>
-               <td>&lt;networkx.cla...x7ff23bca05f0&gt;</td>
+               <td>&lt;networkx.cla...x7fca3f1de390&gt;</td>
 
 
            </tr>
@@ -1072,6 +1072,15 @@ Key hyperparameters:
                <td class="param"><a class="param-doc-link" style="text-decoration:none;">topographic_error_</a></td>
                <td class="fitted-att-type">float</td>
                <td>0.139</td>
+
+
+           </tr>
+    
+
+           <tr class="default">
+               <td class="param"><a class="param-doc-link" style="text-decoration:none;">topographic_product_</a></td>
+               <td class="fitted-att-type">float</td>
+               <td>0.01034</td>
 
 
            </tr>
@@ -1396,7 +1405,7 @@ Lower values indicate better topology preservation.
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** (0 minutes 0.650 seconds)
+   **Total running time of the script:** (0 minutes 0.593 seconds)
 
 
 .. _sphx_glr_download_auto_examples_plot_2d_clustering.py:
