@@ -634,6 +634,31 @@ Networks, 1997.</p>
 </dd></dl>
 
 <dl class="py method">
+<dt class="sig sig-object py" id="dbgsom.SomVQ.SomVQ.topographic_product">
+<span class="sig-name descname"><span class="pre">topographic_product</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#dbgsom.SomVQ.SomVQ.topographic_product" title="Link to this definition">¶</a></dt>
+<dd><p>Compute the Topographic Product P of the trained map.</p>
+<p>P measures whether the map’s output dimensionality matches the intrinsic
+dimensionality of the data. P &lt; 0 indicates the map is too small
+(under-expanded); P &gt; 0 indicates the map is too large (over-expanded);
+P = 0 indicates a perfect topology match.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code></span></p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>P</strong> – Topographic product scalar.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+</dl>
+<p class="rubric">References</p>
+<p>Bauer, H.-U. &amp; Pawelzik, K. R., “Quantifying the neighborhood
+preservation of self-organizing feature maps”, IEEE Trans. Neural
+Networks, 1992.</p>
+</dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="dbgsom.SomVQ.SomVQ.transform">
 <span class="sig-name descname"><span class="pre">transform</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">X</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dbgsom.SomVQ.SomVQ.transform" title="Link to this definition">¶</a></dt>
 <dd><p>Calculate a non negative least squares mixture model of prototypes that approximate each sample.</p>
@@ -1110,6 +1135,31 @@ Networks, 1997.</p>
 </dd></dl>
 
 <dl class="py method">
+<dt class="sig sig-object py" id="dbgsom.SomClassifier.SomClassifier.topographic_product">
+<span class="sig-name descname"><span class="pre">topographic_product</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#dbgsom.SomClassifier.SomClassifier.topographic_product" title="Link to this definition">¶</a></dt>
+<dd><p>Compute the Topographic Product P of the trained map.</p>
+<p>P measures whether the map’s output dimensionality matches the intrinsic
+dimensionality of the data. P &lt; 0 indicates the map is too small
+(under-expanded); P &gt; 0 indicates the map is too large (over-expanded);
+P = 0 indicates a perfect topology match.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code></span></p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>P</strong> – Topographic product scalar.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+</dl>
+<p class="rubric">References</p>
+<p>Bauer, H.-U. &amp; Pawelzik, K. R., “Quantifying the neighborhood
+preservation of self-organizing feature maps”, IEEE Trans. Neural
+Networks, 1992.</p>
+</dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="dbgsom.SomClassifier.SomClassifier.transform">
 <span class="sig-name descname"><span class="pre">transform</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">X</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dbgsom.SomClassifier.SomClassifier.transform" title="Link to this definition">¶</a></dt>
 <dd><p>Calculate a non negative least squares mixture model of prototypes that approximate each sample.</p>
@@ -1206,6 +1256,7 @@ Networks, 1997.</p>
 <li><a class="reference internal" href="#dbgsom.SomVQ.SomVQ.set_output"><code class="docutils literal notranslate"><span class="pre">SomVQ.set_output()</span></code></a></li>
 <li><a class="reference internal" href="#dbgsom.SomVQ.SomVQ.set_params"><code class="docutils literal notranslate"><span class="pre">SomVQ.set_params()</span></code></a></li>
 <li><a class="reference internal" href="#dbgsom.SomVQ.SomVQ.topographic_function"><code class="docutils literal notranslate"><span class="pre">SomVQ.topographic_function()</span></code></a></li>
+<li><a class="reference internal" href="#dbgsom.SomVQ.SomVQ.topographic_product"><code class="docutils literal notranslate"><span class="pre">SomVQ.topographic_product()</span></code></a></li>
 <li><a class="reference internal" href="#dbgsom.SomVQ.SomVQ.transform"><code class="docutils literal notranslate"><span class="pre">SomVQ.transform()</span></code></a></li>
 </ul>
 </li>
@@ -1231,6 +1282,7 @@ Networks, 1997.</p>
 <li><a class="reference internal" href="#dbgsom.SomClassifier.SomClassifier.set_params"><code class="docutils literal notranslate"><span class="pre">SomClassifier.set_params()</span></code></a></li>
 <li><a class="reference internal" href="#dbgsom.SomClassifier.SomClassifier.set_score_request"><code class="docutils literal notranslate"><span class="pre">SomClassifier.set_score_request()</span></code></a></li>
 <li><a class="reference internal" href="#dbgsom.SomClassifier.SomClassifier.topographic_function"><code class="docutils literal notranslate"><span class="pre">SomClassifier.topographic_function()</span></code></a></li>
+<li><a class="reference internal" href="#dbgsom.SomClassifier.SomClassifier.topographic_product"><code class="docutils literal notranslate"><span class="pre">SomClassifier.topographic_product()</span></code></a></li>
 <li><a class="reference internal" href="#dbgsom.SomClassifier.SomClassifier.transform"><code class="docutils literal notranslate"><span class="pre">SomClassifier.transform()</span></code></a></li>
 </ul>
 </li>
