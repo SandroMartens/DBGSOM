@@ -133,9 +133,9 @@ def test_digits_training_regression():
     quantizer = SomVQ(random_state=42, n_iter=500, max_neurons=30, verbose=False)
     quantizer.fit(X)
 
-    assert quantizer.som_.number_of_nodes() == 18
-    assert quantizer.quantization_error_ == pytest.approx(22.81, abs=0.1)
-    assert quantizer.topographic_error_ == pytest.approx(0.429, abs=0.01)
+    assert quantizer.som_.number_of_nodes() == 21
+    assert quantizer.quantization_error_ == pytest.approx(22.62, abs=0.1)
+    assert quantizer.topographic_error_ == pytest.approx(0.272, abs=0.01)
 
     clf = SomClassifier(random_state=42, n_iter=500, max_neurons=30, verbose=False)
     clf.fit(X, y)
@@ -153,28 +153,32 @@ def test_digits_training_regression():
                     0.0,
                     0.0,
                     0.0,
-                    2 / 216,
-                    98 / 216,
-                    96 / 216,
-                    62 / 216,
-                    42 / 216,
-                    20 / 216,
-                    4 / 216,
+                    0.0,
+                    10 / 315,
+                    132 / 315,
+                    122 / 315,
+                    76 / 315,
+                    48 / 315,
+                    30 / 315,
+                    14 / 315,
+                    4 / 315,
                     0.0,
                 ],
                 [
                     -1.0,
-                    -0.83333333,
-                    -0.66666667,
-                    -0.5,
-                    -0.33333333,
-                    -0.16666667,
+                    -6 / 7,
+                    -5 / 7,
+                    -4 / 7,
+                    -3 / 7,
+                    -2 / 7,
+                    -1 / 7,
                     0.0,
-                    0.16666667,
-                    0.33333333,
-                    0.5,
-                    0.66666667,
-                    0.83333333,
+                    1 / 7,
+                    2 / 7,
+                    3 / 7,
+                    4 / 7,
+                    5 / 7,
+                    6 / 7,
                     1.0,
                 ],
             ]

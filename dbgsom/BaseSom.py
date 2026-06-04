@@ -80,7 +80,7 @@ class BaseSom(BaseEstimator, ABC):
     random_state : int, RandomState instance or None, default=None
         Random state for reproducibility.
 
-    convergence_threshold : float, default=1e-5
+    convergence_threshold : float, default=1e-3
         Threshold for convergence criterion.
 
     max_neurons : int, default=100
@@ -122,7 +122,7 @@ class BaseSom(BaseEstimator, ABC):
         verbose: bool = False,
         coarse_training_frac: float = 0.5,
         random_state: int | None | np.random.RandomState = None,
-        convergence_threshold: float = 10**-5,
+        convergence_threshold: float = 1e-3,
         max_neurons: int = 100,
         metric: str = "euclidean",
         threshold_method: str = "se",
@@ -131,6 +131,7 @@ class BaseSom(BaseEstimator, ABC):
         tau_2: float = 0.5,
         n_jobs: int = 1,
         batch_size: int | None = None,
+        winner_stability_threshold: float | None = 0.01,
     ) -> None:
         super().__init__()
         self.spreading_factor = spreading_factor
@@ -153,6 +154,7 @@ class BaseSom(BaseEstimator, ABC):
         self.vertical_growth = vertical_growth
         self.n_jobs = n_jobs
         self.batch_size = batch_size
+        self.winner_stability_threshold = winner_stability_threshold
 
     _parameter_constraints = {
         "n_iter": [Interval(Integral, 1, None, closed="left")],
@@ -171,6 +173,7 @@ class BaseSom(BaseEstimator, ABC):
         "growth_criterion": [StrOptions({"entropy", "quantization_error"})],
         "tau_2": [Interval(Real, 0, 1, closed="neither")],
         "metric": [StrOptions({"euclidean", "cosine"})],
+        "winner_stability_threshold": [Interval(Real, 0, 1, closed="both"), None],
     }
 
     def __sklearn_tags__(self):
@@ -665,6 +668,7 @@ class BaseSom(BaseEstimator, ABC):
         self.converged_ = False
         self._sigma_coarse: float | None = None
         self._training_phase = "coarse"
+        self._prev_winners: npt.NDArray | None = None
         self.growing_threshold_ = self._calculate_growing_threshold(data)
         self._total_variance = np.var(data, axis=0).sum()
         self._neurons_added = True
@@ -728,6 +732,7 @@ class BaseSom(BaseEstimator, ABC):
                 self._distance_matrix = nx.floyd_warshall_numpy(self.som_)
                 self.weights_ = self._extract_values_from_graph("weight")
                 self._neurons_added = False
+                self._prev_winners = None  # neuron indices changed — invalidate
 
             if self.batch_size is not None:
                 # Chunked batch: accumulate Voronoi numerator/denominator across
@@ -737,12 +742,14 @@ class BaseSom(BaseEstimator, ABC):
                 voronoi_num = np.zeros((K, D), dtype=np.float64)
                 voronoi_den = np.zeros(K, dtype=np.float64)
                 neuron_count = np.zeros(K, dtype=np.int64)
+                all_winners = np.empty(len(data), dtype=np.int64)
                 for start in range(0, len(data), self.batch_size):
                     batch = data[start : start + self.batch_size]
                     y_batch = (
                         y[start : start + self.batch_size] if y is not None else None
                     )
                     distances, winners = self._get_winning_neurons(batch, n_bmu=1)
+                    all_winners[start : start + self.batch_size] = winners
                     sample_weights = self._calculate_exp_similarity(distances)
                     np.add.at(voronoi_num, winners, sample_weights[:, None] * batch)
                     np.add.at(voronoi_den, winners, sample_weights)
@@ -768,7 +775,14 @@ class BaseSom(BaseEstimator, ABC):
                 delta = np.linalg.norm(
                     self.weights_.astype(np.float64) - new_weights.astype(np.float64)
                 )
-                self.converged_ = delta < self._scaled_convergence_threshold()
+                use_stability = self.winner_stability_threshold is not None
+                if self._training_phase == "coarse" and use_stability:
+                    if self._prev_winners is not None:
+                        change_rate = np.mean(all_winners != self._prev_winners)
+                        self.converged_ = change_rate < self.winner_stability_threshold
+                    self._prev_winners = all_winners
+                else:
+                    self.converged_ = delta < self._scaled_convergence_threshold()
                 self.weights_ = new_weights
                 nx.set_node_attributes(
                     self.som_,
@@ -780,6 +794,12 @@ class BaseSom(BaseEstimator, ABC):
                 sample_weights = self._calculate_exp_similarity(distances)
                 self._update_weights(sample_weights, winners, data)
                 self._write_accumulative_error(winners, y, distances)
+                use_stability = self.winner_stability_threshold is not None
+                if self._training_phase == "coarse" and use_stability:
+                    if self._prev_winners is not None:
+                        change_rate = np.mean(winners != self._prev_winners)
+                        self.converged_ = change_rate < self.winner_stability_threshold
+                    self._prev_winners = winners
 
             if self.converged_ and self._training_phase == "fine":
                 break
@@ -1141,12 +1161,27 @@ class BaseSom(BaseEstimator, ABC):
                 self.som_.add_edge(node, nbr)
 
     def _scaled_convergence_threshold(self) -> float:
-        """Return convergence_threshold scaled by the current sigma.
+        """Return the convergence threshold decayed via the configured decay function.
 
-        As sigma shrinks during training, so does the threshold — requiring
-        finer weight changes to count as convergence in the fine phase.
+        Coarse phase: decays from convergence_threshold * 100 down to
+        convergence_threshold over n_iter epochs (99 % at end of coarse phase),
+        mirroring the sigma schedule.
+        Fine phase: returns convergence_threshold directly.
         """
-        return self.convergence_threshold * self._calculate_current_sigma()
+        if self._training_phase == "fine":
+            return self.convergence_threshold
+        threshold_start = self.convergence_threshold * 100
+        threshold_end = self.convergence_threshold
+        decay_fn = _DECAY_FUNCTIONS[self.decay_function]
+        normalized_lr = log(100) / self.n_iter
+        current_iter = self._current_epoch / self.coarse_training_frac
+        return decay_fn(
+            sigma_start=threshold_start,
+            sigma_end=threshold_end,
+            max_iter=self.n_iter,
+            current_iter=current_iter,
+            learning_rate=normalized_lr,
+        )
 
     def _calculate_current_sigma(self) -> float:
         """Return the neighborhood bandwidth for the current epoch.

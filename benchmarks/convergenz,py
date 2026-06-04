@@ -1,0 +1,26 @@
+import time
+import numpy as np
+from sklearn.datasets import load_digits
+from dbgsom.SomVQ import SomVQ
+
+X, y = load_digits(return_X_y=True)
+params = dict(
+    random_state=42,
+    n_iter=500,
+    max_neurons=30,
+    verbose=False,
+    # convergence_threshold=0.1,
+)
+
+thresholds = [None, 0.001, 0.005, 0.01, 0.02, 0.05, 0.1, 0.2, 0.3, 0.5, 0.7, 0.9]
+print(f"{'threshold':>12s} {'time(s)':>8s} {'neurons':>8s} {'QE':>8s} {'TE':>8s}")
+print("-" * 52)
+for thr in thresholds:
+    t0 = time.perf_counter()
+    q = SomVQ(**params, winner_stability_threshold=thr).fit(X)
+    t = time.perf_counter() - t0
+    label = str(thr) if thr is not None else "None (Δw)"
+    print(
+        f"{label:>12s} {t:>8.2f} {q.som_.number_of_nodes():>8d} "
+        f"{q.quantization_error_:>8.4f} {q.topographic_error_:>8.4f}"
+    )
