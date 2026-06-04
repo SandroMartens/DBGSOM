@@ -1268,6 +1268,60 @@ class BaseSom(BaseEstimator, ABC):
 
         return np.vstack((phi_values, normalized_distances))
 
+    def topographic_product(self) -> float:
+        """Compute the Topographic Product P of the trained map.
+
+        P measures whether the map's output dimensionality matches the intrinsic
+        dimensionality of the data. P < 0 indicates the map is too small
+        (under-expanded); P > 0 indicates the map is too large (over-expanded);
+        P = 0 indicates a perfect topology match.
+
+        Returns
+        -------
+        P : float
+            Topographic product scalar.
+
+        References
+        ----------
+        Bauer, H.-U. & Pawelzik, K. R., "Quantifying the neighborhood
+        preservation of self-organizing feature maps", IEEE Trans. Neural
+        Networks, 1992.
+
+        """
+        check_is_fitted(self)
+        N = len(self.neurons_)
+
+        dist_V = euclidean_distances(self.weights_)  # (N, N)
+        dist_A = self._distance_matrix  # (N, N)
+
+        dist_V_tmp = dist_V.copy()
+        np.fill_diagonal(dist_V_tmp, np.inf)
+        dist_A_tmp = dist_A.copy()
+        np.fill_diagonal(dist_A_tmp, np.inf)
+
+        nn_V = np.argsort(dist_V_tmp, axis=1)  # (N, N) sorted by weight dist
+        nn_A = np.argsort(dist_A_tmp, axis=1)  # (N, N) sorted by grid dist
+
+        rows = np.arange(N)[:, None]
+        dV_of_A = dist_V[rows, nn_A]  # d^V to k-th grid-neighbor    (N, N)
+        dV_of_V = dist_V[rows, nn_V]  # d^V to k-th weight-neighbor  (N, N)
+        dA_of_A = dist_A[rows, nn_A]  # d^A to k-th grid-neighbor    (N, N)
+        dA_of_V = dist_A[rows, nn_V]  # d^A to k-th weight-neighbor  (N, N)
+
+        # log(Q1) + log(Q2) for k=1..N-1 (column 0 = self, skip it)
+        # Suppress divide-by-zero/invalid: zeros from coincident neurons are
+        # replaced by nan_to_num → treated as neutral (0) contribution.
+        with np.errstate(divide="ignore", invalid="ignore"):
+            log_Q = (
+                np.log(dV_of_A) - np.log(dV_of_V) + np.log(dA_of_A) - np.log(dA_of_V)
+            )[:, 1:]  # (N, N-1)
+        log_Q = np.nan_to_num(log_Q, nan=0.0, posinf=0.0, neginf=0.0)
+
+        k_vals = np.arange(1, N, dtype=float)  # (N-1,)
+        log_P3 = np.cumsum(log_Q, axis=1) / k_vals  # (N, N-1)
+
+        return float(log_P3.sum() / (N * (N - 1)))
+
     def _calculate_delaunay_triangulation(self, X) -> np.ndarray:
         """Calculate the Delaunay triangulation distance matrix via the
         competitive Hebbian rule: connect BMU1 and BMU2 for each input sample.
