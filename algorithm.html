@@ -245,28 +245,19 @@
         <article role="main" id="furo-main-content">
           <section id="algorithm">
 <h1>Algorithm<a class="headerlink" href="#algorithm" title="Link to this heading">¶</a></h1>
-<section id="dbgsom-framework">
-<h2>DBGSOM Framework<a class="headerlink" href="#dbgsom-framework" title="Link to this heading">¶</a></h2>
+<section id="overview">
+<h2>Overview<a class="headerlink" href="#overview" title="Link to this heading">¶</a></h2>
 <p>The SOM algorithm performs in two steps. First, competition among the neurons to find the winner and second, adaptation of the weight vector of the winner neuron and its topological neighbors. Instead of being confined to a predetermined number of neurons, DBGSOM offers a flexible structure and requires fewer epochs compared to the original SOM, which enables the ability to learn the nonlinear manifolds in high-dimensional feature space.</p>
-<p>Training of the DBGSOM starts from a small number of initial neurons to a larger map by adding new neurons inside the network. A batch growing approach for SOM called Directed Batch Growing Self-Organizing Map is used. It uses the accumulative error of the neurons on the grid to direct the growing phase in terms of position and weight initialization of new neurons. New neurons can be added from boundaries by filling one of the adjacent free positions and assigning a proper weight vector in order to improve the topographic quality of the map and help the map to learn the manifold of the data in high-dimensional feature space.</p>
-<p>This design is motivated by two well-established properties: BMU search costs <span class="math notranslate nohighlight">\(O(n \cdot m \cdot d)\)</span> and the weight update costs <span class="math notranslate nohighlight">\(O(m^2 \cdot d)\)</span> per epoch, so a small map with few neurons converges in significantly less compute time than a large one. Growing a large map incrementally from a small initialisation is therefore both faster and less sensitive to initialisation than training a large map from scratch (Kohonen, 2014).</p>
 <section id="batch-learning-algorithm">
 <h3>Batch Learning Algorithm<a class="headerlink" href="#batch-learning-algorithm" title="Link to this heading">¶</a></h3>
-<p>For a training dataset, the batch learning algorithm presents all input vectors <span class="math notranslate nohighlight">\(x_j\)</span> to all neurons simultaneously and finds the winner neuron whose weight vector <span class="math notranslate nohighlight">\(w_c\)</span> has the minimum distance to <span class="math notranslate nohighlight">\(x_j\)</span>. The new weights are then calculated as</p>
+<p>The basic batch learning algorithm for SOM is as follows:</p>
+<p>For a training dataset, the batch learning algorithm presents all input vectors <span class="math notranslate nohighlight">\(x_j\)</span> to all neurons simultaneously and finds the winner neuron whose weight vector <span class="math notranslate nohighlight">\(w_c\)</span> has the minimum distance to <span class="math notranslate nohighlight">\(x_j\)</span>. The new weights are then calculated as the average of all data belonging to each neuron:</p>
 <div class="math-wrapper docutils container">
 <div class="math notranslate nohighlight">
-\[w_i^{new} = \frac{\sum_{j=1}^{k}h_{c_{j, i}} \cdot s_j \cdot x_j}{\sum_{j=1}^{k}h_{c_{j, i}} \cdot s_j}\]</div>
+\[w_i^{new} = \frac{\sum_{j=1}^{k}h_{c_{j, i}}  \cdot x_j}{\sum_{j=1}^{k}h_{c_{j, i}}}\]</div>
 </div>
-<p>where <span class="math notranslate nohighlight">\(h_{c_{j, i}}\)</span> is the neighborhood function (see below) and <span class="math notranslate nohighlight">\(s_j\)</span> is a per-sample robustness weight (see <a class="reference internal" href="#robustness-weighting">Robustness Weighting</a>).</p>
-<section id="two-phase-training">
-<h4>Two-Phase Training<a class="headerlink" href="#two-phase-training" title="Link to this heading">¶</a></h4>
-<p>Training is divided into a <strong>coarse phase</strong> and a <strong>fine phase</strong>, controlled by <code class="docutils literal notranslate"><span class="pre">coarse_training_frac</span></code> (default 0.5):</p>
-<ul class="simple">
-<li><p><strong>Coarse phase</strong> (first <code class="docutils literal notranslate"><span class="pre">coarse_training_frac</span> <span class="pre">*</span> <span class="pre">n_iter</span></code> epochs): the map grows. The neighborhood bandwidth <span class="math notranslate nohighlight">\(\sigma\)</span> starts at <code class="docutils literal notranslate"><span class="pre">sigma_start</span></code> (default <span class="math notranslate nohighlight">\(0.2 \cdot \sqrt{m}\)</span>, where <span class="math notranslate nohighlight">\(m\)</span> is the current neuron count) and decays toward <code class="docutils literal notranslate"><span class="pre">sigma_end</span></code> (default <span class="math notranslate nohighlight">\(0.05 \cdot \sqrt{m}\)</span>) after each growth step.</p></li>
-<li><p><strong>Fine phase</strong> (remaining epochs): no further growth. <span class="math notranslate nohighlight">\(\sigma\)</span> is fixed to <code class="docutils literal notranslate"><span class="pre">sigma_fine</span></code> if set, otherwise the last coarse value is kept. Small values (~0.1) concentrate updates on the BMU and minimize quantization error, as recommended by Kohonen. A SOM with a fixed (non-decaying) <span class="math notranslate nohighlight">\(\sigma\)</span> is empirically known to converge in a finite number of steps (Kohonen, 2014), which guarantees termination of the fine phase.</p></li>
-</ul>
-<p>The decay from <code class="docutils literal notranslate"><span class="pre">sigma_start</span></code> to <code class="docutils literal notranslate"><span class="pre">sigma_end</span></code> follows either an <strong>exponential</strong> or <strong>linear</strong> schedule (<code class="docutils literal notranslate"><span class="pre">decay_function</span></code> parameter). For exponential decay the learning rate is chosen so that 99% of the drop from <code class="docutils literal notranslate"><span class="pre">sigma_start</span></code> to <code class="docutils literal notranslate"><span class="pre">sigma_end</span></code> is completed by the end of the coarse phase.</p>
-</section>
+<p>where <span class="math notranslate nohighlight">\(h_{c_{j, i}}\)</span> is the neighborhood function (see below). The neighborhood bandwidth  starts at a large value (20 percent of the large side of the map) and decreases over time according to some decay function to an end value (e.g. Five percent of the large side of the map).</p>
+<p>This algorithm repeats for a given number of iterations or until the weight vectors of the prototypes don’t change anymore between iterations. The map has converged.</p>
 <section id="neighborhood-functions">
 <h4>Neighborhood Functions<a class="headerlink" href="#neighborhood-functions" title="Link to this heading">¶</a></h4>
 <p>Two neighborhood functions are available via the <code class="docutils literal notranslate"><span class="pre">neighborhood_function</span></code> parameter:</p>
@@ -275,13 +266,56 @@
 <div class="math notranslate nohighlight">
 \[h_{c_{j, i}} = \exp \left(- \frac{d_{ij}^2}{2{\sigma}^2}\right)\]</div>
 </div>
-<p>where <span class="math notranslate nohighlight">\(d_{ij}\)</span> is the graph distance between neurons <span class="math notranslate nohighlight">\(i\)</span> and <span class="math notranslate nohighlight">\(c_j\)</span> on the SOM grid, computed via Floyd–Warshall.</p>
+<p>where <span class="math notranslate nohighlight">\(d_{ij}\)</span> is the graph distance between neurons <span class="math notranslate nohighlight">\(i\)</span> and <span class="math notranslate nohighlight">\(c_j\)</span> on the SOM grid.</p>
 <p><strong>Cut Gaussian</strong> (<code class="docutils literal notranslate"><span class="pre">&quot;cutgauss&quot;</span></code>)</p>
 <p>Same as Gaussian, but set to zero for all neuron pairs with graph distance <span class="math notranslate nohighlight">\(d_{ij} &gt; 2\sigma\)</span>. This concentrates updates on a well-defined neighborhood and suppresses long-range interference.</p>
 </section>
+<section id="decay-functions">
+<h4>Decay Functions<a class="headerlink" href="#decay-functions" title="Link to this heading">¶</a></h4>
+<p>The decay from <code class="docutils literal notranslate"><span class="pre">sigma_start</span></code> to <code class="docutils literal notranslate"><span class="pre">sigma_end</span></code> follows either an <strong>exponential</strong> or <strong>linear</strong> schedule (<code class="docutils literal notranslate"><span class="pre">decay_function</span></code> parameter). For exponential decay the learning rate is chosen so that 99% of the drop from <code class="docutils literal notranslate"><span class="pre">sigma_start</span></code> to <code class="docutils literal notranslate"><span class="pre">sigma_end</span></code> is completed by the end of the coarse phase.</p>
+</section>
+<section id="distance-metrics">
+<h4>Distance Metrics<a class="headerlink" href="#distance-metrics" title="Link to this heading">¶</a></h4>
+<p>Two distance metrics are supported via the <code class="docutils literal notranslate"><span class="pre">metric</span></code> parameter:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">&quot;euclidean&quot;</span></code> (default): standard Euclidean distance; BMU search via BLAS <code class="docutils literal notranslate"><span class="pre">euclidean_distances</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">&quot;cosine&quot;</span></code>: cosine dissimilarity <span class="math notranslate nohighlight">\(1 - \langle x, w \rangle\)</span>; data and weights are L2-normalised before training and at each update step.</p></li>
+</ul>
+</section>
+</section>
+<section id="dbgsom-algorithm">
+<h3>DBGSOM algorithm<a class="headerlink" href="#dbgsom-algorithm" title="Link to this heading">¶</a></h3>
+<p>Training of the DBGSOM starts from a small number of initial neurons to a larger map by adding new neurons to the network. A batch growing approach for SOM called Directed Batch Growing Self-Organizing Map is used. It uses the accumulative error of the neurons on the grid to direct the growing phase in terms of position and weight initialization of new neurons. After each learning iteration new neurons can be added from boundaries by filling one of the adjacent free positions and assigning a proper weight vector. This implements Assumption 2 and 3.</p>
+</section>
+<section id="implementation-details">
+<h3>Implementation Details<a class="headerlink" href="#implementation-details" title="Link to this heading">¶</a></h3>
+<p>We implemented multiple additions to and changes from this original algorithm. These changes are used to improve both the quality of the results and the speed of computation. These changes are based on a few assumptions taken from the literature.</p>
+<ol class="arabic simple">
+<li><p>A network with a constant neighborhood bandwidth <span class="math notranslate nohighlight">\(sigma\)</span>  always converges in a finite number of iterations.</p></li>
+<li><p>A small network converges faster than a big network.</p></li>
+<li><p>A partially ordered map converges significantly faster than a randomly initialised one.</p></li>
+</ol>
+<p>We explain this in the following sections.</p>
+<section id="two-phase-training">
+<h4>Two-Phase Training<a class="headerlink" href="#two-phase-training" title="Link to this heading">¶</a></h4>
+<p>Training is divided into a <strong>coarse phase</strong> and a <strong>fine phase</strong>, controlled by <code class="docutils literal notranslate"><span class="pre">coarse_training_frac</span></code> (default 0.5):</p>
+<ul class="simple">
+<li><p><strong>Coarse phase</strong> (first <code class="docutils literal notranslate"><span class="pre">coarse_training_frac</span> <span class="pre">*</span> <span class="pre">n_iter</span></code> epochs): the map grows. The neighborhood bandwidth <span class="math notranslate nohighlight">\(\sigma\)</span> starts at <code class="docutils literal notranslate"><span class="pre">sigma_start</span></code> (default <span class="math notranslate nohighlight">\(0.2 \cdot \sqrt{m}\)</span>, where <span class="math notranslate nohighlight">\(m\)</span> is the current neuron count) and decays toward <code class="docutils literal notranslate"><span class="pre">sigma_end</span></code> (default <span class="math notranslate nohighlight">\(0.05 \cdot \sqrt{m}\)</span>) after each growth step.</p></li>
+<li><p><strong>Fine phase</strong> (remaining epochs): no further growth. <span class="math notranslate nohighlight">\(\sigma\)</span> is fixed to <code class="docutils literal notranslate"><span class="pre">sigma_fine</span></code> if set, otherwise <code class="docutils literal notranslate"><span class="pre">sigma_end</span></code> is used.</p></li>
+</ul>
+<p>This is based on obervation number 1 and guarantees that the fine training phase always converges.</p>
+</section>
+<section id="sigma-schedule">
+<h4>Sigma Schedule<a class="headerlink" href="#sigma-schedule" title="Link to this heading">¶</a></h4>
+<p>Between growth steps <span class="math notranslate nohighlight">\(\sigma\)</span> is held <strong>constant</strong> within each convergence
+cycle. Only when the map converges and a growth step fires does <span class="math notranslate nohighlight">\(\sigma\)</span>
+advance to its next decayed value. This is consistent with Assumption 1 (constant
+<span class="math notranslate nohighlight">\(\sigma\)</span> guarantees finite convergence within each cycle), while the
+neighbourhood shrinks progressively as the map grows.</p>
+<p>For assumption 3 the map needs to be ordered, not converged. Topological ordering is a much weaker criterium than converge. Since calculating the actual topological fit each epoch is very expensive, we use the follwing heuristic: The map is ordered, when less than <code class="docutils literal notranslate"><span class="pre">winner_stability_threshold</span></code> * n_samples change their winner neuron between batch epochs.</p>
 </section>
 <section id="robustness-weighting">
-<h3>Robustness Weighting<a class="headerlink" href="#robustness-weighting" title="Link to this heading">¶</a></h3>
+<h4>Robustness Weighting<a class="headerlink" href="#robustness-weighting" title="Link to this heading">¶</a></h4>
 <p>Before the batch weight update, each sample <span class="math notranslate nohighlight">\(x_j\)</span> is assigned a robustness weight</p>
 <div class="math-wrapper docutils container">
 <div class="math notranslate nohighlight">
@@ -290,16 +324,8 @@
 <p>Samples far from their BMU (outliers) receive lower weights, making the map more robust to noise. Samples close to their BMU receive a weight near 1.</p>
 <p>Reference: D’Urso et al., <em>Smoothed self-organizing map for robust clustering</em>, Information Sciences, 2019.</p>
 </section>
-<section id="distance-metrics">
-<h3>Distance Metrics<a class="headerlink" href="#distance-metrics" title="Link to this heading">¶</a></h3>
-<p>Two distance metrics are supported via the <code class="docutils literal notranslate"><span class="pre">metric</span></code> parameter:</p>
-<ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">&quot;euclidean&quot;</span></code> (default): standard Euclidean distance; BMU search via BLAS <code class="docutils literal notranslate"><span class="pre">euclidean_distances</span></code>, allocating an <span class="math notranslate nohighlight">\(n \times m\)</span> distance matrix.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">&quot;cosine&quot;</span></code>: cosine dissimilarity <span class="math notranslate nohighlight">\(1 - \langle x, w \rangle\)</span>; data and weights are L2-normalised before training and at each update step. BMU search via a separate Numba JIT dot-product kernel.</p></li>
-</ul>
-</section>
 <section id="accelerated-bmu-search">
-<h3>Accelerated BMU Search<a class="headerlink" href="#accelerated-bmu-search" title="Link to this heading">¶</a></h3>
+<h4>Accelerated BMU Search<a class="headerlink" href="#accelerated-bmu-search" title="Link to this heading">¶</a></h4>
 <p>BMU search dominates runtime for large maps (see <a class="reference internal" href="#complexity"><span class="std std-ref">Algorithmic complexity</span></a>). To reduce
 this cost, a pointer-based search restricts each sample’s winner search to the
 neuron that won in the previous epoch and its graph neighbours.</p>
@@ -315,10 +341,11 @@ Use a larger <code class="docutils literal notranslate"><span class="pre">pointe
 </ul>
 <p>The search radius is set via <code class="docutils literal notranslate"><span class="pre">pointer_search_radius</span></code> (default 1). Candidates
 are all neurons within that many graph hops of the previous winner, read from
-the already-computed Floyd–Warshall distance matrix.</p>
+the already-computed distance matrix.</p>
 <p>For a 2D grid SOM the number of candidate neurons at radius <span class="math notranslate nohighlight">\(r\)</span> is
 approximately <span class="math notranslate nohighlight">\(2r^2 + 2r + 1\)</span>, giving a speedup of roughly
 <span class="math notranslate nohighlight">\(m \,/\, (2r^2 + 2r + 1)\)</span> relative to the full search.</p>
+</section>
 <section id="winner-stability-convergence">
 <h4>Winner-Stability Convergence<a class="headerlink" href="#winner-stability-convergence" title="Link to this heading">¶</a></h4>
 <p>When <code class="docutils literal notranslate"><span class="pre">winner_stability_threshold</span></code> is set (default 0.01), the coarse phase
@@ -356,7 +383,9 @@ Set <code class="docutils literal notranslate"><span class="pre">winner_stabilit
 </section>
 <section id="growth-triggering">
 <h4>Growth Triggering<a class="headerlink" href="#growth-triggering" title="Link to this heading">¶</a></h4>
-<p>Growth is <strong>convergence-triggered</strong>, not epoch-triggered. After each batch weight update, the change in the weight matrix is compared against <code class="docutils literal notranslate"><span class="pre">convergence_threshold</span></code>. When the change falls below this threshold, the map is considered converged and — if still in the coarse phase and below <code class="docutils literal notranslate"><span class="pre">max_neurons</span></code> — a growth step is performed:</p>
+<p>Unlike the original DBGSOM paper — where new neurons are added after every
+epoch — this implementation is <strong>convergence-triggered</strong>: growth occurs only
+when the map has converged. After each batch weight update, the change in the weight matrix is compared against <code class="docutils literal notranslate"><span class="pre">convergence_threshold</span></code>. When the change falls below this threshold, the map is considered converged and — if still in the coarse phase and below <code class="docutils literal notranslate"><span class="pre">max_neurons</span></code> — a growth step is performed:</p>
 <ol class="arabic simple">
 <li><p>The accumulative error <span class="math notranslate nohighlight">\(E_i\)</span> for each neuron is evaluated.</p></li>
 <li><p>For each non-boundary neuron <span class="math notranslate nohighlight">\(n_i\)</span> where <span class="math notranslate nohighlight">\(E_i &gt; GT\)</span>, half its error is distributed to neighboring boundary neurons.</p></li>
@@ -571,15 +600,19 @@ per step, the cumulative growth overhead is:</p>
           <div class="toc-tree">
             <ul>
 <li><a class="reference internal" href="#">Algorithm</a><ul>
-<li><a class="reference internal" href="#dbgsom-framework">DBGSOM Framework</a><ul>
+<li><a class="reference internal" href="#overview">Overview</a><ul>
 <li><a class="reference internal" href="#batch-learning-algorithm">Batch Learning Algorithm</a><ul>
-<li><a class="reference internal" href="#two-phase-training">Two-Phase Training</a></li>
 <li><a class="reference internal" href="#neighborhood-functions">Neighborhood Functions</a></li>
+<li><a class="reference internal" href="#decay-functions">Decay Functions</a></li>
+<li><a class="reference internal" href="#distance-metrics">Distance Metrics</a></li>
 </ul>
 </li>
+<li><a class="reference internal" href="#dbgsom-algorithm">DBGSOM algorithm</a></li>
+<li><a class="reference internal" href="#implementation-details">Implementation Details</a><ul>
+<li><a class="reference internal" href="#two-phase-training">Two-Phase Training</a></li>
+<li><a class="reference internal" href="#sigma-schedule">Sigma Schedule</a></li>
 <li><a class="reference internal" href="#robustness-weighting">Robustness Weighting</a></li>
-<li><a class="reference internal" href="#distance-metrics">Distance Metrics</a></li>
-<li><a class="reference internal" href="#accelerated-bmu-search">Accelerated BMU Search</a><ul>
+<li><a class="reference internal" href="#accelerated-bmu-search">Accelerated BMU Search</a></li>
 <li><a class="reference internal" href="#winner-stability-convergence">Winner-Stability Convergence</a></li>
 </ul>
 </li>

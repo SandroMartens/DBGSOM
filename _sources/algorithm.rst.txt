@@ -1,34 +1,31 @@
 Algorithm
 =========
 
-DBGSOM Framework
+Overview
 --------------------
 
 The SOM algorithm performs in two steps. First, competition among the neurons to find the winner and second, adaptation of the weight vector of the winner neuron and its topological neighbors. Instead of being confined to a predetermined number of neurons, DBGSOM offers a flexible structure and requires fewer epochs compared to the original SOM, which enables the ability to learn the nonlinear manifolds in high-dimensional feature space.
 
-Training of the DBGSOM starts from a small number of initial neurons to a larger map by adding new neurons inside the network. A batch growing approach for SOM called Directed Batch Growing Self-Organizing Map is used. It uses the accumulative error of the neurons on the grid to direct the growing phase in terms of position and weight initialization of new neurons. New neurons can be added from boundaries by filling one of the adjacent free positions and assigning a proper weight vector in order to improve the topographic quality of the map and help the map to learn the manifold of the data in high-dimensional feature space.
-
-This design is motivated by two well-established properties: BMU search costs :math:`O(n \cdot m \cdot d)` and the weight update costs :math:`O(m^2 \cdot d)` per epoch, so a small map with few neurons converges in significantly less compute time than a large one. Growing a large map incrementally from a small initialisation is therefore both faster and less sensitive to initialisation than training a large map from scratch (Kohonen, 2014).
 
 Batch Learning Algorithm
 ^^^^^^^^^^^^^^^^^^^^^^^^
 
-For a training dataset, the batch learning algorithm presents all input vectors :math:`x_j` to all neurons simultaneously and finds the winner neuron whose weight vector :math:`w_c` has the minimum distance to :math:`x_j`. The new weights are then calculated as
+The basic batch learning algorithm for SOM is as follows:
+
+For a training dataset, the batch learning algorithm presents all input vectors :math:`x_j` to all neurons simultaneously and finds the winner neuron whose weight vector :math:`w_c` has the minimum distance to :math:`x_j`. The new weights are then calculated as the average of all data belonging to each neuron:
 
 .. math::
-    w_i^{new} = \frac{\sum_{j=1}^{k}h_{c_{j, i}} \cdot s_j \cdot x_j}{\sum_{j=1}^{k}h_{c_{j, i}} \cdot s_j}
+    w_i^{new} = \frac{\sum_{j=1}^{k}h_{c_{j, i}}  \cdot x_j}{\sum_{j=1}^{k}h_{c_{j, i}}} 
 
-where :math:`h_{c_{j, i}}` is the neighborhood function (see below) and :math:`s_j` is a per-sample robustness weight (see `Robustness Weighting`_).
+where :math:`h_{c_{j, i}}` is the neighborhood function (see below). The neighborhood bandwidth  starts at a large value (20 percent of the large side of the map) and decreases over time according to some decay function to an end value (e.g. Five percent of the large side of the map).
 
-Two-Phase Training
-""""""""""""""""""
 
-Training is divided into a **coarse phase** and a **fine phase**, controlled by ``coarse_training_frac`` (default 0.5):
+.. .. math::
+..     w_i^{new} = \frac{\sum_{j=1}^{k}h_{c_{j, i}} \cdot s_j \cdot x_j}{\sum_{j=1}^{k}h_{c_{j, i}} \cdot s_j}
 
-- **Coarse phase** (first ``coarse_training_frac * n_iter`` epochs): the map grows. The neighborhood bandwidth :math:`\sigma` starts at ``sigma_start`` (default :math:`0.2 \cdot \sqrt{m}`, where :math:`m` is the current neuron count) and decays toward ``sigma_end`` (default :math:`0.05 \cdot \sqrt{m}`) after each growth step.
-- **Fine phase** (remaining epochs): no further growth. :math:`\sigma` is fixed to ``sigma_fine`` if set, otherwise the last coarse value is kept. Small values (~0.1) concentrate updates on the BMU and minimize quantization error, as recommended by Kohonen. A SOM with a fixed (non-decaying) :math:`\sigma` is empirically known to converge in a finite number of steps (Kohonen, 2014), which guarantees termination of the fine phase.
+.. where :math:`h_{c_{j, i}}` is the neighborhood function (see below) and :math:`s_j` is a per-sample robustness weight (see `Robustness Weighting`_). 
 
-The decay from ``sigma_start`` to ``sigma_end`` follows either an **exponential** or **linear** schedule (``decay_function`` parameter). For exponential decay the learning rate is chosen so that 99% of the drop from ``sigma_start`` to ``sigma_end`` is completed by the end of the coarse phase.
+This algorithm repeats for a given number of iterations or until the weight vectors of the prototypes don't change anymore between iterations. The map has converged.
 
 Neighborhood Functions
 """"""""""""""""""""""
@@ -40,14 +37,64 @@ Two neighborhood functions are available via the ``neighborhood_function`` param
 .. math::
     h_{c_{j, i}} = \exp \left(- \frac{d_{ij}^2}{2{\sigma}^2}\right)
 
-where :math:`d_{ij}` is the graph distance between neurons :math:`i` and :math:`c_j` on the SOM grid, computed via Floyd–Warshall.
+where :math:`d_{ij}` is the graph distance between neurons :math:`i` and :math:`c_j` on the SOM grid.
 
 **Cut Gaussian** (``"cutgauss"``)
 
 Same as Gaussian, but set to zero for all neuron pairs with graph distance :math:`d_{ij} > 2\sigma`. This concentrates updates on a well-defined neighborhood and suppresses long-range interference.
 
+Decay Functions
+"""""""""""""""
+The decay from ``sigma_start`` to ``sigma_end`` follows either an **exponential** or **linear** schedule (``decay_function`` parameter). For exponential decay the learning rate is chosen so that 99% of the drop from ``sigma_start`` to ``sigma_end`` is completed by the end of the coarse phase.
+
+Distance Metrics
+""""""""""""""""
+
+Two distance metrics are supported via the ``metric`` parameter:
+
+- ``"euclidean"`` (default): standard Euclidean distance; BMU search via BLAS ``euclidean_distances``.
+- ``"cosine"``: cosine dissimilarity :math:`1 - \langle x, w \rangle`; data and weights are L2-normalised before training and at each update step.
+
+
+DBGSOM algorithm
+^^^^^^^^^^^^^^^^
+Training of the DBGSOM starts from a small number of initial neurons to a larger map by adding new neurons to the network. A batch growing approach for SOM called Directed Batch Growing Self-Organizing Map is used. It uses the accumulative error of the neurons on the grid to direct the growing phase in terms of position and weight initialization of new neurons. After each learning iteration new neurons can be added from boundaries by filling one of the adjacent free positions and assigning a proper weight vector. This implements Assumption 2 and 3.
+
+
+Implementation Details
+^^^^^^^^^^^^^^^^^^^^^^
+
+We implemented multiple additions to and changes from this original algorithm. These changes are used to improve both the quality of the results and the speed of computation. These changes are based on a few assumptions taken from the literature.
+
+1. A network with a constant neighborhood bandwidth :math:`sigma`  always converges in a finite number of iterations.
+2. A small network converges faster than a big network.
+3. A partially ordered map converges significantly faster than a randomly initialised one.
+
+We explain this in the following sections.
+
+Two-Phase Training
+""""""""""""""""""
+
+Training is divided into a **coarse phase** and a **fine phase**, controlled by ``coarse_training_frac`` (default 0.5):
+
+- **Coarse phase** (first ``coarse_training_frac * n_iter`` epochs): the map grows. The neighborhood bandwidth :math:`\sigma` starts at ``sigma_start`` (default :math:`0.2 \cdot \sqrt{m}`, where :math:`m` is the current neuron count) and decays toward ``sigma_end`` (default :math:`0.05 \cdot \sqrt{m}`) after each growth step.
+- **Fine phase** (remaining epochs): no further growth. :math:`\sigma` is fixed to ``sigma_fine`` if set, otherwise ``sigma_end`` is used.
+
+This is based on obervation number 1 and guarantees that the fine training phase always converges.
+
+
+Sigma Schedule
+""""""""""""""
+Between growth steps :math:`\sigma` is held **constant** within each convergence
+cycle. Only when the map converges and a growth step fires does :math:`\sigma`
+advance to its next decayed value. This is consistent with Assumption 1 (constant
+:math:`\sigma` guarantees finite convergence within each cycle), while the
+neighbourhood shrinks progressively as the map grows.
+
+For assumption 3 the map needs to be ordered, not converged. Topological ordering is a much weaker criterium than converge. Since calculating the actual topological fit each epoch is very expensive, we use the follwing heuristic: The map is ordered, when less than ``winner_stability_threshold`` * n_samples change their winner neuron between batch epochs.
+
 Robustness Weighting
-^^^^^^^^^^^^^^^^^^^^
+""""""""""""""""""""
 
 Before the batch weight update, each sample :math:`x_j` is assigned a robustness weight
 
@@ -58,16 +105,8 @@ Samples far from their BMU (outliers) receive lower weights, making the map more
 
 Reference: D'Urso et al., *Smoothed self-organizing map for robust clustering*, Information Sciences, 2019.
 
-Distance Metrics
-^^^^^^^^^^^^^^^^
-
-Two distance metrics are supported via the ``metric`` parameter:
-
-- ``"euclidean"`` (default): standard Euclidean distance; BMU search via BLAS ``euclidean_distances``, allocating an :math:`n \times m` distance matrix.
-- ``"cosine"``: cosine dissimilarity :math:`1 - \langle x, w \rangle`; data and weights are L2-normalised before training and at each update step. BMU search via a separate Numba JIT dot-product kernel.
-
 Accelerated BMU Search
-^^^^^^^^^^^^^^^^^^^^^^
+"""""""""""""""""""""""
 
 BMU search dominates runtime for large maps (see :ref:`complexity`). To reduce
 this cost, a pointer-based search restricts each sample's winner search to the
@@ -85,7 +124,7 @@ Controlled by ``pointer_search``:
 
 The search radius is set via ``pointer_search_radius`` (default 1). Candidates
 are all neurons within that many graph hops of the previous winner, read from
-the already-computed Floyd–Warshall distance matrix.
+the already-computed distance matrix.
 
 For a 2D grid SOM the number of candidate neurons at radius :math:`r` is
 approximately :math:`2r^2 + 2r + 1`, giving a speedup of roughly
@@ -135,7 +174,9 @@ where :math:`d` is the dimensionality of the data.
 Growth Triggering
 """""""""""""""""
 
-Growth is **convergence-triggered**, not epoch-triggered. After each batch weight update, the change in the weight matrix is compared against ``convergence_threshold``. When the change falls below this threshold, the map is considered converged and — if still in the coarse phase and below ``max_neurons`` — a growth step is performed:
+Unlike the original DBGSOM paper — where new neurons are added after every
+epoch — this implementation is **convergence-triggered**: growth occurs only
+when the map has converged. After each batch weight update, the change in the weight matrix is compared against ``convergence_threshold``. When the change falls below this threshold, the map is considered converged and — if still in the coarse phase and below ``max_neurons`` — a growth step is performed:
 
 1. The accumulative error :math:`E_i` for each neuron is evaluated.
 2. For each non-boundary neuron :math:`n_i` where :math:`E_i > GT`, half its error is distributed to neighboring boundary neurons.
