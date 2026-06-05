@@ -178,7 +178,7 @@ class SomClassifier(TransformerMixin, ClassifierMixin, BaseSom):
             Predicted class labels for samples in X.
 
         """
-        check_is_fitted(self)
+        check_is_fitted(self, attributes=["weights_"])
         X = validate_data(self, X, reset=False)
         labels = np.argmax(self.predict_proba(X=X), axis=1)
         return self.classes_[labels]
@@ -201,7 +201,7 @@ class SomClassifier(TransformerMixin, ClassifierMixin, BaseSom):
         classes are ordered as they are in self.classes_.
 
         """
-        check_is_fitted(self)
+        check_is_fitted(self, attributes=["weights_"])
         X = np.array(validate_data(self, X, reset=False))
         _, winners = self._get_winning_neurons(X, n_bmu=1)
         node_probabilities = self._extract_values_from_graph("probabilities")

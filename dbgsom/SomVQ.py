@@ -125,7 +125,7 @@ class SomVQ(TransformerMixin, ClusterMixin, BaseSom):
             Contiguous cluster index of the best matching prototype.
 
         """
-        check_is_fitted(self)
+        check_is_fitted(self, attributes=["weights_"])
         X = np.array(validate_data(self, X=X, reset=False))
         _, raw_winners = self._get_winning_neurons(X, n_bmu=1)
         return self._label_encoder[raw_winners]

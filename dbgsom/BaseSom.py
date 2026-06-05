@@ -404,7 +404,7 @@ class BaseSom(BaseEstimator, ABC):
         Workshop on Self-Organizing Maps, 2007.
 
         """  # noqa: E501
-        check_is_fitted(self)
+        check_is_fitted(self, attributes=["weights_"])
         if y is None:
             X = validate_data(self, X, reset=False)
         elif y is not None:
@@ -471,7 +471,7 @@ class BaseSom(BaseEstimator, ABC):
             PCA is fit directly on the weight vectors.
 
         """
-        check_is_fitted(self)
+        check_is_fitted(self, attributes=["weights_"])
 
         nodes = list(self.som_.nodes)
         pos = self._compute_graph_layout(layout, nodes, X=X)
@@ -882,10 +882,11 @@ class BaseSom(BaseEstimator, ABC):
             distances = dist_matrix[row_idx, winners]
             return distances, winners
         if n_bmu == 1:
-            dist_matrix = euclidean_distances(data, self.weights_)
-            winners = np.argmin(dist_matrix, axis=1).astype(np.int64)
-            distances = dist_matrix[np.arange(len(data)), winners]
-            return distances, winners
+            # Numba prange kernel instead of BLAS euclidean_distances:
+            # benchmarks show ~2x speedup on AMD/OpenBLAS; Intel/MKL is
+            # faster with BLAS but the gap is smaller than the reverse gap
+            # on AMD, so Numba is the better default for a library.
+            return numba_find_winners_euclidean(data, self.weights_)
         dist_matrix = euclidean_distances(data, self.weights_)
         part = np.argpartition(dist_matrix, n_bmu, axis=1)[:, :n_bmu]
         row_idx = np.arange(len(data))[:, np.newaxis]
@@ -1292,7 +1293,7 @@ class BaseSom(BaseEstimator, ABC):
             Average distance from each sample to the nearest prototype.
 
         """
-        check_is_fitted(self)
+        check_is_fitted(self, attributes=["weights_"])
         X = validate_data(self, X, reset=False)
         distances, _ = self._get_winning_neurons(X, n_bmu=1)
         error = float(np.mean(distances))
@@ -1409,7 +1410,7 @@ class BaseSom(BaseEstimator, ABC):
         Networks, 1992.
 
         """
-        check_is_fitted(self)
+        check_is_fitted(self, attributes=["weights_"])
         N = len(self.neurons_)
 
         dist_V = euclidean_distances(self.weights_)  # (N, N)
@@ -1535,6 +1536,37 @@ def numba_voronoi_set_centers(
                 voronoi_set_centers[neuron_idx, j] /= weight_sum
 
     return voronoi_set_centers
+
+
+@nb.njit(cache=True, parallel=True, fastmath=True)
+def numba_find_winners_euclidean(
+    data: npt.NDArray, weights: npt.NDArray
+) -> tuple[npt.NDArray, npt.NDArray]:
+    """Find the nearest weight vector per sample (fused distance + argmin).
+
+    Chosen over BLAS euclidean_distances: ~2x faster on AMD/OpenBLAS;
+    Intel/MKL closes the gap but the AMD penalty of BLAS is larger than
+    the Intel penalty of Numba, making Numba the better library default.
+    """
+    n_samples = data.shape[0]
+    n_features = data.shape[1]
+    n_neurons = weights.shape[0]
+    winners = np.empty(n_samples, dtype=np.int64)
+    distances = np.empty(n_samples, dtype=data.dtype)
+    for i in nb.prange(n_samples):  # type: ignore[attr-defined]
+        best_dist_sq = np.inf
+        best_j = 0
+        for j in range(n_neurons):
+            d_sq = 0.0
+            for k in range(n_features):
+                diff = data[i, k] - weights[j, k]
+                d_sq += diff * diff
+            if d_sq < best_dist_sq:
+                best_dist_sq = d_sq
+                best_j = j
+        winners[i] = best_j
+        distances[i] = np.sqrt(best_dist_sq)
+    return distances, winners
 
 
 @nb.njit(cache=True, parallel=True, fastmath=True)

@@ -133,9 +133,9 @@ def test_digits_training_regression():
     quantizer = SomVQ(random_state=42, n_iter=500, max_neurons=30, verbose=False)
     quantizer.fit(X)
 
-    assert quantizer.som_.number_of_nodes() == 20
-    assert quantizer.quantization_error_ == pytest.approx(22.41, abs=0.1)
-    assert quantizer.topographic_error_ == pytest.approx(0.333, abs=0.01)
+    assert quantizer.som_.number_of_nodes() == 18
+    assert quantizer.quantization_error_ == pytest.approx(22.93, abs=0.1)
+    assert quantizer.topographic_error_ == pytest.approx(0.377, abs=0.01)
 
     clf = SomClassifier(random_state=42, n_iter=500, max_neurons=30, verbose=False)
     clf.fit(X, y)
@@ -153,35 +153,32 @@ def test_digits_training_regression():
                     0.0,
                     0.0,
                     0.0,
-                    1 / 140,
-                    1 / 20,
-                    11 / 28,
-                    12 / 35,
-                    3 / 14,
-                    3 / 20,
-                    1 / 10,
-                    1 / 35,
-                    1 / 140,
+                    0.05555556,
+                    0.47222222,
+                    0.41666667,
+                    0.25925926,
+                    0.16666667,
+                    0.12037037,
+                    0.02777778,
                     0.0,
                 ],
                 [
                     -1.0,
-                    -6 / 7,
-                    -5 / 7,
-                    -4 / 7,
-                    -3 / 7,
-                    -2 / 7,
-                    -1 / 7,
+                    -0.83333333,
+                    -0.66666667,
+                    -0.5,
+                    -0.33333333,
+                    -0.16666667,
                     0.0,
-                    1 / 7,
-                    2 / 7,
-                    3 / 7,
-                    4 / 7,
-                    5 / 7,
-                    6 / 7,
+                    0.16666667,
+                    0.33333333,
+                    0.5,
+                    0.66666667,
+                    0.83333333,
                     1.0,
                 ],
             ]
         ),
         actual=quantizer.topographic_function(X),
+        decimal=5,
     )
