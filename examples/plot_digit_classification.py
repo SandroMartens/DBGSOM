@@ -23,7 +23,7 @@ from dbgsom.SomClassifier import SomClassifier
 digits_X, digits_y = load_digits(return_X_y=True)
 
 som = SomClassifier(
-    spreading_factor=0.6,
+    lambda_=76.6,
     n_iter=500,
     sigma_end=0.5,
     random_state=42,
