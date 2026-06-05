@@ -1,6 +1,7 @@
 """Handles the core SOM functionality."""
 
 import sys
+import warnings
 from abc import ABC, abstractmethod
 from math import exp, log, sqrt
 from numbers import Integral, Real
@@ -83,8 +84,12 @@ class BaseSom(BaseEstimator, ABC):
     convergence_threshold : float, default=1e-3
         Threshold for convergence criterion.
 
-    max_neurons : int, default=100
-        Maximum number of neurons allowed in the map.
+    max_neurons : int or None, default=None
+        Maximum number of neurons allowed in the map. If ``None``, the limit
+        is set automatically to ``5 * sqrt(n_samples)`` at fit time (Kohonen
+        heuristic). A warning is issued when this auto-limit is reached but
+        neurons still have high error — set ``max_neurons`` explicitly to
+        suppress the warning or allow a larger map.
 
     metric : str, default="euclidean"
         Distance metric used for computations.
@@ -150,7 +155,7 @@ class BaseSom(BaseEstimator, ABC):
         coarse_training_frac: float = 0.5,
         random_state: int | None | np.random.RandomState = None,
         convergence_threshold: float = 1e-3,
-        max_neurons: int = 100,
+        max_neurons: int | None = None,
         metric: str = "euclidean",
         threshold_method: str = "se",
         growth_criterion: str = "quantization_error",
@@ -187,7 +192,7 @@ class BaseSom(BaseEstimator, ABC):
 
     _parameter_constraints = {
         "n_iter": [Interval(Integral, 1, None, closed="left")],
-        "max_neurons": [Interval(Integral, 4, None, closed="left")],
+        "max_neurons": [Interval(Integral, 4, None, closed="left"), None],
         "min_samples_vertical_growth": [Interval(Integral, 1, None, closed="left")],
         "spreading_factor": [Interval(Real, 0, 1, closed="neither")],
         "coarse_training_frac": [Interval(Real, 0, 1, closed="neither")],
@@ -245,6 +250,8 @@ class BaseSom(BaseEstimator, ABC):
                     f"sigma_fine={self.sigma_fine} must be"
                     f" <= sigma_end={self.sigma_end}."
                 )
+        self._effective_max_neurons = self.max_neurons or int(5 * len(X) ** 0.5)
+
         if self.metric == "cosine":
             X = normalize(X)
 
@@ -785,7 +792,7 @@ class BaseSom(BaseEstimator, ABC):
 
             if (
                 self._training_phase == "coarse"
-                and len(self.neurons_) < self.max_neurons
+                and len(self.neurons_) < self._effective_max_neurons
                 and self.converged_
             ):
                 converged_triggered = self.converged_
@@ -795,6 +802,24 @@ class BaseSom(BaseEstimator, ABC):
                 self._sigma_coarse = self._compute_decayed_sigma(current_epoch)
                 if converged_triggered and not self._neurons_added:
                     self._training_phase = "fine"
+
+        self._warn_if_map_capped()
+
+    def _warn_if_map_capped(self) -> None:
+        if self.max_neurons is not None:
+            return
+        if len(self.neurons_) < self._effective_max_neurons:
+            return
+        errors = self._extract_values_from_graph("error")
+        if np.any(errors > self.growing_threshold_):
+            warnings.warn(
+                f"The map reached the auto-computed limit of "
+                f"{self._effective_max_neurons} neurons (5·√N). "
+                "Neurons with high error remain. Set max_neurons explicitly "
+                "to allow a larger map or suppress this warning.",
+                UserWarning,
+                stacklevel=3,
+            )
 
     def _create_som(self, data: npt.NDArray) -> nx.Graph:
         """Create a graph containing the first four neurons in a square. Each neuron has a weight vector randomly chosen from the training samples."""  # noqa: E501
@@ -1198,14 +1223,25 @@ class BaseSom(BaseEstimator, ABC):
             learning_rate=normalized_lr,
         )
 
+    def _resolve_sigmas(self, n_neurons: int) -> tuple[float, float]:
+        """Return effective (sigma_start, sigma_end) for the current map size.
+
+        Uses ``sqrt(n_neurons) - 1`` as the reference scale, which equals the
+        number of graph hops along one side of an approximately square map.
+        """
+        s = sqrt(n_neurons) - 1
+        sigma_start = self.sigma_start if self.sigma_start is not None else 0.2 * s
+        sigma_end = self.sigma_end if self.sigma_end is not None else 0.05 * s
+        return sigma_start, sigma_end
+
     def _calculate_current_sigma(self) -> float:
         """Return the neighborhood bandwidth for the current epoch.
 
         Coarse phase: returns ``_sigma_coarse``, which is reset to a
         decayed value via ``_compute_decayed_sigma`` after each growth step.
-        Defaults to ``0.2 * sqrt(n_neurons)`` at the start.
+        Defaults to ``0.2 * (sqrt(n_neurons) - 1)`` at the start.
 
-        Fine phase: returns ``sigma_fine`` if set, otherwise _sigma_coarse.
+        Fine phase: returns ``sigma_fine`` if set, otherwise ``sigma_end``.
 
         Returns
         -------
@@ -1214,18 +1250,14 @@ class BaseSom(BaseEstimator, ABC):
 
         """
         n_neurons = self.som_.number_of_nodes()
-        sigma_start = (
-            0.2 * (sqrt(n_neurons) - 1)
-            if self.sigma_start is None
-            else self.sigma_start
-        )
+        sigma_start, sigma_end = self._resolve_sigmas(n_neurons)
 
         if self._training_phase == "coarse":
             if self._sigma_coarse is None:
                 self._sigma_coarse = sigma_start
             return self._sigma_coarse
         else:
-            return self._sigma_coarse if self.sigma_fine is None else self.sigma_fine
+            return sigma_end if self.sigma_fine is None else self.sigma_fine
 
     def _compute_decayed_sigma(self, epoch: int) -> float:
         """Return the new ``_sigma_coarse`` value after a growth step.
@@ -1253,12 +1285,7 @@ class BaseSom(BaseEstimator, ABC):
 
         """
         n_neurons = self.som_.number_of_nodes()
-        sigma_start = (
-            0.2 * (sqrt(n_neurons) - 1)
-            if self.sigma_start is None
-            else self.sigma_start
-        )
-        sigma_end = 0.05 * sqrt(n_neurons) if self.sigma_end is None else self.sigma_end
+        sigma_start, sigma_end = self._resolve_sigmas(n_neurons)
         # lr chosen so exp(-lr * n_iter) = 0.01, i.e. 99 % decay at end of coarse phase
         normalized_lr = log(100) / self.n_iter
         decay_fn = _DECAY_FUNCTIONS[self.decay_function]
