@@ -66,6 +66,48 @@ Two distance metrics are supported via the ``metric`` parameter:
 - ``"euclidean"`` (default): standard Euclidean distance; BMU search via Numba JIT kernel (fused distance + argmin, no n×m matrix allocated).
 - ``"cosine"``: cosine dissimilarity :math:`1 - \langle x, w \rangle`; data and weights are L2-normalised before training and at each update step. BMU search via a separate Numba JIT dot-product kernel.
 
+Accelerated BMU Search
+**********************
+
+BMU search dominates runtime for large maps (see :ref:`complexity`). To reduce
+this cost, a pointer-based search restricts each sample's winner search to the
+neuron that won in the previous epoch and its graph neighbours.
+
+Controlled by ``pointer_search``:
+
+- ``"none"``: full search over all neurons — :math:`O(n \cdot m \cdot d)` per epoch.
+- ``"fine"`` (default): pointer search only during the fine training phase, where
+  the map is stable and winners rarely move beyond the local neighbourhood.
+  Near-identical quality at approximately 3× speedup.
+- ``"all"``: pointer search in both phases. Improves topographic error (map
+  topology is more locally consistent) but reduces quantization accuracy.
+  Use a larger ``pointer_search_radius`` to recover quality.
+
+The search radius is set via ``pointer_search_radius`` (default 1). Candidates
+are all neurons within that many graph hops of the previous winner, read from
+the already-computed Floyd–Warshall distance matrix.
+
+For a 2D grid SOM the number of candidate neurons at radius :math:`r` is
+approximately :math:`2r^2 + 2r + 1`, giving a speedup of roughly
+:math:`m \,/\, (2r^2 + 2r + 1)` relative to the full search.
+
+Winner-Stability Convergence
+############################
+
+When ``winner_stability_threshold`` is set (default 0.01), the coarse phase
+uses the winner-change rate as its convergence criterion instead of weight-delta:
+
+.. math::
+
+    \text{converged} \iff
+    \frac{\left|\left\{ j : c_j^{(t)} \neq c_j^{(t-1)} \right\}\right|}{n} < \tau_w
+
+where :math:`\tau_w` = ``winner_stability_threshold`` and :math:`c_j^{(t)}` is
+the BMU of sample :math:`j` at epoch :math:`t`. This criterion responds faster
+to map stabilisation than weight-delta and is well-matched to pointer search
+(stable winners are exactly the signal pointer search relies on).
+Set ``winner_stability_threshold=None`` to revert to weight-delta convergence.
+
 Directed Horizontal Growth
 **************************
 
@@ -168,6 +210,8 @@ where :math:`p_i(x)` is the fraction of samples mapped to neuron :math:`i` that 
 Reference: Qu et al., *Entropy-Defined Direct Batch Growing Hierarchical Self-Organizing Mapping for Efficient Network Anomaly Detection*, IEEE Access, 2021.
 
 
+.. _complexity:
+
 Runtime complexity
 ------------------
 
@@ -200,6 +244,10 @@ weight vectors across `d` dimensions (implemented as a fused Numba JIT kernel):
 
 .. math::
     T_{\text{BMU}} = O(n \cdot m \cdot d) \text{ per epoch}
+
+With ``pointer_search="fine"`` (default), the fine-phase search is restricted to
+:math:`O(r^2)` candidates per sample, reducing the fine-phase BMU cost to
+:math:`O(n \cdot r^2 \cdot d \cdot e_{\text{fine}})`, independent of `m`.
 
 **Batch weight update** — the new weights are computed via a matrix multiplication of the
 :math:`m \times m` neighbourhood kernel with the :math:`m \times d` Voronoi centre matrix:

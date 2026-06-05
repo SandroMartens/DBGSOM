@@ -107,6 +107,33 @@ class BaseSom(BaseEstimator, ABC):
     n_jobs : int, default=1
         Number of parallel jobs for computation.
 
+    neighborhood_function : str, default="gaussian"
+        Kernel function for the neighborhood update. Options: ``"gaussian"``,
+        ``"cutgauss"`` (Gaussian truncated at 3σ).
+
+    winner_stability_threshold : float or None, default=0.01
+        Convergence criterion for the coarse training phase based on winner
+        stability. Training is considered converged when the fraction of
+        samples whose BMU changed between epochs falls below this threshold.
+        Set to ``None`` to use weight-delta convergence instead.
+
+    pointer_search : {"none", "fine", "all"}, default="fine"
+        Controls whether the pointer-based BMU search is used to accelerate
+        winner lookup by restricting the search to the previous winner and
+        its graph neighbors.
+
+        - ``"none"``: always full search over all neurons.
+        - ``"fine"``: pointer search only during the fine training phase
+          (stable map). Recommended default — near-identical quality, ~3x speedup.
+        - ``"all"``: pointer search in both phases. Faster but lower
+          quantization accuracy; improves topographic error.
+
+    pointer_search_radius : int, default=1
+        Graph-hop radius for the pointer-based BMU search. Candidates are
+        all neurons within this many hops of the previous winner.
+        Larger radius → better quality, smaller speedup.
+        Only relevant when ``pointer_search != "none"``.
+
     """
 
     def __init__(
@@ -131,6 +158,8 @@ class BaseSom(BaseEstimator, ABC):
         tau_2: float = 0.5,
         n_jobs: int = 1,
         winner_stability_threshold: float | None = 0.01,
+        pointer_search: str = "fine",
+        pointer_search_radius: int = 1,
     ) -> None:
         super().__init__()
         self.spreading_factor = spreading_factor
@@ -153,6 +182,8 @@ class BaseSom(BaseEstimator, ABC):
         self.vertical_growth = vertical_growth
         self.n_jobs = n_jobs
         self.winner_stability_threshold = winner_stability_threshold
+        self.pointer_search = pointer_search
+        self.pointer_search_radius = pointer_search_radius
 
     _parameter_constraints = {
         "n_iter": [Interval(Integral, 1, None, closed="left")],
@@ -172,6 +203,8 @@ class BaseSom(BaseEstimator, ABC):
         "tau_2": [Interval(Real, 0, 1, closed="neither")],
         "metric": [StrOptions({"euclidean", "cosine"})],
         "winner_stability_threshold": [Interval(Real, 0, 1, closed="both"), None],
+        "pointer_search": [StrOptions({"none", "fine", "all"})],
+        "pointer_search_radius": [Interval(Integral, 1, None, closed="left")],
     }
 
     def __sklearn_tags__(self):
@@ -745,7 +778,7 @@ class BaseSom(BaseEstimator, ABC):
                 if self._prev_winners is not None:
                     change_rate = np.mean(winners != self._prev_winners)
                     self.converged_ = change_rate < self.winner_stability_threshold
-                self._prev_winners = winners
+            self._prev_winners = winners
 
             if self.converged_ and self._training_phase == "fine":
                 break
@@ -790,13 +823,22 @@ class BaseSom(BaseEstimator, ABC):
         return som
 
     def _build_neighbor_matrix(self) -> None:
-        """Build padded (K × max_degree) array of neighbor indices for pointer search."""
-        neuron_to_idx = {n: i for i, n in enumerate(self.neurons_)}
+        """Build padded (K × max_candidates) neighbor index array for pointer search.
+
+        Includes all neurons within `pointer_search_radius` graph hops.
+        Uses the already-computed `_distance_matrix` (Floyd-Warshall).
+        """
         K = len(self.neurons_)
-        max_deg = max(dict(self.som_.degree()).values(), default=1)
-        mat = np.full((K, max_deg), -1, dtype=np.int64)
-        for i, node in enumerate(self.neurons_):
-            nbrs = [neuron_to_idx[n] for n in self.som_.neighbors(node)]
+        r = self.pointer_search_radius
+        rows = []
+        for i in range(K):
+            nbrs = np.where(
+                (self._distance_matrix[i] <= r) & (self._distance_matrix[i] > 0)
+            )[0].astype(np.int64)
+            rows.append(nbrs)
+        max_len = max(len(n) for n in rows) if rows else 1
+        mat = np.full((K, max_len), -1, dtype=np.int64)
+        for i, nbrs in enumerate(rows):
             mat[i, : len(nbrs)] = nbrs
         self._neighbor_matrix = mat
 
@@ -810,8 +852,13 @@ class BaseSom(BaseEstimator, ABC):
         n_bmu>1: argpartition (post-training topographic error only).
         """
         if (
-            prev_winners is not None and n_bmu == 1 and self.metric != "cosine"
-            # and self._training_phase == "fine"
+            prev_winners is not None
+            and n_bmu == 1
+            and self.metric != "cosine"
+            and (
+                self.pointer_search == "all"
+                or (self.pointer_search == "fine" and self._training_phase == "fine")
+            )
         ):
             return numba_find_winners_pointer(
                 data, self.weights_, prev_winners, self._neighbor_matrix

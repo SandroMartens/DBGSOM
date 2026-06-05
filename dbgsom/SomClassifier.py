@@ -31,9 +31,6 @@ class SomClassifier(TransformerMixin, ClassifierMixin, BaseSom):
     n_iter : int, default = 200
         Maximum Number of training epochs.
 
-    convergence_iter : int, default = 1
-        How many training iterations run until new neurons are added.
-
     max_neurons : int, default = 100
         Maximum number of neurons in the som.
 
@@ -42,9 +39,6 @@ class SomClassifier(TransformerMixin, ClassifierMixin, BaseSom):
 
     decay_function : {'exponential', 'linear'}, default = 'exponential'
         Decay function to use for neighborhood bandwith sigma.
-
-    learning_rate : int, default = 0.02
-        Decay factor if decay function is set to "exponential".
 
     verbose : bool, default = False
 
@@ -104,13 +98,19 @@ class SomClassifier(TransformerMixin, ClassifierMixin, BaseSom):
 
         `sigma_end = max(0.7, 0.05 * sqrt(n_neurons))`
 
+    **kwargs
+        Additional parameters inherited from :class:`BaseSom`. See its
+        documentation for ``neighborhood_function``,
+        ``winner_stability_threshold``, ``pointer_search``,
+        ``pointer_search_radius``, ``sigma_fine``, and others.
+
     Attributes
     ----------
     labels_ : ndarray of shape (n_samples,)
         Labels of each point.
 
     som_ : NetworkX.graph
-        Graph object containing the neurons with attributes
+        Graph object containing the neurons with attributes.
 
     weights_ : ndarray of shape (n_prototypes, n_features)
         Learned weights of the neurons.
