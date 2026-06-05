@@ -294,13 +294,13 @@
 <h3>Distance Metrics<a class="headerlink" href="#distance-metrics" title="Link to this heading">¶</a></h3>
 <p>Two distance metrics are supported via the <code class="docutils literal notranslate"><span class="pre">metric</span></code> parameter:</p>
 <ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">&quot;euclidean&quot;</span></code> (default): standard Euclidean distance; BMU search via Numba JIT kernel (fused distance + argmin, no n×m matrix allocated).</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">&quot;euclidean&quot;</span></code> (default): standard Euclidean distance; BMU search via BLAS <code class="docutils literal notranslate"><span class="pre">euclidean_distances</span></code>, allocating an <span class="math notranslate nohighlight">\(n \times m\)</span> distance matrix.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">&quot;cosine&quot;</span></code>: cosine dissimilarity <span class="math notranslate nohighlight">\(1 - \langle x, w \rangle\)</span>; data and weights are L2-normalised before training and at each update step. BMU search via a separate Numba JIT dot-product kernel.</p></li>
 </ul>
 </section>
 <section id="accelerated-bmu-search">
 <h3>Accelerated BMU Search<a class="headerlink" href="#accelerated-bmu-search" title="Link to this heading">¶</a></h3>
-<p>BMU search dominates runtime for large maps (see <a class="reference internal" href="#complexity"><span class="std std-ref">Runtime complexity</span></a>). To reduce
+<p>BMU search dominates runtime for large maps (see <a class="reference internal" href="#complexity"><span class="std std-ref">Algorithmic complexity</span></a>). To reduce
 this cost, a pointer-based search restricts each sample’s winner search to the
 neuron that won in the previous epoch and its graph neighbours.</p>
 <p>Controlled by <code class="docutils literal notranslate"><span class="pre">pointer_search</span></code>:</p>
@@ -421,31 +421,45 @@ Set <code class="docutils literal notranslate"><span class="pre">winner_stabilit
 <p>Reference: Qu et al., <em>Entropy-Defined Direct Batch Growing Hierarchical Self-Organizing Mapping for Efficient Network Anomaly Detection</em>, IEEE Access, 2021.</p>
 </section>
 </section>
-<section id="runtime-complexity">
-<span id="complexity"></span><h2>Runtime complexity<a class="headerlink" href="#runtime-complexity" title="Link to this heading">¶</a></h2>
+<section id="algorithmic-complexity">
+<span id="complexity"></span><h2>Algorithmic complexity<a class="headerlink" href="#algorithmic-complexity" title="Link to this heading">¶</a></h2>
 <p>The following variables are used throughout:</p>
 <ul class="simple">
 <li><p><cite>n</cite> — number of data samples</p></li>
 <li><p><cite>m</cite> — number of neurons (grows dynamically; refers to the final neuron count)</p></li>
 <li><p><cite>d</cite> — data dimension</p></li>
 <li><p><cite>e</cite> — number of training epochs</p></li>
+<li><p><cite>r</cite> - Neighborhood width when using pointer search</p></li>
 </ul>
+<section id="training">
+<h3>Training<a class="headerlink" href="#training" title="Link to this heading">¶</a></h3>
 <section id="space-complexity">
-<h3>Space complexity<a class="headerlink" href="#space-complexity" title="Link to this heading">¶</a></h3>
+<h4>Space complexity<a class="headerlink" href="#space-complexity" title="Link to this heading">¶</a></h4>
 <p>The weight matrix and the input data each contribute <span class="math notranslate nohighlight">\(O(m \cdot d)\)</span> and <span class="math notranslate nohighlight">\(O(n \cdot d)\)</span>.
 Additionally, the Floyd–Warshall distance matrix between all neuron pairs is stored as an
-<span class="math notranslate nohighlight">\(m \times m\)</span> array, adding <span class="math notranslate nohighlight">\(O(m^2)\)</span>:</p>
+<span class="math notranslate nohighlight">\(m \times m\)</span> array, adding <span class="math notranslate nohighlight">\(O(m^2)\)</span>.
+The <strong>stored</strong> state after training is therefore:</p>
 <div class="math-wrapper docutils container">
 <div class="math notranslate nohighlight">
-\[S = O(d \cdot (m + n) + m^2)\]</div>
+\[S_{\text{stored}} = O(d \cdot (m + n) + m^2)\]</div>
 </div>
-<p>The <span class="math notranslate nohighlight">\(m^2\)</span> term dominates the space cost when <cite>d</cite> is small relative to <cite>m</cite>.</p>
+<p>During training, the full-search BMU path (<code class="docutils literal notranslate"><span class="pre">pointer_search=&quot;none&quot;</span></code>, coarse phase, or
+<code class="docutils literal notranslate"><span class="pre">similarity=&quot;cosine&quot;</span></code>) allocates an <span class="math notranslate nohighlight">\(n \times m\)</span> pairwise distance matrix,
+adding a peak term of <span class="math notranslate nohighlight">\(O(n \cdot m)\)</span>:</p>
+<div class="math-wrapper docutils container">
+<div class="math notranslate nohighlight">
+\[S_{\text{peak}} = O(d \cdot (m + n) + m^2 + n \cdot m)\]</div>
+</div>
+<p>For large datasets this <span class="math notranslate nohighlight">\(n \times m\)</span> allocation dominates.
+The pointer-based fine-phase search (<code class="docutils literal notranslate"><span class="pre">pointer_search=&quot;fine&quot;</span></code>, default) avoids this
+allocation entirely by searching only the previous winner and its graph neighbours.</p>
 </section>
-<section id="time-complexity-fit">
-<h3>Time complexity (fit)<a class="headerlink" href="#time-complexity-fit" title="Link to this heading">¶</a></h3>
+<section id="time-complexity">
+<h4>Time complexity<a class="headerlink" href="#time-complexity" title="Link to this heading">¶</a></h4>
 <p>Each training epoch involves three operations with distinct costs:</p>
 <p><strong>BMU search</strong> — for every sample, the nearest neuron is found by comparing against all <cite>m</cite>
-weight vectors across <cite>d</cite> dimensions (implemented as a fused Numba JIT kernel):</p>
+weight vectors across <cite>d</cite> dimensions (Euclidean: BLAS <code class="docutils literal notranslate"><span class="pre">euclidean_distances</span></code>; cosine: fused
+Numba JIT dot-product kernel):</p>
 <div class="math-wrapper docutils container">
 <div class="math notranslate nohighlight">
 \[T_{\text{BMU}} = O(n \cdot m \cdot d) \text{ per epoch}\]</div>
@@ -453,12 +467,18 @@ weight vectors across <cite>d</cite> dimensions (implemented as a fused Numba JI
 <p>With <code class="docutils literal notranslate"><span class="pre">pointer_search=&quot;fine&quot;</span></code> (default), the fine-phase search is restricted to
 <span class="math notranslate nohighlight">\(O(r^2)\)</span> candidates per sample, reducing the fine-phase BMU cost to
 <span class="math notranslate nohighlight">\(O(n \cdot r^2 \cdot d \cdot e_{\text{fine}})\)</span>, independent of <cite>m</cite>.</p>
-<p><strong>Batch weight update</strong> — the new weights are computed via a matrix multiplication of the
-<span class="math notranslate nohighlight">\(m \times m\)</span> neighbourhood kernel with the <span class="math notranslate nohighlight">\(m \times d\)</span> Voronoi centre matrix:</p>
+<p><strong>Batch weight update</strong> — two steps per epoch:</p>
+<ol class="arabic simple">
+<li><p><strong>Voronoi centre computation</strong> (Numba JIT) — for each neuron, compute the kernel-weighted
+mean of all <span class="math notranslate nohighlight">\(n\)</span> samples assigned to it: <span class="math notranslate nohighlight">\(O(n \cdot d)\)</span>.</p></li>
+<li><p><strong>Neighbourhood matrix multiply</strong> (BLAS) — contract the <span class="math notranslate nohighlight">\(m \times m\)</span> neighbourhood
+kernel with the <span class="math notranslate nohighlight">\(m \times d\)</span> Voronoi centre matrix: <span class="math notranslate nohighlight">\(O(m^2 \cdot d)\)</span>.</p></li>
+</ol>
 <div class="math-wrapper docutils container">
 <div class="math notranslate nohighlight">
-\[T_{\text{update}} = O(m^2 \cdot d) \text{ per epoch}\]</div>
+\[T_{\text{update}} = O(n \cdot d + m^2 \cdot d) \text{ per epoch}\]</div>
 </div>
+<p>When <span class="math notranslate nohighlight">\(n \gg m^2 / d\)</span> the Voronoi step dominates; otherwise the matrix multiply does.</p>
 <p><strong>Floyd–Warshall recomputation</strong> — whenever a new neuron is inserted the graph distance
 matrix is recomputed from scratch. With up to <cite>m</cite> growth steps and an <span class="math notranslate nohighlight">\(O(m^3)\)</span> cost
 per step, the cumulative growth overhead is:</p>
@@ -467,6 +487,11 @@ per step, the cumulative growth overhead is:</p>
 \[T_{\text{growth}} = O(m^4)\]</div>
 </div>
 <p>The total fit complexity is therefore:</p>
+<div class="math-wrapper docutils container">
+<div class="math notranslate nohighlight">
+\[T_{\text{fit}} = O\!\left(e \cdot (n \cdot m \cdot d + n \cdot d + m^2 \cdot d) + m^4\right)\]</div>
+</div>
+<p>Simplified (absorbing <span class="math notranslate nohighlight">\(n \cdot d\)</span> into <span class="math notranslate nohighlight">\(n \cdot m \cdot d\)</span> since <span class="math notranslate nohighlight">\(m \geq 1\)</span>):</p>
 <div class="math-wrapper docutils container">
 <div class="math notranslate nohighlight">
 \[T_{\text{fit}} = O\!\left(e \cdot (n \cdot m \cdot d + m^2 \cdot d) + m^4\right)\]</div>
@@ -478,8 +503,9 @@ per step, the cumulative growth overhead is:</p>
 <code class="docutils literal notranslate"><span class="pre">max_neurons</span></code>.</p></li>
 </ul>
 </section>
-<section id="time-complexity-predict">
-<h3>Time complexity (predict)<a class="headerlink" href="#time-complexity-predict" title="Link to this heading">¶</a></h3>
+</section>
+<section id="runtime">
+<h3>Runtime<a class="headerlink" href="#runtime" title="Link to this heading">¶</a></h3>
 <p>Prediction requires only a single BMU search over the fitted weight matrix:</p>
 <div class="math-wrapper docutils container">
 <div class="math notranslate nohighlight">
@@ -572,10 +598,13 @@ per step, the cumulative growth overhead is:</p>
 <li><a class="reference internal" href="#entropy-defined-dbgsom">Entropy Defined DBGSOM</a></li>
 </ul>
 </li>
-<li><a class="reference internal" href="#runtime-complexity">Runtime complexity</a><ul>
+<li><a class="reference internal" href="#algorithmic-complexity">Algorithmic complexity</a><ul>
+<li><a class="reference internal" href="#training">Training</a><ul>
 <li><a class="reference internal" href="#space-complexity">Space complexity</a></li>
-<li><a class="reference internal" href="#time-complexity-fit">Time complexity (fit)</a></li>
-<li><a class="reference internal" href="#time-complexity-predict">Time complexity (predict)</a></li>
+<li><a class="reference internal" href="#time-complexity">Time complexity</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#runtime">Runtime</a></li>
 </ul>
 </li>
 </ul>
