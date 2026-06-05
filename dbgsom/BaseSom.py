@@ -540,7 +540,7 @@ class BaseSom(BaseEstimator, ABC):
                 data=edges_df,
             )
 
-        p = p.add(so.Dot(), data=nodes_df, **node_aesthetics)
+        p = p.add(so.Dot(), data=nodes_df, **node_aesthetics)  # ty:ignore[invalid-argument-type]
 
         if color_scale is not None:
             p = p.scale(color=color_scale)
@@ -998,7 +998,7 @@ class BaseSom(BaseEstimator, ABC):
         """
         if self.growth_criterion == "entropy":
             for winner_index, neuron in enumerate(self.neurons_):
-                counts = np.bincount(y[winners == winner_index])
+                counts = np.bincount(y[winners == winner_index])  # ty:ignore[not-subscriptable]
                 error = scipy.stats.entropy(counts, base=2)
                 self.som_.nodes[neuron]["error"] = error
 
@@ -1510,7 +1510,7 @@ def numba_voronoi_set_centers(
 ) -> np.ndarray:
     """Calculate the centers of the Voronoi regions based on the winners and data arrays."""
     voronoi_set_centers = np.zeros(shape=shape, dtype=data.dtype)
-    for i in nb.prange(groups.size):
+    for i in nb.prange(groups.size):  # ty:ignore[not-iterable]
         group_start = offsets[i]
         group_end = offsets[i + 1] if i + 1 < groups.size else index.size
         group_index = index[group_start:group_end]
@@ -1553,7 +1553,7 @@ def numba_find_winners_euclidean(
     n_neurons = weights.shape[0]
     winners = np.empty(n_samples, dtype=np.int64)
     distances = np.empty(n_samples, dtype=data.dtype)
-    for i in nb.prange(n_samples):  # type: ignore[attr-defined]
+    for i in nb.prange(n_samples):  # ty:ignore[not-iterable]
         best_dist_sq = np.inf
         best_j = 0
         for j in range(n_neurons):
@@ -1583,7 +1583,7 @@ def numba_find_winners_cosine(
     n_neurons = weights.shape[0]
     winners = np.empty(n_samples, dtype=np.int64)
     distances = np.empty(n_samples, dtype=data.dtype)
-    for i in nb.prange(n_samples):  # type: ignore[attr-defined]
+    for i in nb.prange(n_samples):  # ty:ignore[not-iterable]
         best_sim = -np.inf
         best_j = 0
         for j in range(n_neurons):
@@ -1609,7 +1609,7 @@ def numba_find_winners_pointer(
     n = data.shape[0]
     winners = np.empty(n, np.int64)
     distances = np.empty(n, np.float64)
-    for i in nb.prange(n):
+    for i in nb.prange(n):  # ty:ignore[not-iterable]
         pw = prev_winners[i]
         best_d = np.sum((data[i] - weights[pw]) ** 2)
         best_idx = pw
