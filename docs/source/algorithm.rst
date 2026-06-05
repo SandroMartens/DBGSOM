@@ -11,7 +11,7 @@ Training of the DBGSOM starts from a small number of initial neurons to a larger
 This design is motivated by two well-established properties: BMU search costs :math:`O(n \cdot m \cdot d)` and the weight update costs :math:`O(m^2 \cdot d)` per epoch, so a small map with few neurons converges in significantly less compute time than a large one. Growing a large map incrementally from a small initialisation is therefore both faster and less sensitive to initialisation than training a large map from scratch (Kohonen, 2014).
 
 Batch Learning Algorithm
-************************
+^^^^^^^^^^^^^^^^^^^^^^^^
 
 For a training dataset, the batch learning algorithm presents all input vectors :math:`x_j` to all neurons simultaneously and finds the winner neuron whose weight vector :math:`w_c` has the minimum distance to :math:`x_j`. The new weights are then calculated as
 
@@ -21,7 +21,7 @@ For a training dataset, the batch learning algorithm presents all input vectors 
 where :math:`h_{c_{j, i}}` is the neighborhood function (see below) and :math:`s_j` is a per-sample robustness weight (see `Robustness Weighting`_).
 
 Two-Phase Training
-##################
+""""""""""""""""""
 
 Training is divided into a **coarse phase** and a **fine phase**, controlled by ``coarse_training_frac`` (default 0.5):
 
@@ -31,7 +31,7 @@ Training is divided into a **coarse phase** and a **fine phase**, controlled by 
 The decay from ``sigma_start`` to ``sigma_end`` follows either an **exponential** or **linear** schedule (``decay_function`` parameter). For exponential decay the learning rate is chosen so that 99% of the drop from ``sigma_start`` to ``sigma_end`` is completed by the end of the coarse phase.
 
 Neighborhood Functions
-######################
+""""""""""""""""""""""
 
 Two neighborhood functions are available via the ``neighborhood_function`` parameter:
 
@@ -47,7 +47,7 @@ where :math:`d_{ij}` is the graph distance between neurons :math:`i` and :math:`
 Same as Gaussian, but set to zero for all neuron pairs with graph distance :math:`d_{ij} > 2\sigma`. This concentrates updates on a well-defined neighborhood and suppresses long-range interference.
 
 Robustness Weighting
-********************
+^^^^^^^^^^^^^^^^^^^^
 
 Before the batch weight update, each sample :math:`x_j` is assigned a robustness weight
 
@@ -59,15 +59,15 @@ Samples far from their BMU (outliers) receive lower weights, making the map more
 Reference: D'Urso et al., *Smoothed self-organizing map for robust clustering*, Information Sciences, 2019.
 
 Distance Metrics
-****************
+^^^^^^^^^^^^^^^^
 
 Two distance metrics are supported via the ``metric`` parameter:
 
-- ``"euclidean"`` (default): standard Euclidean distance; BMU search via Numba JIT kernel (fused distance + argmin, no n×m matrix allocated).
+- ``"euclidean"`` (default): standard Euclidean distance; BMU search via BLAS ``euclidean_distances``, allocating an :math:`n \times m` distance matrix.
 - ``"cosine"``: cosine dissimilarity :math:`1 - \langle x, w \rangle`; data and weights are L2-normalised before training and at each update step. BMU search via a separate Numba JIT dot-product kernel.
 
 Accelerated BMU Search
-**********************
+^^^^^^^^^^^^^^^^^^^^^^
 
 BMU search dominates runtime for large maps (see :ref:`complexity`). To reduce
 this cost, a pointer-based search restricts each sample's winner search to the
@@ -92,7 +92,7 @@ approximately :math:`2r^2 + 2r + 1`, giving a speedup of roughly
 :math:`m \,/\, (2r^2 + 2r + 1)` relative to the full search.
 
 Winner-Stability Convergence
-############################
+""""""""""""""""""""""""""""
 
 When ``winner_stability_threshold`` is set (default 0.01), the coarse phase
 uses the winner-change rate as its convergence criterion instead of weight-delta:
@@ -109,10 +109,10 @@ to map stabilisation than weight-delta and is well-matched to pointer search
 Set ``winner_stability_threshold=None`` to revert to weight-delta convergence.
 
 Directed Horizontal Growth
-**************************
+^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Growing Threshold
-#################
+"""""""""""""""""
 
 Two methods are available for computing the growing threshold ``GT`` via ``threshold_method``:
 
@@ -133,7 +133,7 @@ Reference: Qu et al., *Statistics-enhanced Direct Batch Growth Self-Organizing M
 where :math:`d` is the dimensionality of the data.
 
 Growth Triggering
-#################
+"""""""""""""""""
 
 Growth is **convergence-triggered**, not epoch-triggered. After each batch weight update, the change in the weight matrix is compared against ``convergence_threshold``. When the change falls below this threshold, the map is considered converged and — if still in the coarse phase and below ``max_neurons`` — a growth step is performed:
 
@@ -148,12 +148,12 @@ The position and weight of each new neuron are determined by the directed insert
 After a growth step, :math:`\sigma` is updated via the decay function and ``converged_`` is reset to ``False``, restarting the convergence check.
 
 Growth Criterion
-################
+""""""""""""""""
 
 The default growth criterion is the **quantization error** of each neuron (sum of distances from mapped samples to the prototype). Alternatively, ``growth_criterion="entropy"`` uses the Shannon entropy of the class distribution per neuron, so the map grows where classification is poorest.
 
 First Classification
-********************
+^^^^^^^^^^^^^^^^^^^^
 
 For sample classification, each neuron :math:`n_i` gets assigned a label :math:`L_i` as the most common class label :math:`l` of all samples represented by that prototype:
 
@@ -172,7 +172,7 @@ There are currently three extensions to the original DBGSOM implemented:
 The HSOM handles densely clustered data samples that cannot be distinguished by further neuron growth. A new, smaller SOM is created for neurons whose error remains high after the horizontal growth phase. The SE-DBGSOM uses the standard deviation of the input features to control the growth threshold, while the ED-DBGSOM uses the entropy of the class distribution per prototype as the growth criterion.
 
 Hierarchical DBGSOM
-*******************
+^^^^^^^^^^^^^^^^^^^
 
 After the horizontal growth phase, each neuron :math:`n_i` whose quantization error exceeds a vertical growing threshold triggers the creation of a child SOM trained on all samples mapped to :math:`n_i`. The vertical growing threshold is:
 
@@ -186,7 +186,7 @@ A child SOM is only created when the number of samples mapped to the neuron exce
 Reference: Qu et al., *Entropy-Defined Direct Batch Growing Hierarchical Self-Organizing Mapping for Efficient Network Anomaly Detection*, IEEE Access, 2021.
 
 Statistics Enhanced DBGSOM
-***************************
+^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 The SE-DBGSOM variant selects ``threshold_method="se"`` (the default in this implementation) and thereby computes the growing threshold depending on the standard deviation of the input features:
 
@@ -198,7 +198,7 @@ where :math:`\operatorname{std}_i` denotes the standard deviation of all samples
 Reference: Qu et al., *Statistics-enhanced Direct Batch Growth Self-Organizing Mapping for efficient DoS Attack Detection*, IEEE Access, 2019.
 
 Entropy Defined DBGSOM
-**********************
+^^^^^^^^^^^^^^^^^^^^^^
 
 Selected via ``growth_criterion="entropy"``. Instead of the quantization error, the Shannon entropy of the class distribution per neuron is used as the growth criterion:
 
@@ -212,35 +212,49 @@ Reference: Qu et al., *Entropy-Defined Direct Batch Growing Hierarchical Self-Or
 
 .. _complexity:
 
-Runtime complexity
-------------------
-
+Algorithmic complexity
+----------------------
 The following variables are used throughout:
 
 * `n` — number of data samples
 * `m` — number of neurons (grows dynamically; refers to the final neuron count)
 * `d` — data dimension
 * `e` — number of training epochs
+* `r` - Neighborhood width when using pointer search
+
+Training
+^^^^^^^^
 
 Space complexity
-****************
+""""""""""""""""
 
 The weight matrix and the input data each contribute :math:`O(m \cdot d)` and :math:`O(n \cdot d)`.
 Additionally, the Floyd–Warshall distance matrix between all neuron pairs is stored as an
-:math:`m \times m` array, adding :math:`O(m^2)`:
+:math:`m \times m` array, adding :math:`O(m^2)`.
+The **stored** state after training is therefore:
 
 .. math::
-    S = O(d \cdot (m + n) + m^2)
+    S_{\text{stored}} = O(d \cdot (m + n) + m^2)
 
-The :math:`m^2` term dominates the space cost when `d` is small relative to `m`.
+During training, the full-search BMU path (``pointer_search="none"``, coarse phase, or
+``similarity="cosine"``) allocates an :math:`n \times m` pairwise distance matrix,
+adding a peak term of :math:`O(n \cdot m)`:
 
-Time complexity (fit)
-*********************
+.. math::
+    S_{\text{peak}} = O(d \cdot (m + n) + m^2 + n \cdot m)
+
+For large datasets this :math:`n \times m` allocation dominates.
+The pointer-based fine-phase search (``pointer_search="fine"``, default) avoids this
+allocation entirely by searching only the previous winner and its graph neighbours.
+
+Time complexity
+"""""""""""""""
 
 Each training epoch involves three operations with distinct costs:
 
 **BMU search** — for every sample, the nearest neuron is found by comparing against all `m`
-weight vectors across `d` dimensions (implemented as a fused Numba JIT kernel):
+weight vectors across `d` dimensions (Euclidean: BLAS ``euclidean_distances``; cosine: fused
+Numba JIT dot-product kernel):
 
 .. math::
     T_{\text{BMU}} = O(n \cdot m \cdot d) \text{ per epoch}
@@ -249,11 +263,17 @@ With ``pointer_search="fine"`` (default), the fine-phase search is restricted to
 :math:`O(r^2)` candidates per sample, reducing the fine-phase BMU cost to
 :math:`O(n \cdot r^2 \cdot d \cdot e_{\text{fine}})`, independent of `m`.
 
-**Batch weight update** — the new weights are computed via a matrix multiplication of the
-:math:`m \times m` neighbourhood kernel with the :math:`m \times d` Voronoi centre matrix:
+**Batch weight update** — two steps per epoch:
+
+1. **Voronoi centre computation** (Numba JIT) — for each neuron, compute the kernel-weighted
+   mean of all :math:`n` samples assigned to it: :math:`O(n \cdot d)`.
+2. **Neighbourhood matrix multiply** (BLAS) — contract the :math:`m \times m` neighbourhood
+   kernel with the :math:`m \times d` Voronoi centre matrix: :math:`O(m^2 \cdot d)`.
 
 .. math::
-    T_{\text{update}} = O(m^2 \cdot d) \text{ per epoch}
+    T_{\text{update}} = O(n \cdot d + m^2 \cdot d) \text{ per epoch}
+
+When :math:`n \gg m^2 / d` the Voronoi step dominates; otherwise the matrix multiply does.
 
 **Floyd–Warshall recomputation** — whenever a new neuron is inserted the graph distance
 matrix is recomputed from scratch. With up to `m` growth steps and an :math:`O(m^3)` cost
@@ -265,6 +285,11 @@ per step, the cumulative growth overhead is:
 The total fit complexity is therefore:
 
 .. math::
+    T_{\text{fit}} = O\!\left(e \cdot (n \cdot m \cdot d + n \cdot d + m^2 \cdot d) + m^4\right)
+
+Simplified (absorbing :math:`n \cdot d` into :math:`n \cdot m \cdot d` since :math:`m \geq 1`):
+
+.. math::
     T_{\text{fit}} = O\!\left(e \cdot (n \cdot m \cdot d + m^2 \cdot d) + m^4\right)
 
 * When :math:`n \gg m` the BMU search dominates: :math:`O(n \cdot m \cdot d \cdot e)`.
@@ -272,8 +297,8 @@ The total fit complexity is therefore:
 * The :math:`m^4` Floyd–Warshall term is independent of `n` and `e` and is bounded by
   ``max_neurons``.
 
-Time complexity (predict)
-*************************
+Runtime
+^^^^^^^
 
 Prediction requires only a single BMU search over the fitted weight matrix:
 

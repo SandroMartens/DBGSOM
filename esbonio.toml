@@ -1,0 +1,3 @@
+[sphinx]
+confDir = "docs/source"
+buildDir = "docs/build"
