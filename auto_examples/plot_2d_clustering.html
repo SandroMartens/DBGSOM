@@ -258,7 +258,8 @@ neuron positions can be visualized in the same space.</p>
 <p><code class="docutils literal notranslate"><span class="pre">SomVQ</span></code> is the unsupervised variant of DBGSOM — no class labels needed.
 Key hyperparameters:</p>
 <ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">spreading_factor=0.9</span></code>: controls lateral network growth (lower = more compact)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">lambda_=15.8</span></code>: regulation coefficient for the growing threshold — lower values
+produce more neurons (equivalent to the former <code class="docutils literal notranslate"><span class="pre">spreading_factor=0.9</span></code>)</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">max_neurons=200</span></code>: upper bound on neuron count</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">sigma_end=0.9</span></code>: neighborhood radius at end of training</p></li>
 </ul>
@@ -275,7 +276,7 @@ Key hyperparameters:</p>
 
 <span class="n">som</span> <span class="o">=</span> <span class="n">SomVQ</span><span class="p">(</span>
     <span class="n">n_iter</span><span class="o">=</span><span class="mi">500</span><span class="p">,</span>
-    <span class="n">spreading_factor</span><span class="o">=</span><span class="mf">0.9</span><span class="p">,</span>
+    <span class="n">lambda_</span><span class="o">=</span><span class="mf">15.8</span><span class="p">,</span>
     <span class="n">sigma_end</span><span class="o">=</span><span class="mf">0.9</span><span class="p">,</span>
     <span class="n">random_state</span><span class="o">=</span><span class="mi">32</span><span class="p">,</span>
     <span class="n">max_neurons</span><span class="o">=</span><span class="mi">200</span><span class="p">,</span>
@@ -982,7 +983,7 @@ a.param-doc-link::before {
   justify-content: center;
   margin-top: 0.5em;
 }
-</style><body><div id="sk-container-id-2" tabindex="0" class="sk-top-container sk-global"><div class="sk-text-repr-fallback"><pre>SomVQ(max_neurons=200, random_state=32, sigma_end=0.9, spreading_factor=0.9)</pre><b>In a Jupyter environment, please rerun this cell to show the HTML representation or trust the notebook. <br />On GitHub, the HTML representation is unable to render, please try loading this page with nbviewer.org.</b></div><div class="sk-container" hidden><div class="sk-item"><div class="sk-estimator fitted sk-toggleable"><input class="sk-toggleable__control sk-hidden--visually sk-global" id="sk-estimator-id-4" type="checkbox" checked><label for="sk-estimator-id-4" class="sk-toggleable__label fitted sk-toggleable__label-arrow"><div><div>SomVQ</div></div><div><span class="sk-estimator-doc-link fitted">i<span>Fitted</span></span></div></label><div class="sk-toggleable__content fitted" data-param-prefix="">
+</style><body><div id="sk-container-id-2" tabindex="0" class="sk-top-container sk-global"><div class="sk-text-repr-fallback"><pre>SomVQ(lambda_=15.8, max_neurons=200, random_state=32, sigma_end=0.9)</pre><b>In a Jupyter environment, please rerun this cell to show the HTML representation or trust the notebook. <br />On GitHub, the HTML representation is unable to render, please try loading this page with nbviewer.org.</b></div><div class="sk-container" hidden><div class="sk-item"><div class="sk-estimator fitted sk-toggleable"><input class="sk-toggleable__control sk-hidden--visually sk-global" id="sk-estimator-id-4" type="checkbox" checked><label for="sk-estimator-id-4" class="sk-toggleable__label fitted sk-toggleable__label-arrow"><div><div>SomVQ</div></div><div><span class="sk-estimator-doc-link fitted">i<span>Fitted</span></span></div></label><div class="sk-toggleable__content fitted" data-param-prefix="">
         <div class="estimator-table">
             <details>
                 <summary>Parameters</summary>
@@ -991,11 +992,11 @@ a.param-doc-link::before {
 
         <tr class="user-set">
             <td><i class="copy-paste-icon"
-                 onclick="copyToClipboard('spreading_factor',
+                 onclick="copyToClipboard('lambda_',
                           this.parentElement.nextElementSibling)"
             ></i></td>
-            <td class="param">spreading_factor</td>
-            <td class="value">0.9</td>
+            <td class="param">lambda_</td>
+            <td class="value">15.8</td>
         </tr>
 
 
@@ -1131,16 +1132,6 @@ a.param-doc-link::before {
 
         <tr class="default">
             <td><i class="copy-paste-icon"
-                 onclick="copyToClipboard('threshold_method',
-                          this.parentElement.nextElementSibling)"
-            ></i></td>
-            <td class="param">threshold_method</td>
-            <td class="value">&#x27;se&#x27;</td>
-        </tr>
-
-
-        <tr class="default">
-            <td><i class="copy-paste-icon"
                  onclick="copyToClipboard('growth_criterion',
                           this.parentElement.nextElementSibling)"
             ></i></td>
@@ -1236,7 +1227,7 @@ a.param-doc-link::before {
        <tr class="default">
            <td class="param"><a class="param-doc-link" style="text-decoration:none;">growing_threshold_</a></td>
            <td class="fitted-att-type">float</td>
-           <td>22.36</td>
+           <td>22.35</td>
 
 
        </tr>
@@ -1246,6 +1237,15 @@ a.param-doc-link::before {
            <td class="param"><a class="param-doc-link" style="text-decoration:none;">labels_</a></td>
            <td class="fitted-att-type">ndarray[int64](2309,)</td>
            <td>[37,47,55,...,63,52,37]</td>
+
+
+       </tr>
+
+
+       <tr class="default">
+           <td class="param"><a class="param-doc-link" style="text-decoration:none;">lambda_</a></td>
+           <td class="fitted-att-type">float</td>
+           <td>15.8</td>
 
 
        </tr>
@@ -1299,7 +1299,7 @@ a.param-doc-link::before {
        <tr class="default">
            <td class="param"><a class="param-doc-link" style="text-decoration:none;">random_state_</a></td>
            <td class="fitted-att-type">RandomState</td>
-           <td>RandomState(M...0x7F73D56A4440</td>
+           <td>RandomState(M...0x7F750B6A0440</td>
 
 
        </tr>
@@ -1308,7 +1308,7 @@ a.param-doc-link::before {
        <tr class="default">
            <td class="param"><a class="param-doc-link" style="text-decoration:none;">som_</a></td>
            <td class="fitted-att-type">Graph</td>
-           <td>&lt;networkx.cla...x7f73c3d91910&gt;</td>
+           <td>&lt;networkx.cla...x7f74f9d7c2f0&gt;</td>
 
 
        </tr>
@@ -1593,7 +1593,7 @@ Lower values indicate better topology preservation.</p>
 <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
 </pre></div>
 </div>
-<img src="../_images/sphx_glr_plot_2d_clustering_003.png" srcset="../_images/sphx_glr_plot_2d_clustering_003.png" alt="Topographic Function" class = "sphx-glr-single-img"/><p class="sphx-glr-timing"><strong>Total running time of the script:</strong> (0 minutes 0.626 seconds)</p>
+<img src="../_images/sphx_glr_plot_2d_clustering_003.png" srcset="../_images/sphx_glr_plot_2d_clustering_003.png" alt="Topographic Function" class = "sphx-glr-single-img"/><p class="sphx-glr-timing"><strong>Total running time of the script:</strong> (0 minutes 0.611 seconds)</p>
 <div class="sphx-glr-footer sphx-glr-footer-example docutils container" id="sphx-glr-download-auto-examples-plot-2d-clustering-py">
 <div class="sphx-glr-download sphx-glr-download-jupyter docutils container">
 <p><a class="reference download internal" download="" href="../_downloads/fd4b9366edbe108ce8e732428a8b2c85/plot_2d_clustering.ipynb"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">Jupyter</span> <span class="pre">notebook:</span> <span class="pre">plot_2d_clustering.ipynb</span></code></a></p>

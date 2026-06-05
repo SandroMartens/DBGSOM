@@ -24,18 +24,19 @@ Demonstrates unsupervised clustering on synthetic 2D data using ``SomVQ``.
 Because the data is 2-dimensional, both the input points and the learned
 neuron positions can be visualized in the same space.
 
-.. GENERATED FROM PYTHON SOURCE LINES 10-18
+.. GENERATED FROM PYTHON SOURCE LINES 10-19
 
 Train SomVQ
 -----------
 ``SomVQ`` is the unsupervised variant of DBGSOM — no class labels needed.
 Key hyperparameters:
 
-- ``spreading_factor=0.9``: controls lateral network growth (lower = more compact)
+- ``lambda_=15.8``: regulation coefficient for the growing threshold — lower values
+  produce more neurons (equivalent to the former ``spreading_factor=0.9``)
 - ``max_neurons=200``: upper bound on neuron count
 - ``sigma_end=0.9``: neighborhood radius at end of training
 
-.. GENERATED FROM PYTHON SOURCE LINES 18-39
+.. GENERATED FROM PYTHON SOURCE LINES 19-40
 
 .. code-block:: Python
 
@@ -53,7 +54,7 @@ Key hyperparameters:
 
     som = SomVQ(
         n_iter=500,
-        spreading_factor=0.9,
+        lambda_=15.8,
         sigma_end=0.9,
         random_state=32,
         max_neurons=200,
@@ -766,7 +767,7 @@ Key hyperparameters:
       justify-content: center;
       margin-top: 0.5em;
     }
-    </style><body><div id="sk-container-id-2" tabindex="0" class="sk-top-container sk-global"><div class="sk-text-repr-fallback"><pre>SomVQ(max_neurons=200, random_state=32, sigma_end=0.9, spreading_factor=0.9)</pre><b>In a Jupyter environment, please rerun this cell to show the HTML representation or trust the notebook. <br />On GitHub, the HTML representation is unable to render, please try loading this page with nbviewer.org.</b></div><div class="sk-container" hidden><div class="sk-item"><div class="sk-estimator fitted sk-toggleable"><input class="sk-toggleable__control sk-hidden--visually sk-global" id="sk-estimator-id-4" type="checkbox" checked><label for="sk-estimator-id-4" class="sk-toggleable__label fitted sk-toggleable__label-arrow"><div><div>SomVQ</div></div><div><span class="sk-estimator-doc-link fitted">i<span>Fitted</span></span></div></label><div class="sk-toggleable__content fitted" data-param-prefix="">
+    </style><body><div id="sk-container-id-2" tabindex="0" class="sk-top-container sk-global"><div class="sk-text-repr-fallback"><pre>SomVQ(lambda_=15.8, max_neurons=200, random_state=32, sigma_end=0.9)</pre><b>In a Jupyter environment, please rerun this cell to show the HTML representation or trust the notebook. <br />On GitHub, the HTML representation is unable to render, please try loading this page with nbviewer.org.</b></div><div class="sk-container" hidden><div class="sk-item"><div class="sk-estimator fitted sk-toggleable"><input class="sk-toggleable__control sk-hidden--visually sk-global" id="sk-estimator-id-4" type="checkbox" checked><label for="sk-estimator-id-4" class="sk-toggleable__label fitted sk-toggleable__label-arrow"><div><div>SomVQ</div></div><div><span class="sk-estimator-doc-link fitted">i<span>Fitted</span></span></div></label><div class="sk-toggleable__content fitted" data-param-prefix="">
             <div class="estimator-table">
                 <details>
                     <summary>Parameters</summary>
@@ -775,11 +776,11 @@ Key hyperparameters:
                     
             <tr class="user-set">
                 <td><i class="copy-paste-icon"
-                     onclick="copyToClipboard('spreading_factor',
+                     onclick="copyToClipboard('lambda_',
                               this.parentElement.nextElementSibling)"
                 ></i></td>
-                <td class="param">spreading_factor</td>
-                <td class="value">0.9</td>
+                <td class="param">lambda_</td>
+                <td class="value">15.8</td>
             </tr>
     
 
@@ -915,16 +916,6 @@ Key hyperparameters:
 
             <tr class="default">
                 <td><i class="copy-paste-icon"
-                     onclick="copyToClipboard('threshold_method',
-                              this.parentElement.nextElementSibling)"
-                ></i></td>
-                <td class="param">threshold_method</td>
-                <td class="value">&#x27;se&#x27;</td>
-            </tr>
-    
-
-            <tr class="default">
-                <td><i class="copy-paste-icon"
                      onclick="copyToClipboard('growth_criterion',
                               this.parentElement.nextElementSibling)"
                 ></i></td>
@@ -1020,7 +1011,7 @@ Key hyperparameters:
            <tr class="default">
                <td class="param"><a class="param-doc-link" style="text-decoration:none;">growing_threshold_</a></td>
                <td class="fitted-att-type">float</td>
-               <td>22.36</td>
+               <td>22.35</td>
 
 
            </tr>
@@ -1030,6 +1021,15 @@ Key hyperparameters:
                <td class="param"><a class="param-doc-link" style="text-decoration:none;">labels_</a></td>
                <td class="fitted-att-type">ndarray[int64](2309,)</td>
                <td>[37,47,55,...,63,52,37]</td>
+
+
+           </tr>
+    
+
+           <tr class="default">
+               <td class="param"><a class="param-doc-link" style="text-decoration:none;">lambda_</a></td>
+               <td class="fitted-att-type">float</td>
+               <td>15.8</td>
 
 
            </tr>
@@ -1083,7 +1083,7 @@ Key hyperparameters:
            <tr class="default">
                <td class="param"><a class="param-doc-link" style="text-decoration:none;">random_state_</a></td>
                <td class="fitted-att-type">RandomState</td>
-               <td>RandomState(M...0x7F73D56A4440</td>
+               <td>RandomState(M...0x7F750B6A0440</td>
 
 
            </tr>
@@ -1092,7 +1092,7 @@ Key hyperparameters:
            <tr class="default">
                <td class="param"><a class="param-doc-link" style="text-decoration:none;">som_</a></td>
                <td class="fitted-att-type">Graph</td>
-               <td>&lt;networkx.cla...x7f73c3d91910&gt;</td>
+               <td>&lt;networkx.cla...x7f74f9d7c2f0&gt;</td>
 
 
            </tr>
@@ -1309,13 +1309,13 @@ Key hyperparameters:
     <br />
     <br />
 
-.. GENERATED FROM PYTHON SOURCE LINES 40-43
+.. GENERATED FROM PYTHON SOURCE LINES 41-44
 
 Network Visualization
 ---------------------
 Input data colored by cluster assignment; gray lines show neuron connections.
 
-.. GENERATED FROM PYTHON SOURCE LINES 43-86
+.. GENERATED FROM PYTHON SOURCE LINES 44-87
 
 .. code-block:: Python
 
@@ -1374,14 +1374,14 @@ Input data colored by cluster assignment; gray lines show neuron connections.
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 87-91
+.. GENERATED FROM PYTHON SOURCE LINES 88-92
 
 Quantization Error per Neuron
 -----------------------------
 Each neuron colored by mean quantization error — higher error (darker)
 indicates regions where data density is not well represented.
 
-.. GENERATED FROM PYTHON SOURCE LINES 91-94
+.. GENERATED FROM PYTHON SOURCE LINES 92-95
 
 .. code-block:: Python
 
@@ -1400,14 +1400,14 @@ indicates regions where data density is not well represented.
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 95-99
+.. GENERATED FROM PYTHON SOURCE LINES 96-100
 
 Topographic Function
 --------------------
 Topographic error as a function of distance threshold.
 Lower values indicate better topology preservation.
 
-.. GENERATED FROM PYTHON SOURCE LINES 99-108
+.. GENERATED FROM PYTHON SOURCE LINES 100-109
 
 .. code-block:: Python
 
@@ -1435,7 +1435,7 @@ Lower values indicate better topology preservation.
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** (0 minutes 0.626 seconds)
+   **Total running time of the script:** (0 minutes 0.611 seconds)
 
 
 .. _sphx_glr_download_auto_examples_plot_2d_clustering.py:

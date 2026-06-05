@@ -12,7 +12,8 @@ neuron positions can be visualized in the same space.
 # ``SomVQ`` is the unsupervised variant of DBGSOM — no class labels needed.
 # Key hyperparameters:
 #
-# - ``spreading_factor=0.9``: controls lateral network growth (lower = more compact)
+# - ``lambda_=15.8``: regulation coefficient for the growing threshold — lower values
+#   produce more neurons (equivalent to the former ``spreading_factor=0.9``)
 # - ``max_neurons=200``: upper bound on neuron count
 # - ``sigma_end=0.9``: neighborhood radius at end of training
 
@@ -29,7 +30,7 @@ data = scale(np.load(Path("data") / "clusterable_data.npy"))
 
 som = SomVQ(
     n_iter=500,
-    spreading_factor=0.9,
+    lambda_=15.8,
     sigma_end=0.9,
     random_state=32,
     max_neurons=200,

@@ -366,20 +366,15 @@ Set <code class="docutils literal notranslate"><span class="pre">winner_stabilit
 <h3>Directed Horizontal Growth<a class="headerlink" href="#directed-horizontal-growth" title="Link to this heading">¶</a></h3>
 <section id="growing-threshold">
 <h4>Growing Threshold<a class="headerlink" href="#growing-threshold" title="Link to this heading">¶</a></h4>
-<p>Two methods are available for computing the growing threshold <code class="docutils literal notranslate"><span class="pre">GT</span></code> via <code class="docutils literal notranslate"><span class="pre">threshold_method</span></code>:</p>
-<p><strong>Statistics-Enhanced</strong> (default, <code class="docutils literal notranslate"><span class="pre">&quot;se&quot;</span></code>)</p>
+<p>The growing threshold <code class="docutils literal notranslate"><span class="pre">GT</span></code> is computed via the statistics-enhanced formula (Qu et al. 2019, Eq. 5):</p>
 <div class="math-wrapper docutils container">
 <div class="math notranslate nohighlight">
-\[GT = 150 \cdot (-\log sf) \cdot \left\lVert \operatorname{std}(X) \right\rVert\]</div>
+\[GT = \lambda \cdot \left\lVert \operatorname{std}(X) \right\rVert\]</div>
 </div>
-<p>where <span class="math notranslate nohighlight">\(sf\)</span> is the <code class="docutils literal notranslate"><span class="pre">spreading_factor</span></code> and <span class="math notranslate nohighlight">\(\operatorname{std}(X)\)</span> is the per-feature standard deviation of the training data. This data-adaptive formulation reflects the scale and spread of the dataset.</p>
+<p>where <span class="math notranslate nohighlight">\(\operatorname{std}(X)\)</span> is the vector of per-feature standard deviations and
+<span class="math notranslate nohighlight">\(\lambda\)</span> is set via <code class="docutils literal notranslate"><span class="pre">lambda_</span></code> (default 115.0, paper-optimized). This makes GT directly
+comparable in scale to the per-neuron cumulative error.</p>
 <p>Reference: Qu et al., <em>Statistics-enhanced Direct Batch Growth Self-Organizing Mapping for efficient DoS Attack Detection</em>, IEEE Access, 2019.</p>
-<p><strong>Classical</strong> (<code class="docutils literal notranslate"><span class="pre">&quot;classical&quot;</span></code>)</p>
-<div class="math-wrapper docutils container">
-<div class="math notranslate nohighlight">
-\[GT = -d \cdot \log(sf)\]</div>
-</div>
-<p>where <span class="math notranslate nohighlight">\(d\)</span> is the dimensionality of the data.</p>
 </section>
 <section id="growth-triggering">
 <h4>Growth Triggering<a class="headerlink" href="#growth-triggering" title="Link to this heading">¶</a></h4>
@@ -395,10 +390,6 @@ when the map has converged. After each batch weight update, the change in the we
 <p>The position and weight of each new neuron are determined by the directed insertion rule (Vasighi and Amini, Section 3.3.1.1): the free adjacent position whose corner neighbor has the highest error is selected, and the new weight is initialized by reflecting the opposite neighbor through the boundary neuron. Because each inserted neuron inherits a weight derived from its already-trained neighbours, the map remains partially ordered after growth. A partially ordered map is empirically known to converge significantly faster than a randomly initialised one (Kohonen, 2001), which is why the weight initialisation rule is central to the algorithm’s efficiency.</p>
 <p>After a growth step, <span class="math notranslate nohighlight">\(\sigma\)</span> is updated via the decay function and <code class="docutils literal notranslate"><span class="pre">converged_</span></code> is reset to <code class="docutils literal notranslate"><span class="pre">False</span></code>, restarting the convergence check.</p>
 </section>
-<section id="growth-criterion">
-<h4>Growth Criterion<a class="headerlink" href="#growth-criterion" title="Link to this heading">¶</a></h4>
-<p>The default growth criterion is the <strong>quantization error</strong> of each neuron (sum of distances from mapped samples to the prototype). Alternatively, <code class="docutils literal notranslate"><span class="pre">growth_criterion=&quot;entropy&quot;</span></code> uses the Shannon entropy of the class distribution per neuron, so the map grows where classification is poorest.</p>
-</section>
 </section>
 <section id="first-classification">
 <h3>First Classification<a class="headerlink" href="#first-classification" title="Link to this heading">¶</a></h3>
@@ -411,13 +402,11 @@ when the map has converged. After each batch weight update, the change in the we
 </section>
 <section id="extensions">
 <h2>Extensions<a class="headerlink" href="#extensions" title="Link to this heading">¶</a></h2>
-<p>There are currently three extensions to the original DBGSOM implemented:</p>
+<p>There is currently one extension to the original DBGSOM implemented:</p>
 <ul class="simple">
 <li><p>Hierarchical SOM (HSOM)</p></li>
-<li><p>Statistics Enhanced DBGSOM (SE-DBGSOM)</p></li>
-<li><p>Entropy Defined DBGSOM (ED-DBGSOM)</p></li>
 </ul>
-<p>The HSOM handles densely clustered data samples that cannot be distinguished by further neuron growth. A new, smaller SOM is created for neurons whose error remains high after the horizontal growth phase. The SE-DBGSOM uses the standard deviation of the input features to control the growth threshold, while the ED-DBGSOM uses the entropy of the class distribution per prototype as the growth criterion.</p>
+<p>The HSOM handles densely clustered data samples that cannot be distinguished by further neuron growth. A new, smaller SOM is created for neurons whose error remains high after the horizontal growth phase.</p>
 <section id="hierarchical-dbgsom">
 <h3>Hierarchical DBGSOM<a class="headerlink" href="#hierarchical-dbgsom" title="Link to this heading">¶</a></h3>
 <p>After the horizontal growth phase, each neuron <span class="math notranslate nohighlight">\(n_i\)</span> whose quantization error exceeds a vertical growing threshold triggers the creation of a child SOM trained on all samples mapped to <span class="math notranslate nohighlight">\(n_i\)</span>. The vertical growing threshold is:</p>
@@ -427,26 +416,6 @@ when the map has converged. After each batch weight update, the change in the we
 </div>
 <p>where <span class="math notranslate nohighlight">\(\tau_2\)</span> is the <code class="docutils literal notranslate"><span class="pre">tau_2</span></code> parameter (default 0.5) and <span class="math notranslate nohighlight">\(QE_0\)</span> is the quantization error of a single-neuron SOM whose weight equals the mean of all training data. This formulation follows the GHSOM stopping criterion.</p>
 <p>A child SOM is only created when the number of samples mapped to the neuron exceeds <code class="docutils literal notranslate"><span class="pre">min_samples_vertical_growth</span></code>.</p>
-<p>Reference: Qu et al., <em>Entropy-Defined Direct Batch Growing Hierarchical Self-Organizing Mapping for Efficient Network Anomaly Detection</em>, IEEE Access, 2021.</p>
-</section>
-<section id="statistics-enhanced-dbgsom">
-<h3>Statistics Enhanced DBGSOM<a class="headerlink" href="#statistics-enhanced-dbgsom" title="Link to this heading">¶</a></h3>
-<p>The SE-DBGSOM variant selects <code class="docutils literal notranslate"><span class="pre">threshold_method=&quot;se&quot;</span></code> (the default in this implementation) and thereby computes the growing threshold depending on the standard deviation of the input features:</p>
-<div class="math-wrapper docutils container">
-<div class="math notranslate nohighlight">
-\[GT = 150 \cdot (-\log sf) \cdot \left\lVert \operatorname{std}(X) \right\rVert\]</div>
-</div>
-<p>where <span class="math notranslate nohighlight">\(\operatorname{std}_i\)</span> denotes the standard deviation of all samples in the <span class="math notranslate nohighlight">\(i\)</span>-th input dimension. This improved approach adapts the threshold to the scale of the dataset.</p>
-<p>Reference: Qu et al., <em>Statistics-enhanced Direct Batch Growth Self-Organizing Mapping for efficient DoS Attack Detection</em>, IEEE Access, 2019.</p>
-</section>
-<section id="entropy-defined-dbgsom">
-<h3>Entropy Defined DBGSOM<a class="headerlink" href="#entropy-defined-dbgsom" title="Link to this heading">¶</a></h3>
-<p>Selected via <code class="docutils literal notranslate"><span class="pre">growth_criterion=&quot;entropy&quot;</span></code>. Instead of the quantization error, the Shannon entropy of the class distribution per neuron is used as the growth criterion:</p>
-<div class="math-wrapper docutils container">
-<div class="math notranslate nohighlight">
-\[E_i = -\sum_{x \in \mathcal{S}} p_i(x) \log_2 p_i(x)\]</div>
-</div>
-<p>where <span class="math notranslate nohighlight">\(p_i(x)\)</span> is the fraction of samples mapped to neuron <span class="math notranslate nohighlight">\(i\)</span> that carry label <span class="math notranslate nohighlight">\(x\)</span>, and <span class="math notranslate nohighlight">\(\mathcal{S}\)</span> is the set of all class labels. The map therefore grows in directions where classification is most uncertain.</p>
 <p>Reference: Qu et al., <em>Entropy-Defined Direct Batch Growing Hierarchical Self-Organizing Mapping for Efficient Network Anomaly Detection</em>, IEEE Access, 2021.</p>
 </section>
 </section>
@@ -619,7 +588,6 @@ per step, the cumulative growth overhead is:</p>
 <li><a class="reference internal" href="#directed-horizontal-growth">Directed Horizontal Growth</a><ul>
 <li><a class="reference internal" href="#growing-threshold">Growing Threshold</a></li>
 <li><a class="reference internal" href="#growth-triggering">Growth Triggering</a></li>
-<li><a class="reference internal" href="#growth-criterion">Growth Criterion</a></li>
 </ul>
 </li>
 <li><a class="reference internal" href="#first-classification">First Classification</a></li>
@@ -627,8 +595,6 @@ per step, the cumulative growth overhead is:</p>
 </li>
 <li><a class="reference internal" href="#extensions">Extensions</a><ul>
 <li><a class="reference internal" href="#hierarchical-dbgsom">Hierarchical DBGSOM</a></li>
-<li><a class="reference internal" href="#statistics-enhanced-dbgsom">Statistics Enhanced DBGSOM</a></li>
-<li><a class="reference internal" href="#entropy-defined-dbgsom">Entropy Defined DBGSOM</a></li>
 </ul>
 </li>
 <li><a class="reference internal" href="#algorithmic-complexity">Algorithmic complexity</a><ul>
