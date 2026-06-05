@@ -61,6 +61,7 @@ dev = [
     "line-profiler>=4.0.0",
     "pre-commit>=4.6.0",
     "pytest>=9.0.3",
+    "pytest-cov>=6.0.0",
     "ruff>=0.15.14",
     "sympy>=1.14.0",
     "ty>=0.0.39",
