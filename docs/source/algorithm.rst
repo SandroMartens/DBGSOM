@@ -153,23 +153,16 @@ Directed Horizontal Growth
 Growing Threshold
 """""""""""""""""
 
-Two methods are available for computing the growing threshold ``GT`` via ``threshold_method``:
-
-**Statistics-Enhanced** (default, ``"se"``)
+The growing threshold ``GT`` is computed via the statistics-enhanced formula (Qu et al. 2019, Eq. 5):
 
 .. math::
-    GT = 150 \cdot (-\log sf) \cdot \left\lVert \operatorname{std}(X) \right\rVert
+    GT = \lambda \cdot \left\lVert \operatorname{std}(X) \right\rVert
 
-where :math:`sf` is the ``spreading_factor`` and :math:`\operatorname{std}(X)` is the per-feature standard deviation of the training data. This data-adaptive formulation reflects the scale and spread of the dataset.
+where :math:`\operatorname{std}(X)` is the vector of per-feature standard deviations and
+:math:`\lambda` is set via ``lambda_`` (default 115.0, paper-optimized). This makes GT directly
+comparable in scale to the per-neuron cumulative error.
 
 Reference: Qu et al., *Statistics-enhanced Direct Batch Growth Self-Organizing Mapping for efficient DoS Attack Detection*, IEEE Access, 2019.
-
-**Classical** (``"classical"``)
-
-.. math::
-    GT = -d \cdot \log(sf)
-
-where :math:`d` is the dimensionality of the data.
 
 Growth Triggering
 """""""""""""""""
@@ -188,11 +181,6 @@ The position and weight of each new neuron are determined by the directed insert
 
 After a growth step, :math:`\sigma` is updated via the decay function and ``converged_`` is reset to ``False``, restarting the convergence check.
 
-Growth Criterion
-""""""""""""""""
-
-The default growth criterion is the **quantization error** of each neuron (sum of distances from mapped samples to the prototype). Alternatively, ``growth_criterion="entropy"`` uses the Shannon entropy of the class distribution per neuron, so the map grows where classification is poorest.
-
 First Classification
 ^^^^^^^^^^^^^^^^^^^^
 
@@ -204,13 +192,11 @@ For sample classification, each neuron :math:`n_i` gets assigned a label :math:`
 Extensions
 ----------
 
-There are currently three extensions to the original DBGSOM implemented:
+There is currently one extension to the original DBGSOM implemented:
 
 - Hierarchical SOM (HSOM)
-- Statistics Enhanced DBGSOM (SE-DBGSOM)
-- Entropy Defined DBGSOM (ED-DBGSOM)
 
-The HSOM handles densely clustered data samples that cannot be distinguished by further neuron growth. A new, smaller SOM is created for neurons whose error remains high after the horizontal growth phase. The SE-DBGSOM uses the standard deviation of the input features to control the growth threshold, while the ED-DBGSOM uses the entropy of the class distribution per prototype as the growth criterion.
+The HSOM handles densely clustered data samples that cannot be distinguished by further neuron growth. A new, smaller SOM is created for neurons whose error remains high after the horizontal growth phase.
 
 Hierarchical DBGSOM
 ^^^^^^^^^^^^^^^^^^^
@@ -223,30 +209,6 @@ After the horizontal growth phase, each neuron :math:`n_i` whose quantization er
 where :math:`\tau_2` is the ``tau_2`` parameter (default 0.5) and :math:`QE_0` is the quantization error of a single-neuron SOM whose weight equals the mean of all training data. This formulation follows the GHSOM stopping criterion.
 
 A child SOM is only created when the number of samples mapped to the neuron exceeds ``min_samples_vertical_growth``.
-
-Reference: Qu et al., *Entropy-Defined Direct Batch Growing Hierarchical Self-Organizing Mapping for Efficient Network Anomaly Detection*, IEEE Access, 2021.
-
-Statistics Enhanced DBGSOM
-^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-The SE-DBGSOM variant selects ``threshold_method="se"`` (the default in this implementation) and thereby computes the growing threshold depending on the standard deviation of the input features:
-
-.. math::
-    GT = 150 \cdot (-\log sf) \cdot \left\lVert \operatorname{std}(X) \right\rVert
-
-where :math:`\operatorname{std}_i` denotes the standard deviation of all samples in the :math:`i`-th input dimension. This improved approach adapts the threshold to the scale of the dataset.
-
-Reference: Qu et al., *Statistics-enhanced Direct Batch Growth Self-Organizing Mapping for efficient DoS Attack Detection*, IEEE Access, 2019.
-
-Entropy Defined DBGSOM
-^^^^^^^^^^^^^^^^^^^^^^
-
-Selected via ``growth_criterion="entropy"``. Instead of the quantization error, the Shannon entropy of the class distribution per neuron is used as the growth criterion:
-
-.. math::
-    E_i = -\sum_{x \in \mathcal{S}} p_i(x) \log_2 p_i(x)
-
-where :math:`p_i(x)` is the fraction of samples mapped to neuron :math:`i` that carry label :math:`x`, and :math:`\mathcal{S}` is the set of all class labels. The map therefore grows in directions where classification is most uncertain.
 
 Reference: Qu et al., *Entropy-Defined Direct Batch Growing Hierarchical Self-Organizing Mapping for Efficient Network Anomaly Detection*, IEEE Access, 2021.
 

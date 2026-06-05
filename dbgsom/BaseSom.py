@@ -49,8 +49,12 @@ class BaseSom(BaseEstimator, ABC):
     n_iter : int, default=500
         Maximum number of iterations for training.
 
-    spreading_factor : float, default=0.5
-        Factor controlling the spread of neuron activation.
+    lambda_ : float, default=115.0
+        Regulation coefficient for the SE growing threshold:
+        ``GT = lambda_ * ||std(X)||`` (Qu et al. 2019, Eq. 5).
+        The paper optimizes λ over KDD99 and CICIDS2017 and finds λ ∈ [100, 120]
+        yields near-unity detection rate with false positive rate below 0.03;
+        the trendline optimum across both datasets is 115.
 
     sigma_start : float or None, default=None
         Initial standard deviation of the neighborhood function at the start
@@ -93,9 +97,6 @@ class BaseSom(BaseEstimator, ABC):
 
     metric : str, default="euclidean"
         Distance metric used for computations.
-
-    threshold_method : str, default="se"
-        Method for threshold calculation.
 
     growth_criterion : str, default="quantization_error"
         Criterion for neuron growth decision.
@@ -144,7 +145,7 @@ class BaseSom(BaseEstimator, ABC):
     def __init__(
         self,
         n_iter: int = 500,
-        spreading_factor: float = 0.5,
+        lambda_: float = 115.0,
         sigma_start: float | None = None,
         sigma_end: float | None = None,
         sigma_fine: float | None = None,
@@ -157,7 +158,6 @@ class BaseSom(BaseEstimator, ABC):
         convergence_threshold: float = 1e-3,
         max_neurons: int | None = None,
         metric: str = "euclidean",
-        threshold_method: str = "se",
         growth_criterion: str = "quantization_error",
         min_samples_vertical_growth: int = 100,
         tau_2: float = 0.5,
@@ -167,7 +167,7 @@ class BaseSom(BaseEstimator, ABC):
         pointer_search_radius: int = 1,
     ) -> None:
         super().__init__()
-        self.spreading_factor = spreading_factor
+        self.lambda_ = lambda_
         self.n_iter = n_iter
         self.sigma_start = sigma_start
         self.sigma_end = sigma_end
@@ -180,7 +180,6 @@ class BaseSom(BaseEstimator, ABC):
         self.convergence_threshold = convergence_threshold
         self.max_neurons = max_neurons
         self.metric = metric
-        self.threshold_method = threshold_method
         self.growth_criterion = growth_criterion
         self.min_samples_vertical_growth = min_samples_vertical_growth
         self.tau_2 = tau_2
@@ -194,7 +193,7 @@ class BaseSom(BaseEstimator, ABC):
         "n_iter": [Interval(Integral, 1, None, closed="left")],
         "max_neurons": [Interval(Integral, 4, None, closed="left"), None],
         "min_samples_vertical_growth": [Interval(Integral, 1, None, closed="left")],
-        "spreading_factor": [Interval(Real, 0, 1, closed="neither")],
+        "lambda_": [Interval(Real, 0, None, closed="neither")],
         "coarse_training_frac": [Interval(Real, 0, 1, closed="neither")],
         "convergence_threshold": [Interval(Real, 0, None, closed="neither")],
         "sigma_start": [Interval(Real, 0, None, closed="neither"), None],
@@ -203,7 +202,6 @@ class BaseSom(BaseEstimator, ABC):
         # "sigma_fine": [Interval(Real, 0, self.sigma_end, closed="neither"), None],
         "decay_function": [StrOptions({"exponential", "linear"})],
         "neighborhood_function": [StrOptions({"gaussian", "cutgauss"})],
-        "threshold_method": [StrOptions({"classical", "se"})],
         "growth_criterion": [StrOptions({"entropy", "quantization_error"})],
         "tau_2": [Interval(Real, 0, 1, closed="neither")],
         "metric": [StrOptions({"euclidean", "cosine"})],
@@ -268,7 +266,7 @@ class BaseSom(BaseEstimator, ABC):
 
             warnings.warn(
                 "No growth occurred during training. The map stayed at 4 neurons. "
-                "Consider lowering convergence_threshold or increasing spreading_factor.",
+                "Consider lowering convergence_threshold or increasing lambda_.",
                 UserWarning,
                 stacklevel=2,
             )
@@ -720,34 +718,17 @@ class BaseSom(BaseEstimator, ABC):
     def _calculate_growing_threshold(self, data: npt.NDArray) -> float:
         """Compute the growing threshold for neuron insertion.
 
-        The classical method uses ``-n_dim * log(spreading_factor)``.
-        The statistics-enhanced method (``threshold_method="se"``) scales by
-        the norm of the data standard deviation for data-adaptive thresholding.
+        Uses the statistics-enhanced formula (Qu et al. 2019, Eq. 5):
+        ``GT = lambda_ * ||std(X)||``.
 
         References
         ----------
-        Vasighi and Amini, "A directed batch growing approach to enhance the
-        topology preservation of self-organizing map", Applied Soft Computing,
-        2017.
-
         Qu et al., "Statistics-enhanced Direct Batch Growth Self-Organizing
         Mapping for efficient DoS Attack Detection", IEEE Access, 2019.
 
         """
-        if self.growth_criterion == "entropy":
-            growing_threshold = self.spreading_factor
-        else:
-            if self.threshold_method == "classical":
-                n_dim = data.shape[1]
-                growing_threshold = -n_dim * log(self.spreading_factor)
-
-            elif self.threshold_method == "se":
-                std_data = np.std(data, axis=0, ddof=1)
-                growing_threshold = float(
-                    150 * -log(self.spreading_factor) * np.linalg.norm(std_data)
-                )
-
-        return growing_threshold
+        std_data = np.std(data, axis=0, ddof=1)
+        return float(self.lambda_ * np.linalg.norm(std_data))
 
     def _grow_som(self, data: npt.NDArray, y: npt.NDArray | None) -> None:
         """Second training phase: iterative weight update and neuron insertion.

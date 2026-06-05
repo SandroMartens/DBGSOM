@@ -19,13 +19,6 @@ class SomVQ(TransformerMixin, ClusterMixin, BaseSom):
 
     Parameters
     ----------
-    spreading_factor : float, default = 0.5
-        Spreading factor to calculate the treshold for neuron insertion.
-
-        0 < spreading_factor < 1.
-
-        0 means no growth, 1 means unlimited growth.
-
     n_iter : int, default = 200
         Maximum Number of training epochs.
 
@@ -67,18 +60,6 @@ class SomVQ(TransformerMixin, ClusterMixin, BaseSom):
     convergence_threshold : float, default = 10 ** -5
         If the sum of all weight changes is smaller than the threshold,
         convergence is assumed and the training is stopped.
-
-    threshold_method : {"classical", "se"}, default = "se"
-        Method to calculate the growing threshold.
-
-        "classical" : Threshold is only dependent on the dimension of the input data.
-
-        `gt =  -log(spreading_factor) * n_dim`
-
-        "se" : Statistics enhanced formula, which uses the standard
-        deviation of features in X.
-
-        `gt = 150 * -log(spreading_factor) * np.sqrt(np.sum(np.std(X, axis=0) ** 2))`
 
     min_samples_vertical_growth : int, default = 100
         Minimum samples represented by a prototpye to trigger a vertical growth
