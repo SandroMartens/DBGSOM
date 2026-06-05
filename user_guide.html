@@ -254,6 +254,14 @@
 <li><p><code class="docutils literal notranslate"><span class="pre">max_neurons</span></code> (default 100) — hard upper limit on the number of neurons.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">n_iter</span></code> (default 500) — maximum number of training epochs.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">metric</span></code> (default <code class="docutils literal notranslate"><span class="pre">&quot;euclidean&quot;</span></code>) — distance metric; <code class="docutils literal notranslate"><span class="pre">&quot;cosine&quot;</span></code> is also supported.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">pointer_search</span></code> (default <code class="docutils literal notranslate"><span class="pre">&quot;fine&quot;</span></code>) — accelerates BMU search by restricting winner
+lookup to the previous winner’s graph neighbourhood. <code class="docutils literal notranslate"><span class="pre">&quot;fine&quot;</span></code> gives ~3× speedup in the
+fine phase with near-identical quality. <code class="docutils literal notranslate"><span class="pre">&quot;all&quot;</span></code> extends pointer search to the coarse
+phase (faster, slightly lower quantization accuracy, improved topographic error).
+<code class="docutils literal notranslate"><span class="pre">pointer_search_radius</span></code> (default 1) controls the search radius in graph hops.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">winner_stability_threshold</span></code> (default 0.01) — convergence criterion for the coarse phase:
+training is considered converged when fewer than this fraction of samples change their BMU
+between epochs. Set to <code class="docutils literal notranslate"><span class="pre">None</span></code> to use weight-delta convergence instead.</p></li>
 </ul>
 </section>
 <section id="classification">

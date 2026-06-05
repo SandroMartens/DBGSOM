@@ -12,6 +12,14 @@ Both estimators share the following most important parameters:
 - ``max_neurons`` (default 100) — hard upper limit on the number of neurons.
 - ``n_iter`` (default 500) — maximum number of training epochs.
 - ``metric`` (default ``"euclidean"``) — distance metric; ``"cosine"`` is also supported.
+- ``pointer_search`` (default ``"fine"``) — accelerates BMU search by restricting winner
+  lookup to the previous winner's graph neighbourhood. ``"fine"`` gives ~3× speedup in the
+  fine phase with near-identical quality. ``"all"`` extends pointer search to the coarse
+  phase (faster, slightly lower quantization accuracy, improved topographic error).
+  ``pointer_search_radius`` (default 1) controls the search radius in graph hops.
+- ``winner_stability_threshold`` (default 0.01) — convergence criterion for the coarse phase:
+  training is considered converged when fewer than this fraction of samples change their BMU
+  between epochs. Set to ``None`` to use weight-delta convergence instead.
 
 Classification
 --------------
