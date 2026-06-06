@@ -376,6 +376,85 @@ Set <code class="docutils literal notranslate"><span class="pre">winner_stabilit
 comparable in scale to the per-neuron cumulative error.</p>
 <p>Reference: Qu et al., <em>Statistics-enhanced Direct Batch Growth Self-Organizing Mapping for efficient DoS Attack Detection</em>, IEEE Access, 2019.</p>
 </section>
+<section id="estimating-the-equilibrium-neuron-count">
+<h4>Estimating the equilibrium neuron count<a class="headerlink" href="#estimating-the-equilibrium-neuron-count" title="Link to this heading">¶</a></h4>
+<p>The GT formula implies a statistical estimate of the final map size before training.
+A neuron <em>i</em> triggers growth when its accumulated squared error exceeds GT:</p>
+<div class="math-wrapper docutils container">
+<div class="math notranslate nohighlight">
+\[\sum_{j:\,c_j = i} \lVert x_j - w_i \rVert^2 &gt; GT\]</div>
+</div>
+<p>At convergence every neuron sits just below GT.
+Assuming approximately uniform hit distribution (<span class="math notranslate nohighlight">\(n_i \approx n / K\)</span>):</p>
+<div class="math-wrapper docutils container">
+<div class="math notranslate nohighlight">
+\[\frac{n}{K} \cdot \overline{QE} \approx \lambda \cdot \lVert \operatorname{std}(X) \rVert\]</div>
+</div>
+<p>Solving for <span class="math notranslate nohighlight">\(K\)</span>:</p>
+<div class="math-wrapper docutils container">
+<div class="math notranslate nohighlight">
+\[K_{\mathrm{eq}} \approx \frac{n \cdot \overline{QE}}{\lambda \cdot \lVert \operatorname{std}(X) \rVert}\]</div>
+</div>
+<p>where <span class="math notranslate nohighlight">\(\overline{QE}\)</span> is the mean quantization error of the current map.
+Because <span class="math notranslate nohighlight">\(\overline{QE}\)</span> itself decreases as the map grows, the formula is
+circular; substituting the early-stage QE (e.g. with the initial 4 neurons)
+gives a conservative upper bound on the natural stopping point.</p>
+<p><strong>Qualitative effects</strong></p>
+<div class="table-wrapper docutils container">
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Change</p></th>
+<th class="head"><p>Effect</p></th>
+<th class="head"><p>Reason</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">lambda_</span></code> ↑</p></td>
+<td><p>K ↓</p></td>
+<td><p>GT rises — harder to exceed</p></td>
+</tr>
+<tr class="row-odd"><td><p>training set N ↑</p></td>
+<td><p>K ↑</p></td>
+<td><p>more samples accumulate error faster</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">‖std(X)‖</span></code> ↑</p></td>
+<td><p>K ↓</p></td>
+<td><p>GT rises proportionally</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>For data on an isotropic Gaussian manifold with intrinsic dimension <span class="math notranslate nohighlight">\(d\)</span>,
+the within-cell variance scales as <span class="math notranslate nohighlight">\(\overline{QE} \sim \lVert\operatorname{std}(X)\rVert \cdot K^{-1/d}\)</span>.
+Substituting into the equilibrium equation yields the closed-form growth law:</p>
+<div class="math-wrapper docutils container">
+<div class="math notranslate nohighlight">
+\[K_{\mathrm{eq}} \sim \left(\frac{n}{\lambda}\right)^{d/(d+1)}\]</div>
+</div>
+<p>Growth is therefore <strong>sub-linear in</strong> <span class="math notranslate nohighlight">\(n\)</span>, consistent with the empirical
+observation that doubling the dataset does not double the map size.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The formula assumes errors accumulate independently per neuron.
+In practice, DBGSOM redistributes half the error of interior neurons
+that exceed <code class="docutils literal notranslate"><span class="pre">GT</span></code> to adjacent boundary neurons (see <a class="reference internal" href="#growth-triggering">Growth Triggering</a>),
+creating cascade growth events. For typical map sizes (<span class="math notranslate nohighlight">\(K &lt; 500\)</span>)
+this causes actual <span class="math notranslate nohighlight">\(K\)</span> to exceed <span class="math notranslate nohighlight">\(K_{\mathrm{eq}}\)</span> by
+30–70% depending on cluster structure. The asymptotic scaling
+<span class="math notranslate nohighlight">\(K \sim (n/\lambda)^{d/(d+1)}\)</span> remains valid as
+<span class="math notranslate nohighlight">\(K \to \infty\)</span> since the boundary fraction <span class="math notranslate nohighlight">\(O(1/\sqrt{K})\)</span>
+vanishes.</p>
+</div>
+<p><strong>Runtime consequence.</strong> Substituting <span class="math notranslate nohighlight">\(K_{\mathrm{eq}}\)</span> for <span class="math notranslate nohighlight">\(m\)</span> in the
+fit complexity <span class="math notranslate nohighlight">\(O\!\left(e \cdot n \cdot m \cdot d + m^4\right)\)</span> gives an
+approximate total cost of:</p>
+<div class="math-wrapper docutils container">
+<div class="math notranslate nohighlight">
+\[T_{\mathrm{fit}} \approx O\!\left(e \cdot n^{(2d+1)/(d+1)} \cdot d \cdot \lambda^{-d/(d+1)}\right)\]</div>
+</div>
+<p>Increasing <code class="docutils literal notranslate"><span class="pre">lambda_</span></code> therefore reduces both the neuron count <strong>and</strong> the
+dominant training cost roughly as <span class="math notranslate nohighlight">\(\lambda^{-d/(d+1)}\)</span>.</p>
+</section>
 <section id="growth-triggering">
 <h4>Growth Triggering<a class="headerlink" href="#growth-triggering" title="Link to this heading">¶</a></h4>
 <p>Unlike the original DBGSOM paper — where new neurons are added after every
@@ -587,6 +666,7 @@ per step, the cumulative growth overhead is:</p>
 </li>
 <li><a class="reference internal" href="#directed-horizontal-growth">Directed Horizontal Growth</a><ul>
 <li><a class="reference internal" href="#growing-threshold">Growing Threshold</a></li>
+<li><a class="reference internal" href="#estimating-the-equilibrium-neuron-count">Estimating the equilibrium neuron count</a></li>
 <li><a class="reference internal" href="#growth-triggering">Growth Triggering</a></li>
 </ul>
 </li>
