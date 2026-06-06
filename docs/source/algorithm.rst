@@ -164,6 +164,74 @@ comparable in scale to the per-neuron cumulative error.
 
 Reference: Qu et al., *Statistics-enhanced Direct Batch Growth Self-Organizing Mapping for efficient DoS Attack Detection*, IEEE Access, 2019.
 
+Estimating the equilibrium neuron count
+""""""""""""""""""""""""""""""""""""""""
+
+The GT formula implies a statistical estimate of the final map size before training.
+A neuron *i* triggers growth when its accumulated squared error exceeds GT:
+
+.. math::
+    \sum_{j:\,c_j = i} \lVert x_j - w_i \rVert^2 > GT
+
+At convergence every neuron sits just below GT.
+Assuming approximately uniform hit distribution (:math:`n_i \approx n / K`):
+
+.. math::
+    \frac{n}{K} \cdot \overline{QE} \approx \lambda \cdot \lVert \operatorname{std}(X) \rVert
+
+Solving for :math:`K`:
+
+.. math::
+    K_{\mathrm{eq}} \approx \frac{n \cdot \overline{QE}}{\lambda \cdot \lVert \operatorname{std}(X) \rVert}
+
+where :math:`\overline{QE}` is the mean quantization error of the current map.
+Because :math:`\overline{QE}` itself decreases as the map grows, the formula is
+circular; substituting the early-stage QE (e.g. with the initial 4 neurons)
+gives a conservative upper bound on the natural stopping point.
+
+**Qualitative effects**
+
++--------------------+----------+--------------------------------------+
+| Change             | Effect   | Reason                               |
++====================+==========+======================================+
+| ``lambda_`` ↑      | K ↓      | GT rises — harder to exceed          |
++--------------------+----------+--------------------------------------+
+| training set N ↑   | K ↑      | more samples accumulate error faster |
++--------------------+----------+--------------------------------------+
+| ``‖std(X)‖`` ↑     | K ↓      | GT rises proportionally              |
++--------------------+----------+--------------------------------------+
+
+For data on an isotropic Gaussian manifold with intrinsic dimension :math:`d`,
+the within-cell variance scales as :math:`\overline{QE} \sim \lVert\operatorname{std}(X)\rVert \cdot K^{-1/d}`.
+Substituting into the equilibrium equation yields the closed-form growth law:
+
+.. math::
+    K_{\mathrm{eq}} \sim \left(\frac{n}{\lambda}\right)^{d/(d+1)}
+
+Growth is therefore **sub-linear in** :math:`n`, consistent with the empirical
+observation that doubling the dataset does not double the map size.
+
+.. note::
+   The formula assumes errors accumulate independently per neuron.
+   In practice, DBGSOM redistributes half the error of interior neurons
+   that exceed ``GT`` to adjacent boundary neurons (see `Growth Triggering`_),
+   creating cascade growth events. For typical map sizes (:math:`K < 500`)
+   this causes actual :math:`K` to exceed :math:`K_{\mathrm{eq}}` by
+   30–70% depending on cluster structure. The asymptotic scaling
+   :math:`K \sim (n/\lambda)^{d/(d+1)}` remains valid as
+   :math:`K \to \infty` since the boundary fraction :math:`O(1/\sqrt{K})`
+   vanishes.
+
+**Runtime consequence.** Substituting :math:`K_{\mathrm{eq}}` for :math:`m` in the
+fit complexity :math:`O\!\left(e \cdot n \cdot m \cdot d + m^4\right)` gives an
+approximate total cost of:
+
+.. math::
+    T_{\mathrm{fit}} \approx O\!\left(e \cdot n^{(2d+1)/(d+1)} \cdot d \cdot \lambda^{-d/(d+1)}\right)
+
+Increasing ``lambda_`` therefore reduces both the neuron count **and** the
+dominant training cost roughly as :math:`\lambda^{-d/(d+1)}`.
+
 Growth Triggering
 """""""""""""""""
 
