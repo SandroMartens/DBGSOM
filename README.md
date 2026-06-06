@@ -151,13 +151,25 @@ Supported attributes for `color` / `pointsize`:
 
 ## Comparisons
 
-Benchmark notebooks in `examples/`:
+### SOM algorithm comparison (Digits, PCA projection)
+
+![SOM comparison](examples/export/som_comparison.png)
+
+*DBGSOM (dynamic grid, size determined automatically) vs. MiniSom and SuSi (fixed grids) vs. KMeans (no topology). All trained on the same Digits embedding.*
+
+### Clustering metrics (Digits dataset)
+
+![Clustering metrics](examples/export/clustering_metrics_digits.png)
+
+*ARI, Silhouette, Davies-Bouldin, and training time. All algorithms use the same number of clusters — the neuron count DBGSOM determined automatically.*
+
+Full benchmark notebooks:
 
 | Notebook | What it shows |
 | -------- | ------------- |
-| [`clustering_comparison.ipynb`](examples/clustering_comparison.ipynb) | DBGSOM vs. KMeans, MiniBatchKMeans, AgglomerativeClustering on Iris and Digits (ARI, Silhouette, Davies-Bouldin) |
-| [`som_comparison.ipynb`](examples/som_comparison.ipynb) | DBGSOM vs. MiniSom, SuSi on Digits and Fashion-MNIST (quantization error, topographic error, training time, scaling) |
-| [`manifold_comparison.ipynb`](examples/manifold_comparison.ipynb) | DBGSOM vs. Isomap, t-SNE, UMAP on MNIST: trustworthiness, continuity, topographic folds/tears, runtime |
+| [`clustering_comparison.ipynb`](examples/clustering_comparison.ipynb) | DBGSOM vs. KMeans, MiniBatchKMeans, AgglomerativeClustering on Iris and Digits |
+| [`som_comparison.ipynb`](examples/som_comparison.ipynb) | DBGSOM vs. MiniSom, SuSi on Digits and Fashion-MNIST (QE, TE, training time, scaling) |
+| [`manifold_comparison.ipynb`](examples/manifold_comparison.ipynb) | DBGSOM vs. Isomap, t-SNE, UMAP on MNIST: trustworthiness, continuity, folds/tears, runtime |
 
 ## Dependencies
 
