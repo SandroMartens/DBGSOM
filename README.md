@@ -8,17 +8,21 @@
 
 # DBGSOM
 
-DBGSOM is short for _Directed Batch Growing Self-Organizing Map_. A SOM is a type of artificial neural network that is used to produce a low-dimensional representation of a higher-dimensional data set while preserving the topological structure of the data. It can be used for supervised and unsupervised vector quantization, classification and many different data visualization tasks.
+> Clustering that determines its own size — the map grows until the data fits. No k to specify.
+
+DBGSOM (**D**irected **B**atch **G**rowing **S**elf-**O**rganizing **M**ap) is a clustering algorithm that automatically determines the number of prototypes needed to represent the data. Starting from 4 neurons, the map expands at boundary positions where quantization error exceeds a configurable threshold — no need to pre-specify cluster count. The result is a topology-preserving 2D grid where neighboring neurons represent similar inputs, usable for clustering, classification, and visualization.
 
 ## Features
 
-- Compatible with scikit-learn's API — drop-in replacement for other clustering and classification algorithms
-- Can handle high-dimensional and non-uniform data distributions
-- Good results without extensive parameter tuning
-- Better topology preservation and faster training time than classical SOMs
-- Interpretability of the results through interactive plotting
+- **No cluster count needed** — the map grows until quantization error falls below threshold; `lambda_` controls sensitivity
+- **sklearn-compatible** — drop-in for `KMeans`, `DBSCAN`: implements `fit_predict`, `transform`, `score`, and `predict_proba`
+- **Topology-preserving** — related samples cluster as grid neighbors; topographic error < 5% on Digits
+- **Faster than classical SOMs** — batch learning rule trains on all samples per epoch (vs. online, sample-by-sample)
+- **Built-in visualization** — `plot()` renders the neuron grid coloured by density, label, error, or PCA-RGB
 
 ## How it works
+
+**In brief:** 4 neurons initialize → samples assign to nearest neuron → weights update toward assigned samples → boundary neurons with high error spawn new neighbors → repeat until error threshold met or `max_neurons` reached.
 
 The DBGSOM algorithm builds a two-dimensional map of prototypes (neurons) where each neuron is connected to its neighbors. Four neurons are initialized with random weight vectors drawn from the input data. During training every sample is assigned to its nearest neuron (best matching unit), and the neuron weights are updated towards the samples mapped to them. Neighboring neurons influence each other's updates so that the low-dimensional ordering of the map is preserved. A growing mechanism expands the map as needed: new neurons are inserted at boundary positions where the quantization error exceeds a configurable growing threshold.
 
@@ -73,13 +77,21 @@ from sklearn.datasets import load_digits
 
 X, y = load_digits(return_X_y=True)
 
-vq = SomVQ(spreading_factor=0.5, max_neurons=80)
+vq = SomVQ(lambda_=80.0, max_neurons=80)
 labels = vq.fit_predict(X)
 
 print(f"Neurons: {len(vq.neurons_)}")
 print(f"Quantization error: {vq.quantization_error_:.4f}")
 print(f"Topographic error:  {vq.topographic_error_:.4f}")
 ```
+
+Key growth parameters:
+
+| Parameter     | Default               | Effect                                             |
+| ------------- | --------------------- | -------------------------------------------------- |
+| `lambda_`     | 115.0                 | Growing threshold — higher → fewer neurons         |
+| `max_neurons` | `5 x sqrt(n_samples)` | Hard cap on neuron count                           |
+| `n_iter`      | 500                   | Training epochs; growth only happens in first half |
 
 ### Classification
 
@@ -91,7 +103,7 @@ from sklearn.model_selection import train_test_split
 X, y = load_digits(return_X_y=True)
 X_train, X_test, y_train, y_test = train_test_split(X, y, random_state=42)
 
-clf = SomClassifier(spreading_factor=0.5, max_neurons=80)
+clf = SomClassifier(lambda_=80.0, max_neurons=80)
 clf.fit(X_train, y_train)
 
 print(clf.score(X_test, y_test))           # accuracy
@@ -111,8 +123,8 @@ coefs = vq.transform(X)   # shape (n_samples, n_prototypes)
 `plot()` renders the SOM neurons as dots and the neighbourhood edges as grey lines, all via seaborn objects.
 
 ```python
-vq.plot(color="density")                       # continuous → colour gradient
-clf.plot(color="label")                        # categorical → colour legend
+vq.plot(color="density")                       # continuous -> colour gradient
+clf.plot(color="label")                        # categorical -> colour legend
 vq.plot(color="hit_count", pointsize="error")  # colour + size encoding
 vq.plot(color="density", layout="pca", palette="magma_r")
 vq.plot(color="pca_rgb")                       # RGB colour from PCA of weight vectors
@@ -121,25 +133,35 @@ vq.plot(color="pca_rgb")                       # RGB colour from PCA of weight v
 Supported attributes for `color` / `pointsize`:
 `'label'`, `'epoch_created'`, `'error'`, `'average_distance'`, `'density'`, `'hit_count'`
 
-| Parameter   | Options                       | Description                                                                            |
-| ----------- | ----------------------------- | -------------------------------------------------------------------------------------- |
-| `color`     | any node attribute            | Numeric attributes → continuous colour scale; int/str with ≤ 20 unique values → legend |
-| `pointsize` | any numeric attribute         | Node size proportional to attribute value                                              |
-| `layout`    | `'grid'` _(default)_, `'pca'` | Node placement algorithm                                                               |
-| `palette`   | any Matplotlib colormap       | Applied to the colour mapping                                                          |
+| Parameter   | Options                              | Description                                                                               |
+| ----------- | ------------------------------------ | ----------------------------------------------------------------------------------------- |
+| `color`     | any node attribute                   | Numeric attributes → continuous colour scale; int/str with ≤ 20 unique values → legend |
+| `pointsize` | any numeric attribute                | Node size proportional to attribute value                                                 |
+| `layout`    | `'grid'` _(default)_, `'pca'`        | Node placement algorithm                                                                  |
+| `palette`   | any Matplotlib colormap              | Applied to the colour mapping                                                             |
 
 ## Examples
 
 | Example                                                         | Description                                                                                                                                                                |
 | --------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | ![example](examples/export/2d_example.png)                      | With two-dimensional input we can clearly see how the prototypes (red) approximate the input distribution (white) while preserving the square topology to their neighbors. |
-| ![The fashion mnist dataset](examples/export/fashion_mnist.png) | After training on the Fashion-MNIST dataset we can plot the weigth of each prototype. Neighboring prototypes are pairwise similar.                                         |
+| ![The fashion mnist dataset](examples/export/fashion_mnist.png) | After training on the Fashion-MNIST dataset we can plot the weight of each prototype. Neighboring prototypes are pairwise similar.                                         |
 | ![digits](examples/export/digits_classes.png)                   | Each prototype is coloured by its majority class. Samples from the same class cluster together. Trained on MNIST digits.                                                   |
 | ![darknet_pca](examples/export/darknet_pca.png)                 | Linear transformations like PCA can colour-code relative distances between prototypes in the input space. See the _darknet_ example notebook.                              |
 
+## Comparisons
+
+Benchmark notebooks in `examples/`:
+
+| Notebook | What it shows |
+| -------- | ------------- |
+| [`clustering_comparison.ipynb`](examples/clustering_comparison.ipynb) | DBGSOM vs. KMeans, MiniBatchKMeans, AgglomerativeClustering on Iris and Digits (ARI, Silhouette, Davies-Bouldin) |
+| [`som_comparison.ipynb`](examples/som_comparison.ipynb) | DBGSOM vs. MiniSom, SuSi on Digits and Fashion-MNIST (quantization error, topographic error, training time, scaling) |
+| [`manifold_comparison.ipynb`](examples/manifold_comparison.ipynb) | DBGSOM vs. Isomap, t-SNE, UMAP on MNIST: trustworthiness, continuity, topographic folds/tears, runtime |
+
 ## Dependencies
 
-- Python ≥ 3.12
+- Python >= 3.12
 - numpy
 - numba
 - NetworkX
