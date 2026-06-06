@@ -51,6 +51,23 @@ Practical usage examples for DBGSOM's ``SomVQ`` and ``SomClassifier``.
     </div>
 
 
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="Generate comparison PNGs for README.">
+
+.. only:: html
+
+  .. image:: /auto_examples/images/thumb/sphx_glr_export_figures_thumb.png
+    :alt:
+
+  :doc:`/auto_examples/export_figures`
+
+.. raw:: html
+
+      <div class="sphx-glr-thumbnail-title">Generate comparison PNGs for README.</div>
+    </div>
+
+
 .. thumbnail-parent-div-close
 
 .. raw:: html
@@ -63,6 +80,7 @@ Practical usage examples for DBGSOM's ``SomVQ`` and ``SomClassifier``.
 
    /auto_examples/plot_digit_classification
    /auto_examples/plot_2d_clustering
+   /auto_examples/export_figures
 
 
 .. only:: html
