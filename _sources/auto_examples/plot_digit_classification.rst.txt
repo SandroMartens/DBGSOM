@@ -1737,7 +1737,7 @@ during both ``fit`` and ``predict``.
            <tr class="default">
                <td class="param"><a class="param-doc-link" style="text-decoration:none;">random_state_</a></td>
                <td class="fitted-att-type">RandomState</td>
-               <td>RandomState(M...0x7F9D5BFDAB40</td>
+               <td>RandomState(M...0x7FD08CA8EB40</td>
 
 
            </tr>
@@ -1746,7 +1746,7 @@ during both ``fit`` and ``predict``.
            <tr class="default">
                <td class="param"><a class="param-doc-link" style="text-decoration:none;">som_</a></td>
                <td class="fitted-att-type">Graph</td>
-               <td>&lt;networkx.cla...x7f9d5cd7f260&gt;</td>
+               <td>&lt;networkx.cla...x7fd096f20920&gt;</td>
 
 
            </tr>
@@ -1755,7 +1755,7 @@ during both ``fit`` and ``predict``.
            <tr class="default">
                <td class="param"><a class="param-doc-link" style="text-decoration:none;">topographic_error_</a></td>
                <td class="fitted-att-type">float</td>
-               <td>0.2259</td>
+               <td>0.1553</td>
 
 
            </tr>
@@ -1987,7 +1987,7 @@ Print accuracy and topographic quality metrics.
  .. code-block:: none
 
     Accuracy:           0.8720
-    Topographic error:  0.2259
+    Topographic error:  0.1553
     Quantization error: 5.1095
 
 
@@ -2047,7 +2047,7 @@ Reveals the structure of the learned representation in weight space.
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** (0 minutes 10.156 seconds)
+   **Total running time of the script:** (0 minutes 9.949 seconds)
 
 
 .. _sphx_glr_download_auto_examples_plot_digit_classification.py:
