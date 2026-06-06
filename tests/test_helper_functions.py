@@ -1,10 +1,10 @@
 import numpy as np
 import pytest
 
-from dbgsom.BaseSom import (
+from dbgsom._kernels import (
     numba_quantization_error,
     numba_voronoi_set_centers,
-)  # Ersetze 'your_module' mit deinem Dateinamen
+)
 
 
 # Eine einfache, sichere Referenzfunktion in purem NumPy

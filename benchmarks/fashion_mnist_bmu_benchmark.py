@@ -15,7 +15,7 @@ from sklearn.datasets import fetch_openml
 from sklearn.metrics.pairwise import euclidean_distances
 from sklearn.preprocessing import StandardScaler, normalize
 
-from dbgsom.BaseSom import (
+from dbgsom._kernels import (
     numba_find_winners_cosine,
     numba_find_winners_pointer,
 )

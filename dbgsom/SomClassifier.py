@@ -109,7 +109,7 @@ class SomClassifier(TransformerMixin, ClassifierMixin, BaseSom):
         tags = super().__sklearn_tags__()
         return tags
 
-    def fit(self, X: npt.ArrayLike, y: npt.ArrayLike | None) -> "SomClassifier":
+    def fit(self, X: npt.ArrayLike, y: npt.ArrayLike | None = None) -> "SomClassifier":
         """Train SomClassifier on labelled data.
 
         Parameters

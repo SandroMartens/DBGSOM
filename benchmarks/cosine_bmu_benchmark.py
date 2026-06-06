@@ -16,7 +16,7 @@ import numpy as np
 from sklearn.metrics.pairwise import cosine_similarity, linear_kernel
 from sklearn.preprocessing import normalize
 
-from dbgsom.BaseSom import numba_find_winners_cosine
+from dbgsom._kernels import numba_find_winners_cosine
 
 REPS = 5
 
