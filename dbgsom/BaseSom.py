@@ -567,7 +567,13 @@ class BaseSom(BaseEstimator, ABC):
             Ready-to-use scale object, or ``None`` when *col_name* is ``None``.
 
         """
-        if color is not None and color in nodes_df.columns:
+        if color is not None:
+            if color not in nodes_df.columns:
+                valid = sorted(nodes_df.columns.tolist())
+                raise ValueError(
+                    f"color={color!r} is not a valid node attribute. "
+                    f"Choose from: {valid}"
+                )
             if (
                 pd.api.types.is_numeric_dtype(nodes_df[color])
                 and nodes_df[color].nunique() <= 1
