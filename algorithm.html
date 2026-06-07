@@ -248,18 +248,38 @@
 <section id="overview">
 <h2>Overview<a class="headerlink" href="#overview" title="Link to this heading">¶</a></h2>
 <p>The SOM algorithm performs in two steps. First, competition among the neurons to find the winner and second, adaptation of the weight vector of the winner neuron and its topological neighbors. Instead of being confined to a predetermined number of neurons, DBGSOM offers a flexible structure and requires fewer epochs compared to the original SOM, which enables the ability to learn the nonlinear manifolds in high-dimensional feature space.</p>
+</section>
 <section id="batch-learning-algorithm">
-<h3>Batch Learning Algorithm<a class="headerlink" href="#batch-learning-algorithm" title="Link to this heading">¶</a></h3>
-<p>The basic batch learning algorithm for SOM is as follows:</p>
-<p>For a training dataset, the batch learning algorithm presents all input vectors <span class="math notranslate nohighlight">\(x_j\)</span> to all neurons simultaneously and finds the winner neuron whose weight vector <span class="math notranslate nohighlight">\(w_c\)</span> has the minimum distance to <span class="math notranslate nohighlight">\(x_j\)</span>. The new weights are then calculated as the average of all data belonging to each neuron:</p>
+<h2>Batch Learning Algorithm<a class="headerlink" href="#batch-learning-algorithm" title="Link to this heading">¶</a></h2>
+<p>Each training epoch consists of two steps: BMU search and weight update.</p>
+<section id="bmu-search">
+<h3>BMU Search<a class="headerlink" href="#bmu-search" title="Link to this heading">¶</a></h3>
+<p>Let the input data items be <span class="math notranslate nohighlight">\(n\)</span>-dimensional vectors <span class="math notranslate nohighlight">\(x\)</span>. Let the codebook
+vectors (neuron weights) be <span class="math notranslate nohighlight">\(m_i\)</span>, indexed by <span class="math notranslate nohighlight">\(i\)</span>. The winner neuron
+<span class="math notranslate nohighlight">\(c\)</span> — the <em>best matching unit</em> (BMU) — is the one with the smallest distance
+from <span class="math notranslate nohighlight">\(x\)</span>:</p>
+<div class="math-wrapper docutils container">
+<div class="math notranslate nohighlight">
+\[c = \operatorname{argmin}_i \{ \lVert x - m_i \rVert \}\]</div>
+</div>
+<p>All input vectors are presented simultaneously; each is assigned to its nearest neuron.</p>
+</section>
+<section id="weight-update">
+<h3>Weight Update<a class="headerlink" href="#weight-update" title="Link to this heading">¶</a></h3>
+<p>The new weights are calculated as the neighborhood-weighted mean of all samples
+assigned to each neuron:</p>
 <div class="math-wrapper docutils container">
 <div class="math notranslate nohighlight">
 \[w_i^{new} = \frac{\sum_{j=1}^{k}h_{c_{j, i}}  \cdot x_j}{\sum_{j=1}^{k}h_{c_{j, i}}}\]</div>
 </div>
-<p>where <span class="math notranslate nohighlight">\(h_{c_{j, i}}\)</span> is the neighborhood function (see below). The neighborhood bandwidth  starts at a large value (20 percent of the large side of the map) and decreases over time according to some decay function to an end value (e.g. Five percent of the large side of the map).</p>
-<p>This algorithm repeats for a given number of iterations or until the weight vectors of the prototypes don’t change anymore between iterations. The map has converged.</p>
+<p>where <span class="math notranslate nohighlight">\(h_{c_{j, i}}\)</span> is the neighborhood function (see below).
+The neighborhood bandwidth starts large (default: 20% of the map’s larger side) and
+decays toward a small end value (default: 5%) over the course of training.</p>
+<p>This algorithm repeats for a given number of iterations or until the weight vectors
+no longer change between iterations.</p>
+</section>
 <section id="neighborhood-functions">
-<h4>Neighborhood Functions<a class="headerlink" href="#neighborhood-functions" title="Link to this heading">¶</a></h4>
+<h3>Neighborhood Functions<a class="headerlink" href="#neighborhood-functions" title="Link to this heading">¶</a></h3>
 <p>Two neighborhood functions are available via the <code class="docutils literal notranslate"><span class="pre">neighborhood_function</span></code> parameter:</p>
 <p><strong>Gaussian</strong> (default, <code class="docutils literal notranslate"><span class="pre">&quot;gaussian&quot;</span></code>)</p>
 <div class="math-wrapper docutils container">
@@ -271,11 +291,11 @@
 <p>Same as Gaussian, but set to zero for all neuron pairs with graph distance <span class="math notranslate nohighlight">\(d_{ij} &gt; 2\sigma\)</span>. This concentrates updates on a well-defined neighborhood and suppresses long-range interference.</p>
 </section>
 <section id="decay-functions">
-<h4>Decay Functions<a class="headerlink" href="#decay-functions" title="Link to this heading">¶</a></h4>
+<h3>Decay Functions<a class="headerlink" href="#decay-functions" title="Link to this heading">¶</a></h3>
 <p>The decay from <code class="docutils literal notranslate"><span class="pre">sigma_start</span></code> to <code class="docutils literal notranslate"><span class="pre">sigma_end</span></code> follows either an <strong>exponential</strong> or <strong>linear</strong> schedule (<code class="docutils literal notranslate"><span class="pre">decay_function</span></code> parameter). For exponential decay the learning rate is chosen so that 99% of the drop from <code class="docutils literal notranslate"><span class="pre">sigma_start</span></code> to <code class="docutils literal notranslate"><span class="pre">sigma_end</span></code> is completed by the end of the coarse phase.</p>
 </section>
 <section id="distance-metrics">
-<h4>Distance Metrics<a class="headerlink" href="#distance-metrics" title="Link to this heading">¶</a></h4>
+<h3>Distance Metrics<a class="headerlink" href="#distance-metrics" title="Link to this heading">¶</a></h3>
 <p>Two distance metrics are supported via the <code class="docutils literal notranslate"><span class="pre">metric</span></code> parameter:</p>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">&quot;euclidean&quot;</span></code> (default): standard Euclidean distance; BMU search via BLAS <code class="docutils literal notranslate"><span class="pre">euclidean_distances</span></code>.</p></li>
@@ -284,100 +304,8 @@
 </section>
 </section>
 <section id="dbgsom-algorithm">
-<h3>DBGSOM algorithm<a class="headerlink" href="#dbgsom-algorithm" title="Link to this heading">¶</a></h3>
+<h2>DBGSOM Algorithm<a class="headerlink" href="#dbgsom-algorithm" title="Link to this heading">¶</a></h2>
 <p>Training of the DBGSOM starts from a small number of initial neurons to a larger map by adding new neurons to the network. A batch growing approach for SOM called Directed Batch Growing Self-Organizing Map is used. It uses the accumulative error of the neurons on the grid to direct the growing phase in terms of position and weight initialization of new neurons. After each learning iteration new neurons can be added from boundaries by filling one of the adjacent free positions and assigning a proper weight vector. This implements <a class="reference internal" href="#assumption-2"><span class="std std-ref">Assumption 2</span></a> and <a class="reference internal" href="#assumption-3"><span class="std std-ref">Assumption 3</span></a>.</p>
-</section>
-<section id="implementation-details">
-<h3>Implementation Details<a class="headerlink" href="#implementation-details" title="Link to this heading">¶</a></h3>
-<p>The following assumptions from the literature motivate the implementation choices described below.</p>
-<p id="assumption-1"><strong>Assumption 1</strong> <em>(Finite convergence)</em> —
-A network with constant neighborhood bandwidth <span class="math notranslate nohighlight">\(\sigma\)</span> always converges in a finite number of iterations.</p>
-<p id="assumption-2"><strong>Assumption 2</strong> <em>(Small-network speed)</em> —
-A small network converges faster than a large one.</p>
-<p id="assumption-3"><strong>Assumption 3</strong> <em>(Topology aids convergence)</em> —
-A partially ordered map converges significantly faster than a randomly initialised one.</p>
-<section id="two-phase-training">
-<h4>Two-Phase Training<a class="headerlink" href="#two-phase-training" title="Link to this heading">¶</a></h4>
-<p>Training is divided into a <strong>coarse phase</strong> and a <strong>fine phase</strong>, controlled by <code class="docutils literal notranslate"><span class="pre">coarse_training_frac</span></code> (default 0.5):</p>
-<ul class="simple">
-<li><p><strong>Coarse phase</strong> (first <code class="docutils literal notranslate"><span class="pre">coarse_training_frac</span> <span class="pre">*</span> <span class="pre">n_iter</span></code> epochs): the map grows. Each <strong>convergence cycle</strong> trains at fixed <span class="math notranslate nohighlight">\(\sigma\)</span> until the convergence criterion is met, then fires a growth step and decays <span class="math notranslate nohighlight">\(\sigma\)</span> for the next cycle. <span class="math notranslate nohighlight">\(\sigma\)</span> starts at <code class="docutils literal notranslate"><span class="pre">sigma_start</span></code> (default <span class="math notranslate nohighlight">\(0.2 \cdot \sqrt{m}\)</span>, where <span class="math notranslate nohighlight">\(m\)</span> is the current neuron count) and decays toward <code class="docutils literal notranslate"><span class="pre">sigma_end</span></code> (default <span class="math notranslate nohighlight">\(0.05 \cdot \sqrt{m}\)</span>).</p></li>
-<li><p><strong>Fine phase</strong> (remaining epochs): no further growth. <span class="math notranslate nohighlight">\(\sigma\)</span> is fixed to <code class="docutils literal notranslate"><span class="pre">sigma_fine</span></code> if set, otherwise <code class="docutils literal notranslate"><span class="pre">sigma_end</span></code> is used.</p></li>
-</ul>
-<p>This is consistent with <a class="reference internal" href="#assumption-1"><span class="std std-ref">Assumption 1</span></a> and guarantees that the fine training phase always converges.</p>
-</section>
-<section id="sigma-schedule">
-<h4>Sigma Schedule<a class="headerlink" href="#sigma-schedule" title="Link to this heading">¶</a></h4>
-<p>Between growth steps <span class="math notranslate nohighlight">\(\sigma\)</span> is held <strong>constant</strong> within each convergence
-cycle. Only when the map converges and a growth step fires does <span class="math notranslate nohighlight">\(\sigma\)</span>
-advance to its next decayed value. This is consistent with <a class="reference internal" href="#assumption-1"><span class="std std-ref">Assumption 1</span></a> (constant
-<span class="math notranslate nohighlight">\(\sigma\)</span> guarantees finite convergence within each cycle), while the
-neighbourhood shrinks progressively as the map grows.</p>
-<p>Per <a class="reference internal" href="#assumption-3"><span class="std std-ref">Assumption 3</span></a>, the map needs to be ordered before
-growth — topological ordering is a strictly weaker condition than weight
-convergence. This follows from the fact that zero winner changes between
-epochs implies an identical weight update, hence no weight change (the map
-has converged). Ordering is therefore achieved before convergence, and
-growing from an ordered-but-not-converged map is sufficient.</p>
-<p>Computing the topographic error (TE) each epoch is not used as the ordering
-criterion, even though in full-search mode it is nearly free (the second BMU
-is a by-product of the distance scan). The reason is that TE does not signal
-readiness to grow: it measures topological quality, not weight stability, and
-it is non-monotone — TE rises transiently after each growth step as new
-neurons are inserted. Winner-stability is a better proxy for the convergence
-cycle endpoint: when fewer than <code class="docutils literal notranslate"><span class="pre">winner_stability_threshold</span></code> of samples
-change their BMU between epochs, the Voronoi regions are stable, which in
-practice coincides with low TE and indicates the map is ready for the next
-growth step.</p>
-</section>
-<section id="robustness-weighting">
-<h4>Robustness Weighting<a class="headerlink" href="#robustness-weighting" title="Link to this heading">¶</a></h4>
-<p>Before the batch weight update, each sample <span class="math notranslate nohighlight">\(x_j\)</span> is assigned a robustness weight</p>
-<div class="math-wrapper docutils container">
-<div class="math notranslate nohighlight">
-\[s_j = 1 - \left(1 - \exp\!\left(-\gamma \, \lVert x_j - w_{c_j} \rVert^2\right)\right)^{1/2}, \quad \gamma = \frac{1}{\operatorname{Var}(X)}\]</div>
-</div>
-<p>Samples far from their BMU (outliers) receive lower weights, making the map more robust to noise. Samples close to their BMU receive a weight near 1.</p>
-<p>Reference: D’Urso et al., <em>Smoothed self-organizing map for robust clustering</em>, Information Sciences, 2019.</p>
-</section>
-<section id="accelerated-bmu-search">
-<h4>Accelerated BMU Search<a class="headerlink" href="#accelerated-bmu-search" title="Link to this heading">¶</a></h4>
-<p>BMU search dominates runtime for large maps (see <a class="reference internal" href="#complexity"><span class="std std-ref">Algorithmic complexity</span></a>). To reduce
-this cost, a pointer-based search restricts each sample’s winner search to the
-neuron that won in the previous epoch and its graph neighbours.</p>
-<p>Controlled by <code class="docutils literal notranslate"><span class="pre">pointer_search</span></code>:</p>
-<ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">&quot;none&quot;</span></code>: full search over all neurons — <span class="math notranslate nohighlight">\(O(n \cdot m \cdot d)\)</span> per epoch.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">&quot;fine&quot;</span></code> (default): pointer search only during the fine training phase, where
-the map is stable and winners rarely move beyond the local neighbourhood.
-Near-identical quality at approximately 3× speedup.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">&quot;all&quot;</span></code>: pointer search in both phases. Improves topographic error (map
-topology is more locally consistent) but reduces quantization accuracy.
-Use a larger <code class="docutils literal notranslate"><span class="pre">pointer_search_radius</span></code> to recover quality.</p></li>
-</ul>
-<p>The search radius is set via <code class="docutils literal notranslate"><span class="pre">pointer_search_radius</span></code> (default 1). Candidates
-are all neurons within that many graph hops of the previous winner, read from
-the already-computed distance matrix.</p>
-<p>For a 2D grid SOM the number of candidate neurons at radius <span class="math notranslate nohighlight">\(r\)</span> is
-approximately <span class="math notranslate nohighlight">\(2r^2 + 2r + 1\)</span>, giving a speedup of roughly
-<span class="math notranslate nohighlight">\(m \,/\, (2r^2 + 2r + 1)\)</span> relative to the full search.</p>
-</section>
-<section id="winner-stability-convergence">
-<h4>Winner-Stability Convergence<a class="headerlink" href="#winner-stability-convergence" title="Link to this heading">¶</a></h4>
-<p>When <code class="docutils literal notranslate"><span class="pre">winner_stability_threshold</span></code> is set (default 0.01), the coarse phase
-uses the winner-change rate as its convergence criterion instead of weight-delta:</p>
-<div class="math-wrapper docutils container">
-<div class="math notranslate nohighlight">
-\[\text{converged} \iff
-\frac{\left|\left\{ j : c_j^{(t)} \neq c_j^{(t-1)} \right\}\right|}{n} &lt; \tau_w\]</div>
-</div>
-<p>where <span class="math notranslate nohighlight">\(\tau_w\)</span> = <code class="docutils literal notranslate"><span class="pre">winner_stability_threshold</span></code> and <span class="math notranslate nohighlight">\(c_j^{(t)}\)</span> is
-the BMU of sample <span class="math notranslate nohighlight">\(j\)</span> at epoch <span class="math notranslate nohighlight">\(t\)</span>. This criterion responds faster
-to map stabilisation than weight-delta and is well-matched to pointer search
-(stable winners are exactly the signal pointer search relies on).
-Set <code class="docutils literal notranslate"><span class="pre">winner_stability_threshold=None</span></code> to revert to weight-delta convergence.
-This criterion determines when a convergence cycle ends and a growth step may fire.</p>
-</section>
-</section>
 <section id="directed-horizontal-growth">
 <h3>Directed Horizontal Growth<a class="headerlink" href="#directed-horizontal-growth" title="Link to this heading">¶</a></h3>
 <section id="growing-threshold">
@@ -493,19 +421,125 @@ met, then executes a growth step and begins the next cycle with a decayed
 <li><p>For each non-boundary neuron <span class="math notranslate nohighlight">\(n_i\)</span> where <span class="math notranslate nohighlight">\(E_i &gt; GT\)</span>, half its error is distributed to neighboring boundary neurons.</p></li>
 <li><p>New neurons are inserted at all boundary positions where <span class="math notranslate nohighlight">\(E_i &gt; GT\)</span>, starting with the highest-error neuron.</p></li>
 </ol>
-<p>Waiting for convergence before inserting neurons is deliberate: only once the map has converged do the per-neuron error values constitute stable estimates of the true quantization error. Growing from a transient training state would make the error distribution unreliable and could direct new neurons to the wrong positions (Kohonen, 2014).</p>
-<p>The position and weight of each new neuron are determined by the directed insertion rule (Vasighi and Amini, Section 3.3.1.1): the free adjacent position whose corner neighbor has the highest error is selected, and the new weight is initialized by reflecting the opposite neighbor through the boundary neuron. Because each inserted neuron inherits a weight derived from its already-trained neighbours, the map remains partially ordered after growth. A partially ordered map is empirically known to converge significantly faster than a randomly initialised one (Kohonen, 2001), which is why the weight initialisation rule is central to the algorithm’s efficiency.</p>
+<p>Waiting for convergence before inserting neurons is deliberate: only once the map has converged do the per-neuron error values constitute stable estimates of the true quantization error and topology.</p>
+<p>The position and weight of each new neuron are determined by the directed insertion rule (Vasighi and Amini): the free adjacent position whose corner neighbor has the highest error is selected, and the new weight is initialized by reflecting the opposite neighbor through the boundary neuron. Because each inserted neuron inherits a weight derived from its already-trained neighbours, the map remains partially ordered after growth. The next bigger map should converge very fast according to <a class="reference internal" href="#assumption-3"><span class="std std-ref">assumption 3</span></a>.</p>
 <p>After a growth step, <span class="math notranslate nohighlight">\(\sigma\)</span> is updated via the decay function and <code class="docutils literal notranslate"><span class="pre">converged_</span></code> is reset to <code class="docutils literal notranslate"><span class="pre">False</span></code>, starting the next convergence cycle.</p>
 </section>
 </section>
+</section>
+<section id="implementation-details">
+<h2>Implementation Details<a class="headerlink" href="#implementation-details" title="Link to this heading">¶</a></h2>
+<p>The following assumptions from the literature motivate the implementation choices described below.</p>
+<section id="assumptions">
+<h3>Assumptions<a class="headerlink" href="#assumptions" title="Link to this heading">¶</a></h3>
+<p id="assumption-1"><strong>Assumption 1</strong> <em>(Finite convergence)</em> —
+A network with constant neighborhood bandwidth <span class="math notranslate nohighlight">\(\sigma\)</span> always converges in a finite number of iterations. Empirical Evidence.</p>
+<p id="assumption-2"><strong>Assumption 2</strong> <em>(Small-network speed)</em> —
+A small network converges faster than a large one. Follows directly from <a class="reference internal" href="#complexity"><span class="std std-ref">Algorithmic Complexity</span></a></p>
+<p id="assumption-3"><strong>Assumption 3</strong> <em>(Topology aids convergence)</em> —
+A partially ordered map converges significantly faster than a randomly initialised one. Empirical Evidence.</p>
+</section>
+<section id="convergence-cycles">
+<h3>Convergence Cycles<a class="headerlink" href="#convergence-cycles" title="Link to this heading">¶</a></h3>
+<p>Training is structured as a sequence of <strong>convergence cycles</strong>. Each cycle trains at fixed
+<span class="math notranslate nohighlight">\(\sigma\)</span> until the convergence criterion is met. In the <em>coarse phase</em> a growth step
+fires at the end of the cycle and <span class="math notranslate nohighlight">\(\sigma\)</span> decays before the next cycle begins. In the
+<em>fine phase</em> no growth occurs and <span class="math notranslate nohighlight">\(\sigma\)</span> is fixed.</p>
+<p>This is inspired by the classical two-phase SOM training (Kohonen, 2001), but rather than a
+hard split into two monolithic phases, each phase is realised as one or more convergence
+cycles. The coarse phase spans the first <code class="docutils literal notranslate"><span class="pre">coarse_training_frac</span> <span class="pre">*</span> <span class="pre">n_iter</span></code> epochs; the
+remaining epochs form the fine phase.</p>
+<ul class="simple">
+<li><p><strong>Coarse phase</strong> (growth cycles): <span class="math notranslate nohighlight">\(\sigma\)</span> starts at <code class="docutils literal notranslate"><span class="pre">sigma_start</span></code>
+(default <span class="math notranslate nohighlight">\(0.2 \cdot \sqrt{m}\)</span>) and decays toward <code class="docutils literal notranslate"><span class="pre">sigma_end</span></code>
+(default <span class="math notranslate nohighlight">\(0.05 \cdot \sqrt{m}\)</span>) after each growth step.</p></li>
+<li><p><strong>Fine phase</strong> (refinement cycle): no further growth. <span class="math notranslate nohighlight">\(\sigma\)</span> is fixed
+to <code class="docutils literal notranslate"><span class="pre">sigma_fine</span></code> if set, otherwise <code class="docutils literal notranslate"><span class="pre">sigma_end</span></code> is used.</p></li>
+</ul>
+<p>This is consistent with <a class="reference internal" href="#assumption-1"><span class="std std-ref">Assumption 1</span></a>: because <span class="math notranslate nohighlight">\(\sigma\)</span> is
+constant within each cycle, finite convergence is guaranteed for every cycle including the
+final fine phase.</p>
+</section>
+<section id="sigma-schedule">
+<h3>Sigma Schedule<a class="headerlink" href="#sigma-schedule" title="Link to this heading">¶</a></h3>
+<p>Between growth steps <span class="math notranslate nohighlight">\(\sigma\)</span> is held <strong>constant</strong> within each convergence
+cycle. Only when the map converges and a growth step fires does <span class="math notranslate nohighlight">\(\sigma\)</span>
+advance to its next decayed value. This is consistent with <a class="reference internal" href="#assumption-1"><span class="std std-ref">Assumption 1</span></a> (constant
+<span class="math notranslate nohighlight">\(\sigma\)</span> guarantees finite convergence within each cycle), while the
+neighbourhood shrinks progressively as the map grows.</p>
+<p>Per <a class="reference internal" href="#assumption-3"><span class="std std-ref">Assumption 3</span></a>, the map needs to be ordered before
+growth — topological ordering is a strictly weaker condition than weight
+convergence. This follows from the fact that zero winner changes between
+epochs implies an identical weight update, hence no weight change (the map
+has converged). Ordering is therefore achieved before convergence, and
+growing from an ordered-but-not-converged map is sufficient.</p>
+<p>Computing the topographic error (TE) each epoch is not used as the ordering
+criterion, even though in full-search mode it is nearly free (the second BMU
+is a by-product of the distance scan). The reason is that TE does not signal
+readiness to grow: it measures topological quality, not weight stability, and
+it is non-monotone — TE rises transiently after each growth step as new
+neurons are inserted. Winner-stability is a better proxy for the convergence
+cycle endpoint: when fewer than <code class="docutils literal notranslate"><span class="pre">winner_stability_threshold</span></code> of samples
+change their BMU between epochs, the Voronoi regions are stable, which in
+practice coincides with low TE and indicates the map is ready for the next
+growth step.</p>
+</section>
+<section id="robustness-weighting">
+<h3>Robustness Weighting<a class="headerlink" href="#robustness-weighting" title="Link to this heading">¶</a></h3>
+<p>Before the batch weight update, each sample <span class="math notranslate nohighlight">\(x_j\)</span> is assigned a robustness weight</p>
+<div class="math-wrapper docutils container">
+<div class="math notranslate nohighlight">
+\[s_j = 1 - \left(1 - \exp\!\left(-\gamma \, \lVert x_j - w_{c_j} \rVert^2\right)\right)^{1/2}, \quad \gamma = \frac{1}{\operatorname{Var}(X)}\]</div>
+</div>
+<p>Samples far from their BMU (outliers) receive lower weights, making the map more robust to noise. Samples close to their BMU receive a weight near 1.</p>
+<p>Reference: D’Urso et al., <em>Smoothed self-organizing map for robust clustering</em>, Information Sciences, 2019.</p>
+</section>
+<section id="accelerated-bmu-search">
+<h3>Accelerated BMU Search<a class="headerlink" href="#accelerated-bmu-search" title="Link to this heading">¶</a></h3>
+<p>BMU search dominates runtime for large maps (see <a class="reference internal" href="#complexity"><span class="std std-ref">Algorithmic Complexity</span></a>). To reduce
+this cost, a pointer-based search restricts each sample’s winner search to the
+neuron that won in the previous epoch and its graph neighbours.</p>
+<p>Controlled by <code class="docutils literal notranslate"><span class="pre">pointer_search</span></code>:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">&quot;none&quot;</span></code>: full search over all neurons — <span class="math notranslate nohighlight">\(O(n \cdot m \cdot d)\)</span> per epoch.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">&quot;fine&quot;</span></code> (default): pointer search only during the fine training phase, where
+the map is stable and winners rarely move beyond the local neighbourhood.
+Near-identical quality at approximately 3× speedup.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">&quot;all&quot;</span></code>: pointer search in both phases. Improves topographic error (map
+topology is more locally consistent) but reduces quantization accuracy.
+Use a larger <code class="docutils literal notranslate"><span class="pre">pointer_search_radius</span></code> to recover quality.</p></li>
+</ul>
+<p>The search radius is set via <code class="docutils literal notranslate"><span class="pre">pointer_search_radius</span></code> (default 1). Candidates
+are all neurons within that many graph hops of the previous winner, read from
+the already-computed distance matrix.</p>
+<p>For a 2D grid SOM the number of candidate neurons at radius <span class="math notranslate nohighlight">\(r\)</span> is
+approximately <span class="math notranslate nohighlight">\(2r^2 + 2r + 1\)</span>, giving a speedup of roughly
+<span class="math notranslate nohighlight">\(m \,/\, (2r^2 + 2r + 1)\)</span> relative to the full search.</p>
+</section>
+<section id="winner-stability-convergence">
+<h3>Winner-Stability Convergence<a class="headerlink" href="#winner-stability-convergence" title="Link to this heading">¶</a></h3>
+<p>When <code class="docutils literal notranslate"><span class="pre">winner_stability_threshold</span></code> is set (default 0.01), the coarse phase
+uses the winner-change rate as its convergence criterion instead of weight-delta:</p>
+<div class="math-wrapper docutils container">
+<div class="math notranslate nohighlight">
+\[\text{converged} \iff
+\frac{\left|\left\{ j : c_j^{(t)} \neq c_j^{(t-1)} \right\}\right|}{n} &lt; \tau_w\]</div>
+</div>
+<p>where <span class="math notranslate nohighlight">\(\tau_w\)</span> = <code class="docutils literal notranslate"><span class="pre">winner_stability_threshold</span></code> and <span class="math notranslate nohighlight">\(c_j^{(t)}\)</span> is
+the BMU of sample <span class="math notranslate nohighlight">\(j\)</span> at epoch <span class="math notranslate nohighlight">\(t\)</span>. This criterion responds faster
+to map stabilisation than weight-delta and is well-matched to pointer search
+(stable winners are exactly the signal pointer search relies on).
+Set <code class="docutils literal notranslate"><span class="pre">winner_stability_threshold=None</span></code> to revert to weight-delta convergence.
+This criterion determines when a convergence cycle ends and a growth step may fire.</p>
+</section>
+</section>
 <section id="first-classification">
-<h3>First Classification<a class="headerlink" href="#first-classification" title="Link to this heading">¶</a></h3>
+<h2>First Classification<a class="headerlink" href="#first-classification" title="Link to this heading">¶</a></h2>
 <p>For sample classification, each neuron <span class="math notranslate nohighlight">\(n_i\)</span> gets assigned a label <span class="math notranslate nohighlight">\(L_i\)</span> as the most common class label <span class="math notranslate nohighlight">\(l\)</span> of all samples represented by that prototype:</p>
 <div class="math-wrapper docutils container">
 <div class="math notranslate nohighlight">
 \[L_i = \operatorname{mode}(l_1, \ldots, l_n)\]</div>
 </div>
-</section>
 </section>
 <section id="extensions">
 <h2>Extensions<a class="headerlink" href="#extensions" title="Link to this heading">¶</a></h2>
@@ -527,7 +561,10 @@ met, then executes a growth step and begins the next cycle with a decayed
 </section>
 </section>
 <section id="algorithmic-complexity">
-<span id="complexity"></span><h2>Algorithmic complexity<a class="headerlink" href="#algorithmic-complexity" title="Link to this heading">¶</a></h2>
+<span id="complexity"></span><h2>Algorithmic Complexity<a class="headerlink" href="#algorithmic-complexity" title="Link to this heading">¶</a></h2>
+</section>
+<section id="id1">
+<h2>Algorithmic complexity<a class="headerlink" href="#id1" title="Link to this heading">¶</a></h2>
 <p>The following variables are used throughout:</p>
 <ul class="simple">
 <li><p><cite>n</cite> — number of data samples</p></li>
@@ -676,36 +713,40 @@ per step, the cumulative growth overhead is:</p>
           <div class="toc-tree">
             <ul>
 <li><a class="reference internal" href="#">Algorithm</a><ul>
-<li><a class="reference internal" href="#overview">Overview</a><ul>
+<li><a class="reference internal" href="#overview">Overview</a></li>
 <li><a class="reference internal" href="#batch-learning-algorithm">Batch Learning Algorithm</a><ul>
+<li><a class="reference internal" href="#bmu-search">BMU Search</a></li>
+<li><a class="reference internal" href="#weight-update">Weight Update</a></li>
 <li><a class="reference internal" href="#neighborhood-functions">Neighborhood Functions</a></li>
 <li><a class="reference internal" href="#decay-functions">Decay Functions</a></li>
 <li><a class="reference internal" href="#distance-metrics">Distance Metrics</a></li>
 </ul>
 </li>
-<li><a class="reference internal" href="#dbgsom-algorithm">DBGSOM algorithm</a></li>
-<li><a class="reference internal" href="#implementation-details">Implementation Details</a><ul>
-<li><a class="reference internal" href="#two-phase-training">Two-Phase Training</a></li>
-<li><a class="reference internal" href="#sigma-schedule">Sigma Schedule</a></li>
-<li><a class="reference internal" href="#robustness-weighting">Robustness Weighting</a></li>
-<li><a class="reference internal" href="#accelerated-bmu-search">Accelerated BMU Search</a></li>
-<li><a class="reference internal" href="#winner-stability-convergence">Winner-Stability Convergence</a></li>
-</ul>
-</li>
+<li><a class="reference internal" href="#dbgsom-algorithm">DBGSOM Algorithm</a><ul>
 <li><a class="reference internal" href="#directed-horizontal-growth">Directed Horizontal Growth</a><ul>
 <li><a class="reference internal" href="#growing-threshold">Growing Threshold</a></li>
 <li><a class="reference internal" href="#estimating-the-equilibrium-neuron-count">Estimating the equilibrium neuron count</a></li>
 <li><a class="reference internal" href="#growth-triggering">Growth Triggering</a></li>
 </ul>
 </li>
-<li><a class="reference internal" href="#first-classification">First Classification</a></li>
 </ul>
 </li>
+<li><a class="reference internal" href="#implementation-details">Implementation Details</a><ul>
+<li><a class="reference internal" href="#assumptions">Assumptions</a></li>
+<li><a class="reference internal" href="#convergence-cycles">Convergence Cycles</a></li>
+<li><a class="reference internal" href="#sigma-schedule">Sigma Schedule</a></li>
+<li><a class="reference internal" href="#robustness-weighting">Robustness Weighting</a></li>
+<li><a class="reference internal" href="#accelerated-bmu-search">Accelerated BMU Search</a></li>
+<li><a class="reference internal" href="#winner-stability-convergence">Winner-Stability Convergence</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#first-classification">First Classification</a></li>
 <li><a class="reference internal" href="#extensions">Extensions</a><ul>
 <li><a class="reference internal" href="#hierarchical-dbgsom">Hierarchical DBGSOM</a></li>
 </ul>
 </li>
-<li><a class="reference internal" href="#algorithmic-complexity">Algorithmic complexity</a><ul>
+<li><a class="reference internal" href="#algorithmic-complexity">Algorithmic Complexity</a></li>
+<li><a class="reference internal" href="#id1">Algorithmic complexity</a><ul>
 <li><a class="reference internal" href="#training">Training</a><ul>
 <li><a class="reference internal" href="#space-complexity">Space complexity</a></li>
 <li><a class="reference internal" href="#time-complexity">Time complexity</a></li>
