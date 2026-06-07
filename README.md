@@ -1,6 +1,9 @@
 ![license](https://img.shields.io/github/license/SandroMartens/DBGSOM)
 ![readthedocs](https://img.shields.io/readthedocs/dbgsom)
-[![DOI](https://zenodo.org/badge/454955249.svg)](https://doi.org/10.5281/zenodo.20525611)
+
+<!-- [![DOI](https://zenodo.org/badge/454955249.svg)](https://doi.org/10.5281/zenodo.20525611) -->
+
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.20579347.svg)](https://doi.org/10.5281/zenodo.20579347)
 [![Python package](https://github.com/SandroMartens/DBGSOM/actions/workflows/python-package.yml/badge.svg)](https://github.com/SandroMartens/DBGSOM/actions/workflows/python-package.yml)
 [![Publish to PyPI](https://github.com/SandroMartens/DBGSOM/actions/workflows/publish.yml/badge.svg)](https://github.com/SandroMartens/DBGSOM/actions/workflows/publish.yml)
 [![CodeQL Advanced](https://github.com/SandroMartens/DBGSOM/actions/workflows/codeql.yml/badge.svg)](https://github.com/SandroMartens/DBGSOM/actions/workflows/codeql.yml)
@@ -8,9 +11,9 @@
 
 # DBGSOM
 
-> Clustering that determines its own size — the map grows until the data fits. No k to specify.
+DBGSOM (**D**irected **B**atch **G**rowing **S**elf-**O**rganizing **M**ap) is a Neural Network that can be used for Clusterung, Classification and Nonlinear Projection/Manifold learning and Data Visualization.
 
-DBGSOM (**D**irected **B**atch **G**rowing **S**elf-**O**rganizing **M**ap) is a clustering algorithm that automatically determines the number of prototypes needed to represent the data. Starting from 4 neurons, the map expands at boundary positions where quantization error exceeds a configurable threshold — no need to pre-specify cluster count. The result is a topology-preserving 2D grid where neighboring neurons represent similar inputs, usable for clustering, classification, and visualization.
+The network automaticallyly determines the number of prototypes needed to represent the data. Starting from 4 neurons, the map expands at boundary positions where quantization error exceeds a configurable threshold: no need to pre-specify cluster count. The result is a topology-preserving 2D grid where neighboring neurons represent similar inputs.
 
 ## Features
 
@@ -18,13 +21,13 @@ DBGSOM (**D**irected **B**atch **G**rowing **S**elf-**O**rganizing **M**ap) is a
 - **sklearn-compatible** — drop-in for `KMeans`, `DBSCAN`: implements `fit_predict`, `transform`, `score`, and `predict_proba`
 - **Topology-preserving** — related samples cluster as grid neighbors; topographic error < 5% on Digits
 - **Faster than classical SOMs** — batch learning rule trains on all samples per epoch (vs. online, sample-by-sample)
-- **Built-in visualization** — `plot()` renders the neuron grid coloured by density, label, error, or PCA-RGB
+- **Built-in visualization** — `plot()` renders the neuron grid coloured by density, label, error or hit count.
 
 ## How it works
 
-**In brief:** 4 neurons initialize → samples assign to nearest neuron → weights update toward assigned samples → boundary neurons with high error spawn new neighbors → repeat until error threshold met or `max_neurons` reached.
+**In brief:** Four neurons initialize → samples are assigned to nearest neuron → neuron weights update toward assigned samples → boundary neurons with high error spawn new neighbors → repeat until error threshold met or `max_neurons` reached. Neighoring neurons influence each others weight update -> Topology is preserved during training.
 
-The DBGSOM algorithm builds a two-dimensional map of prototypes (neurons) where each neuron is connected to its neighbors. Four neurons are initialized with random weight vectors drawn from the input data. During training every sample is assigned to its nearest neuron (best matching unit), and the neuron weights are updated towards the samples mapped to them. Neighboring neurons influence each other's updates so that the low-dimensional ordering of the map is preserved. A growing mechanism expands the map as needed: new neurons are inserted at boundary positions where the quantization error exceeds a configurable growing threshold.
+The DBGSOM algorithm builds a two-dimensional map of prototypes (neurons) where each neuron is connected to its four neighbors. Four neurons are initialized with random weight vectors drawn from the input data. During training every sample is assigned to its nearest neuron (best matching unit). The neuron weights are updated towards the mean of all samples mapped to them. Neighboring neurons influence each other's updates so that the low-dimensional ordering of the map is preserved. A growing mechanism expands the map as needed: new neurons are inserted at boundary positions where the quantization error exceeds a configurable growing threshold.
 
 ## How to install
 
@@ -127,18 +130,17 @@ vq.plot(color="density")                       # continuous -> colour gradient
 clf.plot(color="label")                        # categorical -> colour legend
 vq.plot(color="hit_count", pointsize="error")  # colour + size encoding
 vq.plot(color="density", layout="pca", palette="magma_r")
-vq.plot(color="pca_rgb")                       # RGB colour from PCA of weight vectors
 ```
 
 Supported attributes for `color` / `pointsize`:
 `'label'`, `'epoch_created'`, `'error'`, `'average_distance'`, `'density'`, `'hit_count'`
 
-| Parameter   | Options                              | Description                                                                               |
-| ----------- | ------------------------------------ | ----------------------------------------------------------------------------------------- |
-| `color`     | any node attribute                   | Numeric attributes → continuous colour scale; int/str with ≤ 20 unique values → legend |
-| `pointsize` | any numeric attribute                | Node size proportional to attribute value                                                 |
-| `layout`    | `'grid'` _(default)_, `'pca'`        | Node placement algorithm                                                                  |
-| `palette`   | any Matplotlib colormap              | Applied to the colour mapping                                                             |
+| Parameter   | Options                       | Description                                                                            |
+| ----------- | ----------------------------- | -------------------------------------------------------------------------------------- |
+| `color`     | any node attribute            | Numeric attributes → continuous colour scale; int/str with ≤ 20 unique values → legend |
+| `pointsize` | any numeric attribute         | Node size proportional to attribute value                                              |
+| `layout`    | `'grid'` _(default)_, `'pca'` | Node placement algorithm                                                               |
+| `palette`   | any Matplotlib colormap       | Applied to the colour mapping                                                          |
 
 ## Examples
 
@@ -155,21 +157,21 @@ Supported attributes for `color` / `pointsize`:
 
 ![SOM comparison](examples/export/som_comparison.png)
 
-*DBGSOM (dynamic grid, size determined automatically) vs. MiniSom and SuSi (fixed grids) vs. KMeans (no topology). All trained on the same Digits embedding.*
+_DBGSOM (dynamic grid, size determined automatically) vs. MiniSom and SuSi (fixed grids) vs. KMeans (no topology). All trained on the same Digits embedding._
 
 ### Clustering metrics (Digits dataset)
 
 ![Clustering metrics](examples/export/clustering_metrics_digits.png)
 
-*ARI, Silhouette, Davies-Bouldin, and training time. All algorithms use the same number of clusters — the neuron count DBGSOM determined automatically.*
+_ARI, Silhouette, Davies-Bouldin, and training time. All algorithms use the same number of clusters — the neuron count DBGSOM determined automatically._
 
 Full benchmark notebooks:
 
-| Notebook | What it shows |
-| -------- | ------------- |
-| [`clustering_comparison.ipynb`](examples/clustering_comparison.ipynb) | DBGSOM vs. KMeans, MiniBatchKMeans, AgglomerativeClustering on Iris and Digits |
-| [`som_comparison.ipynb`](examples/som_comparison.ipynb) | DBGSOM vs. MiniSom, SuSi on Digits and Fashion-MNIST (QE, TE, training time, scaling) |
-| [`manifold_comparison.ipynb`](examples/manifold_comparison.ipynb) | DBGSOM vs. Isomap, t-SNE, UMAP on MNIST: trustworthiness, continuity, folds/tears, runtime |
+| Notebook                                                              | What it shows                                                                              |
+| --------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| [`clustering_comparison.ipynb`](examples/clustering_comparison.ipynb) | DBGSOM vs. KMeans, MiniBatchKMeans, AgglomerativeClustering on Iris and Digits             |
+| [`som_comparison.ipynb`](examples/som_comparison.ipynb)               | DBGSOM vs. MiniSom, SuSi on Digits and Fashion-MNIST (QE, TE, training time, scaling)      |
+| [`manifold_comparison.ipynb`](examples/manifold_comparison.ipynb)     | DBGSOM vs. Isomap, t-SNE, UMAP on MNIST: trustworthiness, continuity, folds/tears, runtime |
 
 ## Dependencies
 

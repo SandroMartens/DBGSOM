@@ -443,16 +443,10 @@ class BaseSom(BaseEstimator, ABC):
         Parameters
         ----------
         color : {'label', 'epoch_created', 'error', 'average_distance', 'density',
-                 'hit_count', 'pca_rgb'}, optional
+                 'hit_count'}, optional
             Node attribute mapped to colour.  Numeric attributes with all
             identical values are cast to string to avoid a degenerate
             continuous scale.
-
-            Pass ``'pca_rgb'`` to colour each neuron by its position in the
-            first three principal components of the weight space: PC1 -> R,
-            PC2 -> G, PC3 -> B (each component min-max normalised to 0-255).
-            Similar colours indicate similar weight vectors; the colour pattern
-            reveals the topological structure of the feature space.
 
         pointsize : {'label', 'epoch_created', 'error', 'average_distance',
                      'density', 'hit_count'}, optional
@@ -472,11 +466,11 @@ class BaseSom(BaseEstimator, ABC):
             Seaborn / Matplotlib colormap name applied to the colour mapping.
 
         X : array-like of shape (n_samples, n_features), optional
-            Training data used to fit the PCA basis when ``color='pca_rgb'``
-            or ``layout='pca'``.  When provided, PCA is fit on *X* and the
-            weight vectors are projected into that space, yielding components
-            aligned with the true data variance.  When ``None`` (default),
-            PCA is fit directly on the weight vectors.
+            Training data used to fit the PCA basis when ``layout='pca'``.
+            When provided, PCA is fit on *X* and the weight vectors are
+            projected into that space, yielding components aligned with the
+            true data variance.  When ``None`` (default), PCA is fit directly
+            on the weight vectors.
 
         """
         check_is_fitted(self, attributes=["weights_"])
@@ -573,11 +567,6 @@ class BaseSom(BaseEstimator, ABC):
             Ready-to-use scale object, or ``None`` when *col_name* is ``None``.
 
         """
-        if color == "pca_rgb":
-            hex_colors = self._compute_pca_rgb_colors(X=X)
-            nodes_df["pca_rgb"] = hex_colors
-            return "pca_rgb", so.Nominal(values={c: c for c in hex_colors})
-
         if color is not None and color in nodes_df.columns:
             if (
                 pd.api.types.is_numeric_dtype(nodes_df[color])
@@ -606,51 +595,6 @@ class BaseSom(BaseEstimator, ABC):
 
         colors = sns.color_palette(palette, n_colors=series.nunique())
         return so.Nominal(values=list(colors))
-
-    def _compute_pca_rgb_colors(self, X: np.ndarray | None = None) -> list[str]:
-        """Project weight vectors to 3-D with PCA and map to RGB hex strings.
-
-        Each of the three principal components is independently min-max
-        normalised to [0, 255] and mapped to the R, G, and B channel
-        respectively.  Neurons with similar weight vectors receive similar
-        colours; the resulting colour pattern reveals the topological
-        structure of the feature space.
-
-        Parameters
-        ----------
-        X : array-like of shape (n_samples, n_features), optional
-            When provided, PCA is fit on *X* and the weights are projected
-            into that space.  When ``None``, PCA is fit on the weights directly.
-
-        Returns
-        -------
-        hex_colors : list of str
-            One ``'#rrggbb'`` string per neuron, in the same order as
-            ``self.neurons_``.
-
-        """
-        from sklearn.decomposition import PCA
-
-        fit_data = X if X is not None else self.weights_
-        n_components = min(3, self.weights_.shape[1], fit_data.shape[0])
-        pca = PCA(n_components=n_components).fit(fit_data)
-        components = pca.transform(self.weights_)
-
-        # Min-max normalise each component independently to [0, 1]
-        col_min = components.min(axis=0)
-        col_max = components.max(axis=0)
-        col_range = np.where(col_max - col_min == 0, 1.0, col_max - col_min)
-        components_norm = (components - col_min) / col_range
-
-        # Pad to exactly 3 channels if the data has fewer than 3 features
-        if n_components < 3:
-            pad = np.zeros((len(components_norm), 3 - n_components))
-            components_norm = np.hstack([components_norm, pad])
-
-        return [
-            "#{:02x}{:02x}{:02x}".format(int(r * 255), int(g * 255), int(b * 255))
-            for r, g, b in components_norm
-        ]
 
     def _compute_graph_layout(
         self, layout: str, nodes: list, X: np.ndarray | None = None
