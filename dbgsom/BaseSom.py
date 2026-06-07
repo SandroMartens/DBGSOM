@@ -215,6 +215,9 @@ class BaseSom(BaseEstimator, ABC):
         "pointer_search_radius": [Interval(Integral, 1, None, closed="left")],
     }
 
+    def __sklearn_is_fitted__(self) -> bool:
+        return hasattr(self, "weights_")
+
     def __sklearn_tags__(self):
         tags = super().__sklearn_tags__()
         return tags

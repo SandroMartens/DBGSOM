@@ -1,3 +1,6 @@
+import pickle
+
+import joblib
 import numpy as np
 import pytest
 from sklearn.datasets import load_digits, make_blobs
@@ -56,8 +59,8 @@ def test_classifier_entropy_criterion():
 
 def test_scikit_learn_compatibility():
     """Prüft vollautomatisch alle Scikit-Learn API-Konventionen."""
-    check_estimator(SomClassifier(), on_fail="warn")
-    check_estimator(SomVQ(), on_fail="warn")
+    check_estimator(SomClassifier(), on_fail="raise")
+    check_estimator(SomVQ(), on_fail="raise")
 
 
 def test_som_mathematical_convergence():
@@ -182,3 +185,76 @@ def test_digits_training_regression():
         actual=quantizer.topographic_function(X),
         decimal=5,
     )
+
+
+def test_transform_output_shape(classifier_vq_pair):
+    vq, _, X, _ = classifier_vq_pair
+    result = vq.transform(X)
+    assert result.shape == (len(X), vq.som_.number_of_nodes())
+
+
+def test_transform_non_negative(classifier_vq_pair):
+    vq, _, X, _ = classifier_vq_pair
+    result = vq.transform(X)
+    assert np.all(result >= 0)
+
+
+def test_predict_proba_shape(classifier_vq_pair):
+    _, clf, X, _ = classifier_vq_pair
+    proba = clf.predict_proba(X)
+    assert proba.shape == (len(X), len(clf.classes_))
+
+
+def test_predict_proba_sums_to_one(classifier_vq_pair):
+    _, clf, X, _ = classifier_vq_pair
+    proba = clf.predict_proba(X)
+    np.testing.assert_allclose(proba.sum(axis=1), np.ones(len(X)), atol=1e-6)
+
+
+def test_predict_proba_consistent_with_predict(classifier_vq_pair):
+    _, clf, X, _ = classifier_vq_pair
+    proba = clf.predict_proba(X)
+    argmax_labels = clf.classes_[np.argmax(proba, axis=1)]
+    np.testing.assert_array_equal(argmax_labels, clf.predict(X))
+
+
+def test_pickle_roundtrip(classifier_vq_pair):
+    vq, clf, X, _ = classifier_vq_pair
+    for estimator in (vq, clf):
+        blob = pickle.dumps(estimator)
+        restored = pickle.loads(blob)
+        np.testing.assert_array_equal(estimator.predict(X), restored.predict(X))
+
+
+def test_joblib_roundtrip(classifier_vq_pair, tmp_path):
+    vq, _, X, _ = classifier_vq_pair
+    path = tmp_path / "vq.joblib"
+    joblib.dump(vq, path)
+    restored = joblib.load(path)
+    np.testing.assert_array_equal(vq.predict(X), restored.predict(X))
+
+
+def test_determinism_same_seed():
+    X, _ = make_blobs(n_samples=200, centers=4, n_features=3, random_state=0)
+    vq1 = SomVQ(random_state=7, n_iter=20, max_neurons=10).fit(X)
+    vq2 = SomVQ(random_state=7, n_iter=20, max_neurons=10).fit(X)
+    np.testing.assert_array_equal(vq1.weights_, vq2.weights_)
+
+
+def test_different_seeds_differ():
+    X, _ = make_blobs(n_samples=200, centers=4, n_features=3, random_state=0)
+    vq1 = SomVQ(random_state=1, n_iter=20, max_neurons=10).fit(X)
+    vq2 = SomVQ(random_state=99, n_iter=20, max_neurons=10).fit(X)
+    assert not np.array_equal(vq1.weights_, vq2.weights_)
+
+
+def test_verbose_no_exception():
+    X, _ = make_blobs(n_samples=100, centers=4, n_features=2, random_state=0)
+    SomVQ(random_state=0, n_iter=10, max_neurons=8, verbose=True).fit(X)
+
+
+def test_max_neurons_limit_respected():
+    X, _ = make_blobs(n_samples=300, centers=10, n_features=4, random_state=0)
+    limit = 8
+    vq = SomVQ(random_state=0, n_iter=50, max_neurons=limit).fit(X)
+    assert vq.som_.number_of_nodes() <= limit
