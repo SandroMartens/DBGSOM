@@ -1,34 +1,52 @@
 Algorithm
 =========
 
+
+
+
 Overview
---------------------
+--------
 
 The SOM algorithm performs in two steps. First, competition among the neurons to find the winner and second, adaptation of the weight vector of the winner neuron and its topological neighbors. Instead of being confined to a predetermined number of neurons, DBGSOM offers a flexible structure and requires fewer epochs compared to the original SOM, which enables the ability to learn the nonlinear manifolds in high-dimensional feature space.
 
 
+
+
 Batch Learning Algorithm
-^^^^^^^^^^^^^^^^^^^^^^^^
+------------------------
 
-The basic batch learning algorithm for SOM is as follows:
+Each training epoch consists of two steps: BMU search and weight update.
 
-For a training dataset, the batch learning algorithm presents all input vectors :math:`x_j` to all neurons simultaneously and finds the winner neuron whose weight vector :math:`w_c` has the minimum distance to :math:`x_j`. The new weights are then calculated as the average of all data belonging to each neuron:
+BMU Search
+^^^^^^^^^^
+
+Let the input data items be :math:`n`-dimensional vectors :math:`x`. Let the codebook
+vectors (neuron weights) be :math:`m_i`, indexed by :math:`i`. The winner neuron
+:math:`c` --- the *best matching unit* (BMU) --- is the one with the smallest distance
+from :math:`x`:
 
 .. math::
-    w_i^{new} = \frac{\sum_{j=1}^{k}h_{c_{j, i}}  \cdot x_j}{\sum_{j=1}^{k}h_{c_{j, i}}} 
+    c = \operatorname{argmin}_i \{ \lVert x - m_i \rVert \}
 
-where :math:`h_{c_{j, i}}` is the neighborhood function (see below). The neighborhood bandwidth  starts at a large value (20 percent of the large side of the map) and decreases over time according to some decay function to an end value (e.g. Five percent of the large side of the map).
+All input vectors are presented simultaneously; each is assigned to its nearest neuron.
 
+Weight Update
+^^^^^^^^^^^^^
 
-.. .. math::
-..     w_i^{new} = \frac{\sum_{j=1}^{k}h_{c_{j, i}} \cdot s_j \cdot x_j}{\sum_{j=1}^{k}h_{c_{j, i}} \cdot s_j}
+The new weights are calculated as the neighborhood-weighted mean of all samples
+assigned to each neuron:
 
-.. where :math:`h_{c_{j, i}}` is the neighborhood function (see below) and :math:`s_j` is a per-sample robustness weight (see `Robustness Weighting`_). 
+.. math::
+    w_i^{new} = \frac{\sum_{j=1}^{k}h_{c_{j, i}}  \cdot x_j}{\sum_{j=1}^{k}h_{c_{j, i}}}
 
-This algorithm repeats for a given number of iterations or until the weight vectors of the prototypes don't change anymore between iterations. The map has converged.
+where :math:`h_{c_{j, i}}` is the neighborhood function (see below).
+The neighborhood bandwidth starts large (default: 20% of the map's larger side) and
+decays toward a small end value (default: 5%) over the course of training.
 
+This algorithm repeats for a given number of iterations or until the weight vectors
+no longer change between iterations.
 Neighborhood Functions
-""""""""""""""""""""""
+^^^^^^^^^^^^^^^^^^^^^^
 
 Two neighborhood functions are available via the ``neighborhood_function`` parameter:
 
@@ -43,12 +61,18 @@ where :math:`d_{ij}` is the graph distance between neurons :math:`i` and :math:`
 
 Same as Gaussian, but set to zero for all neuron pairs with graph distance :math:`d_{ij} > 2\sigma`. This concentrates updates on a well-defined neighborhood and suppresses long-range interference.
 
+
+
+
 Decay Functions
-"""""""""""""""
+^^^^^^^^^^^^^^^
 The decay from ``sigma_start`` to ``sigma_end`` follows either an **exponential** or **linear** schedule (``decay_function`` parameter). For exponential decay the learning rate is chosen so that 99% of the drop from ``sigma_start`` to ``sigma_end`` is completed by the end of the coarse phase.
 
+
+
+
 Distance Metrics
-""""""""""""""""
+^^^^^^^^^^^^^^^^
 
 Two distance metrics are supported via the ``metric`` parameter:
 
@@ -56,122 +80,14 @@ Two distance metrics are supported via the ``metric`` parameter:
 - ``"cosine"``: cosine dissimilarity :math:`1 - \langle x, w \rangle`; data and weights are L2-normalised before training and at each update step.
 
 
-DBGSOM algorithm
-^^^^^^^^^^^^^^^^
+
+
+DBGSOM Algorithm
+----------------
 Training of the DBGSOM starts from a small number of initial neurons to a larger map by adding new neurons to the network. A batch growing approach for SOM called Directed Batch Growing Self-Organizing Map is used. It uses the accumulative error of the neurons on the grid to direct the growing phase in terms of position and weight initialization of new neurons. After each learning iteration new neurons can be added from boundaries by filling one of the adjacent free positions and assigning a proper weight vector. This implements :ref:`Assumption 2 <assumption-2>` and :ref:`Assumption 3 <assumption-3>`.
 
 
-Implementation Details
-^^^^^^^^^^^^^^^^^^^^^^
 
-The following assumptions from the literature motivate the implementation choices described below.
-
-.. _assumption-1:
-
-**Assumption 1** *(Finite convergence)* —
-A network with constant neighborhood bandwidth :math:`\sigma` always converges in a finite number of iterations.
-
-.. _assumption-2:
-
-**Assumption 2** *(Small-network speed)* —
-A small network converges faster than a large one.
-
-.. _assumption-3:
-
-**Assumption 3** *(Topology aids convergence)* —
-A partially ordered map converges significantly faster than a randomly initialised one.
-
-Two-Phase Training
-""""""""""""""""""
-
-Training is divided into a **coarse phase** and a **fine phase**, controlled by ``coarse_training_frac`` (default 0.5):
-
-- **Coarse phase** (first ``coarse_training_frac * n_iter`` epochs): the map grows. Each **convergence cycle** trains at fixed :math:`\sigma` until the convergence criterion is met, then fires a growth step and decays :math:`\sigma` for the next cycle. :math:`\sigma` starts at ``sigma_start`` (default :math:`0.2 \cdot \sqrt{m}`, where :math:`m` is the current neuron count) and decays toward ``sigma_end`` (default :math:`0.05 \cdot \sqrt{m}`).
-- **Fine phase** (remaining epochs): no further growth. :math:`\sigma` is fixed to ``sigma_fine`` if set, otherwise ``sigma_end`` is used.
-
-This is consistent with :ref:`Assumption 1 <assumption-1>` and guarantees that the fine training phase always converges.
-
-
-Sigma Schedule
-""""""""""""""
-Between growth steps :math:`\sigma` is held **constant** within each convergence
-cycle. Only when the map converges and a growth step fires does :math:`\sigma`
-advance to its next decayed value. This is consistent with :ref:`Assumption 1 <assumption-1>` (constant
-:math:`\sigma` guarantees finite convergence within each cycle), while the
-neighbourhood shrinks progressively as the map grows.
-
-Per :ref:`Assumption 3 <assumption-3>`, the map needs to be ordered before
-growth — topological ordering is a strictly weaker condition than weight
-convergence. This follows from the fact that zero winner changes between
-epochs implies an identical weight update, hence no weight change (the map
-has converged). Ordering is therefore achieved before convergence, and
-growing from an ordered-but-not-converged map is sufficient.
-
-Computing the topographic error (TE) each epoch is not used as the ordering
-criterion, even though in full-search mode it is nearly free (the second BMU
-is a by-product of the distance scan). The reason is that TE does not signal
-readiness to grow: it measures topological quality, not weight stability, and
-it is non-monotone — TE rises transiently after each growth step as new
-neurons are inserted. Winner-stability is a better proxy for the convergence
-cycle endpoint: when fewer than ``winner_stability_threshold`` of samples
-change their BMU between epochs, the Voronoi regions are stable, which in
-practice coincides with low TE and indicates the map is ready for the next
-growth step.
-
-Robustness Weighting
-""""""""""""""""""""
-
-Before the batch weight update, each sample :math:`x_j` is assigned a robustness weight
-
-.. math::
-    s_j = 1 - \left(1 - \exp\!\left(-\gamma \, \lVert x_j - w_{c_j} \rVert^2\right)\right)^{1/2}, \quad \gamma = \frac{1}{\operatorname{Var}(X)}
-
-Samples far from their BMU (outliers) receive lower weights, making the map more robust to noise. Samples close to their BMU receive a weight near 1.
-
-Reference: D'Urso et al., *Smoothed self-organizing map for robust clustering*, Information Sciences, 2019.
-
-Accelerated BMU Search
-"""""""""""""""""""""""
-
-BMU search dominates runtime for large maps (see :ref:`complexity`). To reduce
-this cost, a pointer-based search restricts each sample's winner search to the
-neuron that won in the previous epoch and its graph neighbours.
-
-Controlled by ``pointer_search``:
-
-- ``"none"``: full search over all neurons — :math:`O(n \cdot m \cdot d)` per epoch.
-- ``"fine"`` (default): pointer search only during the fine training phase, where
-  the map is stable and winners rarely move beyond the local neighbourhood.
-  Near-identical quality at approximately 3× speedup.
-- ``"all"``: pointer search in both phases. Improves topographic error (map
-  topology is more locally consistent) but reduces quantization accuracy.
-  Use a larger ``pointer_search_radius`` to recover quality.
-
-The search radius is set via ``pointer_search_radius`` (default 1). Candidates
-are all neurons within that many graph hops of the previous winner, read from
-the already-computed distance matrix.
-
-For a 2D grid SOM the number of candidate neurons at radius :math:`r` is
-approximately :math:`2r^2 + 2r + 1`, giving a speedup of roughly
-:math:`m \,/\, (2r^2 + 2r + 1)` relative to the full search.
-
-Winner-Stability Convergence
-""""""""""""""""""""""""""""
-
-When ``winner_stability_threshold`` is set (default 0.01), the coarse phase
-uses the winner-change rate as its convergence criterion instead of weight-delta:
-
-.. math::
-
-    \text{converged} \iff
-    \frac{\left|\left\{ j : c_j^{(t)} \neq c_j^{(t-1)} \right\}\right|}{n} < \tau_w
-
-where :math:`\tau_w` = ``winner_stability_threshold`` and :math:`c_j^{(t)}` is
-the BMU of sample :math:`j` at epoch :math:`t`. This criterion responds faster
-to map stabilisation than weight-delta and is well-matched to pointer search
-(stable winners are exactly the signal pointer search relies on).
-Set ``winner_stability_threshold=None`` to revert to weight-delta convergence.
-This criterion determines when a convergence cycle ends and a growth step may fire.
 
 Directed Horizontal Growth
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -287,13 +203,166 @@ The position and weight of each new neuron are determined by the directed insert
 
 After a growth step, :math:`\sigma` is updated via the decay function and ``converged_`` is reset to ``False``, starting the next convergence cycle.
 
-First Classification
+
+
+
+Implementation Details
+----------------------
+
+The following assumptions from the literature motivate the implementation choices described below.
+
+
+
+
+Assumptions
+^^^^^^^^^^^
+.. _assumption-1:
+
+**Assumption 1** *(Finite convergence)* —
+A network with constant neighborhood bandwidth :math:`\sigma` always converges in a finite number of iterations. Empirical Evidence.
+
+.. _assumption-2:
+
+**Assumption 2** *(Small-network speed)* —
+A small network converges faster than a large one. Follows directly from :ref:`complexity`
+
+.. _assumption-3:
+
+**Assumption 3** *(Topology aids convergence)* —
+A partially ordered map converges significantly faster than a randomly initialised one. Empirical Evidence.
+
+
+
+
+Convergence Cycles
+^^^^^^^^^^^^^^^^^^
+
+Training is structured as a sequence of **convergence cycles**. Each cycle trains at fixed
+:math:`\sigma` until the convergence criterion is met. In the *coarse phase* a growth step
+fires at the end of the cycle and :math:`\sigma` decays before the next cycle begins. In the
+*fine phase* no growth occurs and :math:`\sigma` is fixed.
+
+This is inspired by the classical two-phase SOM training (Kohonen, 2001), but rather than a
+hard split into two monolithic phases, each phase is realised as one or more convergence
+cycles. The coarse phase spans the first ``coarse_training_frac * n_iter`` epochs; the
+remaining epochs form the fine phase.
+
+- **Coarse phase** (growth cycles): :math:`\sigma` starts at ``sigma_start``
+  (default :math:`0.2 \cdot \sqrt{m}`) and decays toward ``sigma_end``
+  (default :math:`0.05 \cdot \sqrt{m}`) after each growth step.
+- **Fine phase** (refinement cycle): no further growth. :math:`\sigma` is fixed
+  to ``sigma_fine`` if set, otherwise ``sigma_end`` is used.
+
+This is consistent with :ref:`Assumption 1 <assumption-1>`: because :math:`\sigma` is
+constant within each cycle, finite convergence is guaranteed for every cycle including the
+final fine phase.
+
+
+
+
+Sigma Schedule
+^^^^^^^^^^^^^^
+Between growth steps :math:`\sigma` is held **constant** within each convergence
+cycle. Only when the map converges and a growth step fires does :math:`\sigma`
+advance to its next decayed value. This is consistent with :ref:`Assumption 1 <assumption-1>` (constant
+:math:`\sigma` guarantees finite convergence within each cycle), while the
+neighbourhood shrinks progressively as the map grows.
+
+Per :ref:`Assumption 3 <assumption-3>`, the map needs to be ordered before
+growth — topological ordering is a strictly weaker condition than weight
+convergence. This follows from the fact that zero winner changes between
+epochs implies an identical weight update, hence no weight change (the map
+has converged). Ordering is therefore achieved before convergence, and
+growing from an ordered-but-not-converged map is sufficient.
+
+Computing the topographic error (TE) each epoch is not used as the ordering
+criterion, even though in full-search mode it is nearly free (the second BMU
+is a by-product of the distance scan). The reason is that TE does not signal
+readiness to grow: it measures topological quality, not weight stability, and
+it is non-monotone — TE rises transiently after each growth step as new
+neurons are inserted. Winner-stability is a better proxy for the convergence
+cycle endpoint: when fewer than ``winner_stability_threshold`` of samples
+change their BMU between epochs, the Voronoi regions are stable, which in
+practice coincides with low TE and indicates the map is ready for the next
+growth step.
+
+
+
+
+Robustness Weighting
 ^^^^^^^^^^^^^^^^^^^^
+
+Before the batch weight update, each sample :math:`x_j` is assigned a robustness weight
+
+.. math::
+    s_j = 1 - \left(1 - \exp\!\left(-\gamma \, \lVert x_j - w_{c_j} \rVert^2\right)\right)^{1/2}, \quad \gamma = \frac{1}{\operatorname{Var}(X)}
+
+Samples far from their BMU (outliers) receive lower weights, making the map more robust to noise. Samples close to their BMU receive a weight near 1.
+
+Reference: D'Urso et al., *Smoothed self-organizing map for robust clustering*, Information Sciences, 2019.
+
+
+
+
+Accelerated BMU Search
+^^^^^^^^^^^^^^^^^^^^^^
+
+BMU search dominates runtime for large maps (see :ref:`complexity`). To reduce
+this cost, a pointer-based search restricts each sample's winner search to the
+neuron that won in the previous epoch and its graph neighbours.
+
+Controlled by ``pointer_search``:
+
+- ``"none"``: full search over all neurons — :math:`O(n \cdot m \cdot d)` per epoch.
+- ``"fine"`` (default): pointer search only during the fine training phase, where
+  the map is stable and winners rarely move beyond the local neighbourhood.
+  Near-identical quality at approximately 3× speedup.
+- ``"all"``: pointer search in both phases. Improves topographic error (map
+  topology is more locally consistent) but reduces quantization accuracy.
+  Use a larger ``pointer_search_radius`` to recover quality.
+
+The search radius is set via ``pointer_search_radius`` (default 1). Candidates
+are all neurons within that many graph hops of the previous winner, read from
+the already-computed distance matrix.
+
+For a 2D grid SOM the number of candidate neurons at radius :math:`r` is
+approximately :math:`2r^2 + 2r + 1`, giving a speedup of roughly
+:math:`m \,/\, (2r^2 + 2r + 1)` relative to the full search.
+
+
+
+
+Winner-Stability Convergence
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+When ``winner_stability_threshold`` is set (default 0.01), the coarse phase
+uses the winner-change rate as its convergence criterion instead of weight-delta:
+
+.. math::
+
+    \text{converged} \iff
+    \frac{\left|\left\{ j : c_j^{(t)} \neq c_j^{(t-1)} \right\}\right|}{n} < \tau_w
+
+where :math:`\tau_w` = ``winner_stability_threshold`` and :math:`c_j^{(t)}` is
+the BMU of sample :math:`j` at epoch :math:`t`. This criterion responds faster
+to map stabilisation than weight-delta and is well-matched to pointer search
+(stable winners are exactly the signal pointer search relies on).
+Set ``winner_stability_threshold=None`` to revert to weight-delta convergence.
+This criterion determines when a convergence cycle ends and a growth step may fire.
+
+
+
+
+First Classification
+--------------------
 
 For sample classification, each neuron :math:`n_i` gets assigned a label :math:`L_i` as the most common class label :math:`l` of all samples represented by that prototype:
 
 .. math::
     L_i = \operatorname{mode}(l_1, \ldots, l_n)
+
+
+
 
 Extensions
 ----------
@@ -319,8 +388,12 @@ A child SOM is only created when the number of samples mapped to the neuron exce
 Reference: Qu et al., *Entropy-Defined Direct Batch Growing Hierarchical Self-Organizing Mapping for Efficient Network Anomaly Detection*, IEEE Access, 2021.
 
 
+
+
 .. _complexity:
 
+Algorithmic Complexity
+----------------------
 Algorithmic complexity
 ----------------------
 The following variables are used throughout:
