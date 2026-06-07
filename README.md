@@ -25,7 +25,7 @@ The network automaticallyly determines the number of prototypes needed to repres
 
 ## How it works
 
-**In brief:** Four neurons initialize → samples are assigned to nearest neuron → neuron weights update toward assigned samples → boundary neurons with high error spawn new neighbors → repeat until convergence threshold met or `mac-iter` reached. Neighoring neurons influence each others weight update -> Topology is preserved during training.
+**In brief:** Four neurons initialize → samples are assigned to nearest neuron → neuron weights update toward assigned samples → boundary neurons with high error spawn new neighbors → σ decays (convergence cycle ends) → repeat until `max_neurons` or `n_iter` reached. Neighoring neurons influence each others weight update -> Topology is preserved during training.
 
 The DBGSOM algorithm builds a two-dimensional rectangular map of prototypes (neurons) where each neuron is connected to its four neighbors. Four neurons are initialized with random weight vectors drawn from the input data. During training every sample is assigned to its nearest neuron (best matching unit). The neuron weights are updated towards the mean of all samples mapped to them. Neighboring neurons influence each other's updates according to a neighborhood function so that the low-dimensional ordering of the map is preserved. The neighborhood width shrinks over time, allowing the map to first learn the global structure and then adapt to local structur. A growing mechanism expands the map as needed: new neurons are inserted at boundary positions where the quantization error exceeds a configurable growing threshold.
 
