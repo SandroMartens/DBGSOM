@@ -384,16 +384,23 @@ A neuron <em>i</em> triggers growth when its accumulated squared error exceeds G
 <div class="math notranslate nohighlight">
 \[\sum_{j:\,c_j = i} \lVert x_j - w_i \rVert^2 &gt; GT\]</div>
 </div>
-<p>At convergence every neuron sits just below GT.
-Assuming approximately uniform hit distribution (<span class="math notranslate nohighlight">\(n_i \approx n / K\)</span>):</p>
+<p>At convergence, the growth trigger for a boundary neuron <span class="math notranslate nohighlight">\(b\)</span> is:</p>
 <div class="math-wrapper docutils container">
 <div class="math notranslate nohighlight">
-\[\frac{n}{K} \cdot \overline{QE} \approx \lambda \cdot \lVert \operatorname{std}(X) \rVert\]</div>
+\[E_b + \frac{1}{2} \sum_{i \in \mathcal{N}(b),\, i \text{ interior}} E_i &gt; GT\]</div>
 </div>
-<p>Solving for <span class="math notranslate nohighlight">\(K\)</span>:</p>
+<p>where <span class="math notranslate nohighlight">\(\mathcal{N}(b)\)</span> are the neighbours of <span class="math notranslate nohighlight">\(b\)</span> (see <a class="reference internal" href="#growth-triggering">Growth Triggering</a>).
+Assuming approximately uniform hit distribution (<span class="math notranslate nohighlight">\(n_i \approx n / K\)</span>) so that
+<span class="math notranslate nohighlight">\(E_b \approx E_i \approx E\)</span>, the boundary condition at the tipping point becomes:</p>
 <div class="math-wrapper docutils container">
 <div class="math notranslate nohighlight">
-\[K_{\mathrm{eq}} \approx \frac{n \cdot \overline{QE}}{\lambda \cdot \lVert \operatorname{std}(X) \rVert}\]</div>
+\[E + \frac{E}{2} = \frac{3E}{2} \approx GT \implies E \approx \frac{2}{3}\,GT\]</div>
+</div>
+<p>Every neuron therefore sits just below <span class="math notranslate nohighlight">\(\tfrac{2}{3}\,GT\)</span> at convergence.
+Substituting <span class="math notranslate nohighlight">\(E \approx \tfrac{n}{K} \cdot \overline{QE} = \tfrac{2}{3}\,GT\)</span>:</p>
+<div class="math-wrapper docutils container">
+<div class="math notranslate nohighlight">
+\[K_{\mathrm{eq}} \approx \frac{3}{2} \cdot \frac{n \cdot \overline{QE}}{\lambda \cdot \lVert \operatorname{std}(X) \rVert}\]</div>
 </div>
 <p>where <span class="math notranslate nohighlight">\(\overline{QE}\)</span> is the mean quantization error of the current map.
 Because <span class="math notranslate nohighlight">\(\overline{QE}\)</span> itself decreases as the map grows, the formula is
@@ -426,7 +433,8 @@ gives a conservative upper bound on the natural stopping point.</p>
 </div>
 <p>For data on an isotropic Gaussian manifold with intrinsic dimension <span class="math notranslate nohighlight">\(d\)</span>,
 the within-cell variance scales as <span class="math notranslate nohighlight">\(\overline{QE} \sim \lVert\operatorname{std}(X)\rVert \cdot K^{-1/d}\)</span>.
-Substituting into the equilibrium equation yields the closed-form growth law:</p>
+Substituting into the equilibrium equation yields the closed-form growth law
+(the <span class="math notranslate nohighlight">\(\tfrac{3}{2}\)</span> prefactor does not affect the exponent):</p>
 <div class="math-wrapper docutils container">
 <div class="math notranslate nohighlight">
 \[K_{\mathrm{eq}} \sim \left(\frac{n}{\lambda}\right)^{d/(d+1)}\]</div>
@@ -435,13 +443,15 @@ Substituting into the equilibrium equation yields the closed-form growth law:</p
 observation that doubling the dataset does not double the map size.</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
-<p>The formula assumes errors accumulate independently per neuron.
-In practice, DBGSOM redistributes half the error of interior neurons
-that exceed <code class="docutils literal notranslate"><span class="pre">GT</span></code> to adjacent boundary neurons (see <a class="reference internal" href="#growth-triggering">Growth Triggering</a>),
-creating cascade growth events. For typical map sizes (<span class="math notranslate nohighlight">\(K &lt; 500\)</span>)
-this causes actual <span class="math notranslate nohighlight">\(K\)</span> to exceed <span class="math notranslate nohighlight">\(K_{\mathrm{eq}}\)</span> by
-30–70% depending on cluster structure. The asymptotic scaling
-<span class="math notranslate nohighlight">\(K \sim (n/\lambda)^{d/(d+1)}\)</span> remains valid as
+<p>The <span class="math notranslate nohighlight">\(\tfrac{3}{2}\)</span> factor derives from the single-interior-neighbour
+case and is exact when each boundary neuron has exactly one interior
+neighbour.  Corner neurons (zero interior neighbours) experience no
+redistribution and sit closer to <span class="math notranslate nohighlight">\(GT\)</span>; deep interior neurons with
+multiple boundary neighbours distribute their error across several
+recipients, slightly reducing the effective per-neuron contribution.
+For typical rectangular maps these effects cancel to first order, so the
+<span class="math notranslate nohighlight">\(\tfrac{3}{2}\)</span> coefficient is a good approximation.  The asymptotic
+scaling <span class="math notranslate nohighlight">\(K \sim (n/\lambda)^{d/(d+1)}\)</span> remains valid as
 <span class="math notranslate nohighlight">\(K \to \infty\)</span> since the boundary fraction <span class="math notranslate nohighlight">\(O(1/\sqrt{K})\)</span>
 vanishes.</p>
 </div>
