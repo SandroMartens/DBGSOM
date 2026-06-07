@@ -280,13 +280,6 @@
 </div>
 <p>The <code class="docutils literal notranslate"><span class="pre">palette</span></code> parameter accepts any Matplotlib / seaborn colormap name.</p>
 </section>
-<section id="rgb-colour-from-pca">
-<h2>RGB Colour from PCA<a class="headerlink" href="#rgb-colour-from-pca" title="Link to this heading">¶</a></h2>
-<p>Pass <code class="docutils literal notranslate"><span class="pre">color='pca_rgb'</span></code> to colour each neuron by its position in the first three principal components of the weight space (PC1 → R, PC2 → G, PC3 → B). Similar colours indicate similar weight vectors; the pattern reveals the topological structure of the feature space.</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">som</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">color</span><span class="o">=</span><span class="s2">&quot;pca_rgb&quot;</span><span class="p">)</span>
-</pre></div>
-</div>
-</section>
 <section id="layout-options">
 <h2>Layout Options<a class="headerlink" href="#layout-options" title="Link to this heading">¶</a></h2>
 <p>Two layout algorithms are available via the <code class="docutils literal notranslate"><span class="pre">layout</span></code> parameter:</p>
@@ -302,8 +295,8 @@
 </section>
 <section id="data-aligned-pca">
 <h2>Data-Aligned PCA<a class="headerlink" href="#data-aligned-pca" title="Link to this heading">¶</a></h2>
-<p>When using <code class="docutils literal notranslate"><span class="pre">layout='pca'</span></code> or <code class="docutils literal notranslate"><span class="pre">color='pca_rgb'</span></code>, you can pass the training data <code class="docutils literal notranslate"><span class="pre">X</span></code> to align the PCA basis with the data variance rather than the weight variance. This is useful when the weight vectors span a subspace of the data manifold.</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">som</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">color</span><span class="o">=</span><span class="s2">&quot;pca_rgb&quot;</span><span class="p">,</span> <span class="n">layout</span><span class="o">=</span><span class="s2">&quot;pca&quot;</span><span class="p">,</span> <span class="n">X</span><span class="o">=</span><span class="n">X</span><span class="p">)</span>
+<p>When using <code class="docutils literal notranslate"><span class="pre">layout='pca'</span></code>, pass the training data <code class="docutils literal notranslate"><span class="pre">X</span></code> to align the PCA basis with the data variance rather than the weight variance. This is useful when the weight vectors span a subspace of the data manifold.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">som</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">layout</span><span class="o">=</span><span class="s2">&quot;pca&quot;</span><span class="p">,</span> <span class="n">X</span><span class="o">=</span><span class="n">X</span><span class="p">)</span>
 </pre></div>
 </div>
 </section>
@@ -368,7 +361,6 @@
 <li><a class="reference internal" href="#basic-usage">Basic Usage</a></li>
 <li><a class="reference internal" href="#node-attributes">Node Attributes</a></li>
 <li><a class="reference internal" href="#color-and-size-encoding">Color and Size Encoding</a></li>
-<li><a class="reference internal" href="#rgb-colour-from-pca">RGB Colour from PCA</a></li>
 <li><a class="reference internal" href="#layout-options">Layout Options</a></li>
 <li><a class="reference internal" href="#data-aligned-pca">Data-Aligned PCA</a></li>
 </ul>

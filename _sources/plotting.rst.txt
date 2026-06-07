@@ -42,15 +42,6 @@ Use the ``color`` and ``pointsize`` parameters to encode node attributes. Numeri
 
 The ``palette`` parameter accepts any Matplotlib / seaborn colormap name.
 
-RGB Colour from PCA
--------------------
-
-Pass ``color='pca_rgb'`` to colour each neuron by its position in the first three principal components of the weight space (PC1 → R, PC2 → G, PC3 → B). Similar colours indicate similar weight vectors; the pattern reveals the topological structure of the feature space.
-
-.. code-block:: python
-
-    som.plot(color="pca_rgb")
-
 Layout Options
 --------------
 
@@ -69,8 +60,8 @@ Two layout algorithms are available via the ``layout`` parameter:
 Data-Aligned PCA
 ----------------
 
-When using ``layout='pca'`` or ``color='pca_rgb'``, you can pass the training data ``X`` to align the PCA basis with the data variance rather than the weight variance. This is useful when the weight vectors span a subspace of the data manifold.
+When using ``layout='pca'``, pass the training data ``X`` to align the PCA basis with the data variance rather than the weight variance. This is useful when the weight vectors span a subspace of the data manifold.
 
 .. code-block:: python
 
-    som.plot(color="pca_rgb", layout="pca", X=X)
+    som.plot(layout="pca", X=X)

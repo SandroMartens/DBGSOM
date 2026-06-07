@@ -493,16 +493,10 @@ colour- and size-coded by any node attribute stored in the graph.</p>
 </dd>
 <dt class="field-even">Parameters<span class="colon">:</span></dt>
 <dd class="field-even"><ul class="simple">
-<li><p><strong>color</strong> (<em>{'label'</em><em>, </em><em>'epoch_created'</em><em>, </em><em>'error'</em><em>, </em><em>'average_distance'</em><em>, </em><em>'density'</em><em>,</em>) – <p>‘hit_count’, ‘pca_rgb’}, optional
+<li><p><strong>color</strong> (<em>{'label'</em><em>, </em><em>'epoch_created'</em><em>, </em><em>'error'</em><em>, </em><em>'average_distance'</em><em>, </em><em>'density'</em><em>,</em>) – ‘hit_count’}, optional
 Node attribute mapped to colour.  Numeric attributes with all
 identical values are cast to string to avoid a degenerate
-continuous scale.</p>
-<p>Pass <code class="docutils literal notranslate"><span class="pre">'pca_rgb'</span></code> to colour each neuron by its position in the
-first three principal components of the weight space: PC1 -&gt; R,
-PC2 -&gt; G, PC3 -&gt; B (each component min-max normalised to 0-255).
-Similar colours indicate similar weight vectors; the colour pattern
-reveals the topological structure of the feature space.</p>
-</p></li>
+continuous scale.</p></li>
 <li><p><strong>pointsize</strong> (<em>{'label'</em><em>, </em><em>'epoch_created'</em><em>, </em><em>'error'</em><em>, </em><em>'average_distance'</em><em>,</em>) – ‘density’, ‘hit_count’}, optional
 Node attribute mapped to point size.</p></li>
 <li><p><strong>layout</strong> (<em>{'grid'</em><em>, </em><em>'pca'}</em><em>, </em><em>default 'grid'</em>) – <p>Algorithm used to compute node positions.</p>
@@ -516,11 +510,11 @@ reflect the principal directions of variance in feature space.</p>
 </dl>
 </p></li>
 <li><p><strong>palette</strong> (str, default <code class="docutils literal notranslate"><span class="pre">'magma_r'</span></code>) – Seaborn / Matplotlib colormap name applied to the colour mapping.</p></li>
-<li><p><strong>X</strong> (<em>array-like</em><em> of </em><em>shape</em><em> (</em><em>n_samples</em><em>, </em><em>n_features</em><em>)</em><em>, </em><em>optional</em>) – Training data used to fit the PCA basis when <code class="docutils literal notranslate"><span class="pre">color='pca_rgb'</span></code>
-or <code class="docutils literal notranslate"><span class="pre">layout='pca'</span></code>.  When provided, PCA is fit on <em>X</em> and the
-weight vectors are projected into that space, yielding components
-aligned with the true data variance.  When <code class="docutils literal notranslate"><span class="pre">None</span></code> (default),
-PCA is fit directly on the weight vectors.</p></li>
+<li><p><strong>X</strong> (<em>array-like</em><em> of </em><em>shape</em><em> (</em><em>n_samples</em><em>, </em><em>n_features</em><em>)</em><em>, </em><em>optional</em>) – Training data used to fit the PCA basis when <code class="docutils literal notranslate"><span class="pre">layout='pca'</span></code>.
+When provided, PCA is fit on <em>X</em> and the weight vectors are
+projected into that space, yielding components aligned with the
+true data variance.  When <code class="docutils literal notranslate"><span class="pre">None</span></code> (default), PCA is fit directly
+on the weight vectors.</p></li>
 </ul>
 </dd>
 </dl>
@@ -876,16 +870,10 @@ colour- and size-coded by any node attribute stored in the graph.</p>
 </dd>
 <dt class="field-even">Parameters<span class="colon">:</span></dt>
 <dd class="field-even"><ul class="simple">
-<li><p><strong>color</strong> (<em>{'label'</em><em>, </em><em>'epoch_created'</em><em>, </em><em>'error'</em><em>, </em><em>'average_distance'</em><em>, </em><em>'density'</em><em>,</em>) – <p>‘hit_count’, ‘pca_rgb’}, optional
+<li><p><strong>color</strong> (<em>{'label'</em><em>, </em><em>'epoch_created'</em><em>, </em><em>'error'</em><em>, </em><em>'average_distance'</em><em>, </em><em>'density'</em><em>,</em>) – ‘hit_count’}, optional
 Node attribute mapped to colour.  Numeric attributes with all
 identical values are cast to string to avoid a degenerate
-continuous scale.</p>
-<p>Pass <code class="docutils literal notranslate"><span class="pre">'pca_rgb'</span></code> to colour each neuron by its position in the
-first three principal components of the weight space: PC1 -&gt; R,
-PC2 -&gt; G, PC3 -&gt; B (each component min-max normalised to 0-255).
-Similar colours indicate similar weight vectors; the colour pattern
-reveals the topological structure of the feature space.</p>
-</p></li>
+continuous scale.</p></li>
 <li><p><strong>pointsize</strong> (<em>{'label'</em><em>, </em><em>'epoch_created'</em><em>, </em><em>'error'</em><em>, </em><em>'average_distance'</em><em>,</em>) – ‘density’, ‘hit_count’}, optional
 Node attribute mapped to point size.</p></li>
 <li><p><strong>layout</strong> (<em>{'grid'</em><em>, </em><em>'pca'}</em><em>, </em><em>default 'grid'</em>) – <p>Algorithm used to compute node positions.</p>
@@ -899,11 +887,11 @@ reflect the principal directions of variance in feature space.</p>
 </dl>
 </p></li>
 <li><p><strong>palette</strong> (str, default <code class="docutils literal notranslate"><span class="pre">'magma_r'</span></code>) – Seaborn / Matplotlib colormap name applied to the colour mapping.</p></li>
-<li><p><strong>X</strong> (<em>array-like</em><em> of </em><em>shape</em><em> (</em><em>n_samples</em><em>, </em><em>n_features</em><em>)</em><em>, </em><em>optional</em>) – Training data used to fit the PCA basis when <code class="docutils literal notranslate"><span class="pre">color='pca_rgb'</span></code>
-or <code class="docutils literal notranslate"><span class="pre">layout='pca'</span></code>.  When provided, PCA is fit on <em>X</em> and the
-weight vectors are projected into that space, yielding components
-aligned with the true data variance.  When <code class="docutils literal notranslate"><span class="pre">None</span></code> (default),
-PCA is fit directly on the weight vectors.</p></li>
+<li><p><strong>X</strong> (<em>array-like</em><em> of </em><em>shape</em><em> (</em><em>n_samples</em><em>, </em><em>n_features</em><em>)</em><em>, </em><em>optional</em>) – Training data used to fit the PCA basis when <code class="docutils literal notranslate"><span class="pre">layout='pca'</span></code>.
+When provided, PCA is fit on <em>X</em> and the weight vectors are
+projected into that space, yielding components aligned with the
+true data variance.  When <code class="docutils literal notranslate"><span class="pre">None</span></code> (default), PCA is fit directly
+on the weight vectors.</p></li>
 </ul>
 </dd>
 </dl>
