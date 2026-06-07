@@ -173,16 +173,23 @@ A neuron *i* triggers growth when its accumulated squared error exceeds GT:
 .. math::
     \sum_{j:\,c_j = i} \lVert x_j - w_i \rVert^2 > GT
 
-At convergence every neuron sits just below GT.
-Assuming approximately uniform hit distribution (:math:`n_i \approx n / K`):
+At convergence, the growth trigger for a boundary neuron :math:`b` is:
 
 .. math::
-    \frac{n}{K} \cdot \overline{QE} \approx \lambda \cdot \lVert \operatorname{std}(X) \rVert
+    E_b + \frac{1}{2} \sum_{i \in \mathcal{N}(b),\, i \text{ interior}} E_i > GT
 
-Solving for :math:`K`:
+where :math:`\mathcal{N}(b)` are the neighbours of :math:`b` (see `Growth Triggering`_).
+Assuming approximately uniform hit distribution (:math:`n_i \approx n / K`) so that
+:math:`E_b \approx E_i \approx E`, the boundary condition at the tipping point becomes:
 
 .. math::
-    K_{\mathrm{eq}} \approx \frac{n \cdot \overline{QE}}{\lambda \cdot \lVert \operatorname{std}(X) \rVert}
+    E + \frac{E}{2} = \frac{3E}{2} \approx GT \implies E \approx \frac{2}{3}\,GT
+
+Every neuron therefore sits just below :math:`\tfrac{2}{3}\,GT` at convergence.
+Substituting :math:`E \approx \tfrac{n}{K} \cdot \overline{QE} = \tfrac{2}{3}\,GT`:
+
+.. math::
+    K_{\mathrm{eq}} \approx \frac{3}{2} \cdot \frac{n \cdot \overline{QE}}{\lambda \cdot \lVert \operatorname{std}(X) \rVert}
 
 where :math:`\overline{QE}` is the mean quantization error of the current map.
 Because :math:`\overline{QE}` itself decreases as the map grows, the formula is
@@ -203,7 +210,8 @@ gives a conservative upper bound on the natural stopping point.
 
 For data on an isotropic Gaussian manifold with intrinsic dimension :math:`d`,
 the within-cell variance scales as :math:`\overline{QE} \sim \lVert\operatorname{std}(X)\rVert \cdot K^{-1/d}`.
-Substituting into the equilibrium equation yields the closed-form growth law:
+Substituting into the equilibrium equation yields the closed-form growth law
+(the :math:`\tfrac{3}{2}` prefactor does not affect the exponent):
 
 .. math::
     K_{\mathrm{eq}} \sim \left(\frac{n}{\lambda}\right)^{d/(d+1)}
@@ -212,13 +220,15 @@ Growth is therefore **sub-linear in** :math:`n`, consistent with the empirical
 observation that doubling the dataset does not double the map size.
 
 .. note::
-   The formula assumes errors accumulate independently per neuron.
-   In practice, DBGSOM redistributes half the error of interior neurons
-   that exceed ``GT`` to adjacent boundary neurons (see `Growth Triggering`_),
-   creating cascade growth events. For typical map sizes (:math:`K < 500`)
-   this causes actual :math:`K` to exceed :math:`K_{\mathrm{eq}}` by
-   30–70% depending on cluster structure. The asymptotic scaling
-   :math:`K \sim (n/\lambda)^{d/(d+1)}` remains valid as
+   The :math:`\tfrac{3}{2}` factor derives from the single-interior-neighbour
+   case and is exact when each boundary neuron has exactly one interior
+   neighbour.  Corner neurons (zero interior neighbours) experience no
+   redistribution and sit closer to :math:`GT`; deep interior neurons with
+   multiple boundary neighbours distribute their error across several
+   recipients, slightly reducing the effective per-neuron contribution.
+   For typical rectangular maps these effects cancel to first order, so the
+   :math:`\tfrac{3}{2}` coefficient is a good approximation.  The asymptotic
+   scaling :math:`K \sim (n/\lambda)^{d/(d+1)}` remains valid as
    :math:`K \to \infty` since the boundary fraction :math:`O(1/\sqrt{K})`
    vanishes.
 
