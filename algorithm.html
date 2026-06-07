@@ -459,6 +459,43 @@ to <code class="docutils literal notranslate"><span class="pre">sigma_fine</span
 <p>This is consistent with <a class="reference internal" href="#assumption-1"><span class="std std-ref">Assumption 1</span></a>: because <span class="math notranslate nohighlight">\(\sigma\)</span> is
 constant within each cycle, finite convergence is guaranteed for every cycle including the
 final fine phase.</p>
+<section id="growth-stability">
+<h4>Growth Stability<a class="headerlink" href="#growth-stability" title="Link to this heading">¶</a></h4>
+<p>The original DBGSOM (Vasighi &amp; Amini, 2017) triggers a growth step after <em>every</em> training
+epoch, without waiting for convergence. This introduces an instability: at epoch
+<span class="math notranslate nohighlight">\(t = 1\)</span> the weight vectors have not yet settled, so the per-neuron quantization
+error is inflated relative to the converged value:</p>
+<div class="math-wrapper docutils container">
+<div class="math notranslate nohighlight">
+\[f(\sigma, K) = \frac{\overline{QE}(K,\, t=1)}{QE^*(K)} &gt; 1\]</div>
+</div>
+<p>The effective growing threshold is reduced to <span class="math notranslate nohighlight">\(GT_{\mathrm{eff}} = GT / f &lt; GT\)</span>,
+causing more boundary neurons to trigger growth than intended.</p>
+<p>This leads to a bifurcation at a critical spreading factor <span class="math notranslate nohighlight">\(\lambda_c\)</span>. Let
+<span class="math notranslate nohighlight">\(\lambda_c\)</span> be the value at which the inflated error equals the growing threshold
+at the minimum map size (four neurons):</p>
+<div class="math-wrapper docutils container">
+<div class="math notranslate nohighlight">
+\[\lambda_c = \frac{\overline{QE}(K_{\min},\, t=1)}{\lVert \operatorname{std}(X) \rVert}\]</div>
+</div>
+<ul class="simple">
+<li><p><span class="math notranslate nohighlight">\(\lambda &gt; \lambda_c\)</span>: growth does not trigger at epoch 1; the map converges to
+a stable size.</p></li>
+<li><p><span class="math notranslate nohighlight">\(\lambda &lt; \lambda_c\)</span>: growth triggers every epoch; the map expands until
+<code class="docutils literal notranslate"><span class="pre">max_neurons</span></code> is reached regardless of the data structure.</p></li>
+</ul>
+<p><span class="math notranslate nohighlight">\(f\)</span> is largest when <span class="math notranslate nohighlight">\(\sigma\)</span> is large (coarse phase), because a wide
+neighbourhood function smooths weight updates and prevents neurons from accurately
+representing their assigned samples. Small changes to <span class="math notranslate nohighlight">\(\lambda\)</span> near
+<span class="math notranslate nohighlight">\(\lambda_c\)</span> therefore switch the algorithm between convergent and divergent
+behaviour.</p>
+<p>Convergence cycles eliminate this instability. Waiting until <span class="math notranslate nohighlight">\(f   o 1\)</span>
+(winner-stability criterion) before each growth step makes
+<span class="math notranslate nohighlight">\(GT_{\mathrm{eff}} pprox GT\)</span>. A stable equilibrium neuron count exists for all
+<span class="math notranslate nohighlight">\(\lambda &gt; \lambda_{\min} = QE^*(4) / \lVert \operatorname{std}(X)
+Vert\)</span>,
+where <span class="math notranslate nohighlight">\(QE^*(4)\)</span> is the converged quantization error of the initial four-neuron map.</p>
+</section>
 </section>
 <section id="sigma-schedule">
 <h3>Sigma Schedule<a class="headerlink" href="#sigma-schedule" title="Link to this heading">¶</a></h3>
@@ -733,7 +770,10 @@ per step, the cumulative growth overhead is:</p>
 </li>
 <li><a class="reference internal" href="#implementation-details">Implementation Details</a><ul>
 <li><a class="reference internal" href="#assumptions">Assumptions</a></li>
-<li><a class="reference internal" href="#convergence-cycles">Convergence Cycles</a></li>
+<li><a class="reference internal" href="#convergence-cycles">Convergence Cycles</a><ul>
+<li><a class="reference internal" href="#growth-stability">Growth Stability</a></li>
+</ul>
+</li>
 <li><a class="reference internal" href="#sigma-schedule">Sigma Schedule</a></li>
 <li><a class="reference internal" href="#robustness-weighting">Robustness Weighting</a></li>
 <li><a class="reference internal" href="#accelerated-bmu-search">Accelerated BMU Search</a></li>

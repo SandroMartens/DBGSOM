@@ -258,6 +258,48 @@ This is consistent with :ref:`Assumption 1 <assumption-1>`: because :math:`\sigm
 constant within each cycle, finite convergence is guaranteed for every cycle including the
 final fine phase.
 
+Growth Stability
+""""""""""""""""
+
+The original DBGSOM (Vasighi & Amini, 2017) triggers a growth step after *every* training
+epoch, without waiting for convergence. This introduces an instability: at epoch
+:math:`t = 1` the weight vectors have not yet settled, so the per-neuron quantization
+error is inflated relative to the converged value:
+
+.. math::
+
+   f(\sigma, K) = \frac{\overline{QE}(K,\, t=1)}{QE^*(K)} > 1
+
+The effective growing threshold is reduced to :math:`GT_{\mathrm{eff}} = GT / f < GT`,
+causing more boundary neurons to trigger growth than intended.
+
+This leads to a bifurcation at a critical spreading factor :math:`\lambda_c`. Let
+:math:`\lambda_c` be the value at which the inflated error equals the growing threshold
+at the minimum map size (four neurons):
+
+.. math::
+
+   \lambda_c = \frac{\overline{QE}(K_{\min},\, t=1)}{\lVert \operatorname{std}(X) \rVert}
+
+- :math:`\lambda > \lambda_c`: growth does not trigger at epoch 1; the map converges to
+  a stable size.
+
+- :math:`\lambda < \lambda_c`: growth triggers every epoch; the map expands until
+  ``max_neurons`` is reached regardless of the data structure.
+
+:math:`f` is largest when :math:`\sigma` is large (coarse phase), because a wide
+neighbourhood function smooths weight updates and prevents neurons from accurately
+representing their assigned samples. Small changes to :math:`\lambda` near
+:math:`\lambda_c` therefore switch the algorithm between convergent and divergent
+behaviour.
+
+Convergence cycles eliminate this instability. Waiting until :math:`f 	o 1`
+(winner-stability criterion) before each growth step makes
+:math:`GT_{\mathrm{eff}} pprox GT`. A stable equilibrium neuron count exists for all
+:math:`\lambda > \lambda_{\min} = QE^*(4) / \lVert \operatorname{std}(X) Vert`,
+where :math:`QE^*(4)` is the converged quantization error of the initial four-neuron map.
+
+
 
 
 
