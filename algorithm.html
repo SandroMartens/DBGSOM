@@ -285,34 +285,49 @@
 </section>
 <section id="dbgsom-algorithm">
 <h3>DBGSOM algorithm<a class="headerlink" href="#dbgsom-algorithm" title="Link to this heading">¶</a></h3>
-<p>Training of the DBGSOM starts from a small number of initial neurons to a larger map by adding new neurons to the network. A batch growing approach for SOM called Directed Batch Growing Self-Organizing Map is used. It uses the accumulative error of the neurons on the grid to direct the growing phase in terms of position and weight initialization of new neurons. After each learning iteration new neurons can be added from boundaries by filling one of the adjacent free positions and assigning a proper weight vector. This implements Assumption 2 and 3.</p>
+<p>Training of the DBGSOM starts from a small number of initial neurons to a larger map by adding new neurons to the network. A batch growing approach for SOM called Directed Batch Growing Self-Organizing Map is used. It uses the accumulative error of the neurons on the grid to direct the growing phase in terms of position and weight initialization of new neurons. After each learning iteration new neurons can be added from boundaries by filling one of the adjacent free positions and assigning a proper weight vector. This implements <a class="reference internal" href="#assumption-2"><span class="std std-ref">Assumption 2</span></a> and <a class="reference internal" href="#assumption-3"><span class="std std-ref">Assumption 3</span></a>.</p>
 </section>
 <section id="implementation-details">
 <h3>Implementation Details<a class="headerlink" href="#implementation-details" title="Link to this heading">¶</a></h3>
-<p>We implemented multiple additions to and changes from this original algorithm. These changes are used to improve both the quality of the results and the speed of computation. These changes are based on a few assumptions taken from the literature.</p>
-<ol class="arabic simple">
-<li><p>A network with a constant neighborhood bandwidth <span class="math notranslate nohighlight">\(sigma\)</span>  always converges in a finite number of iterations.</p></li>
-<li><p>A small network converges faster than a big network.</p></li>
-<li><p>A partially ordered map converges significantly faster than a randomly initialised one.</p></li>
-</ol>
-<p>We explain this in the following sections.</p>
+<p>The following assumptions from the literature motivate the implementation choices described below.</p>
+<p id="assumption-1"><strong>Assumption 1</strong> <em>(Finite convergence)</em> —
+A network with constant neighborhood bandwidth <span class="math notranslate nohighlight">\(\sigma\)</span> always converges in a finite number of iterations.</p>
+<p id="assumption-2"><strong>Assumption 2</strong> <em>(Small-network speed)</em> —
+A small network converges faster than a large one.</p>
+<p id="assumption-3"><strong>Assumption 3</strong> <em>(Topology aids convergence)</em> —
+A partially ordered map converges significantly faster than a randomly initialised one.</p>
 <section id="two-phase-training">
 <h4>Two-Phase Training<a class="headerlink" href="#two-phase-training" title="Link to this heading">¶</a></h4>
 <p>Training is divided into a <strong>coarse phase</strong> and a <strong>fine phase</strong>, controlled by <code class="docutils literal notranslate"><span class="pre">coarse_training_frac</span></code> (default 0.5):</p>
 <ul class="simple">
-<li><p><strong>Coarse phase</strong> (first <code class="docutils literal notranslate"><span class="pre">coarse_training_frac</span> <span class="pre">*</span> <span class="pre">n_iter</span></code> epochs): the map grows. The neighborhood bandwidth <span class="math notranslate nohighlight">\(\sigma\)</span> starts at <code class="docutils literal notranslate"><span class="pre">sigma_start</span></code> (default <span class="math notranslate nohighlight">\(0.2 \cdot \sqrt{m}\)</span>, where <span class="math notranslate nohighlight">\(m\)</span> is the current neuron count) and decays toward <code class="docutils literal notranslate"><span class="pre">sigma_end</span></code> (default <span class="math notranslate nohighlight">\(0.05 \cdot \sqrt{m}\)</span>) after each growth step.</p></li>
+<li><p><strong>Coarse phase</strong> (first <code class="docutils literal notranslate"><span class="pre">coarse_training_frac</span> <span class="pre">*</span> <span class="pre">n_iter</span></code> epochs): the map grows. Each <strong>convergence cycle</strong> trains at fixed <span class="math notranslate nohighlight">\(\sigma\)</span> until the convergence criterion is met, then fires a growth step and decays <span class="math notranslate nohighlight">\(\sigma\)</span> for the next cycle. <span class="math notranslate nohighlight">\(\sigma\)</span> starts at <code class="docutils literal notranslate"><span class="pre">sigma_start</span></code> (default <span class="math notranslate nohighlight">\(0.2 \cdot \sqrt{m}\)</span>, where <span class="math notranslate nohighlight">\(m\)</span> is the current neuron count) and decays toward <code class="docutils literal notranslate"><span class="pre">sigma_end</span></code> (default <span class="math notranslate nohighlight">\(0.05 \cdot \sqrt{m}\)</span>).</p></li>
 <li><p><strong>Fine phase</strong> (remaining epochs): no further growth. <span class="math notranslate nohighlight">\(\sigma\)</span> is fixed to <code class="docutils literal notranslate"><span class="pre">sigma_fine</span></code> if set, otherwise <code class="docutils literal notranslate"><span class="pre">sigma_end</span></code> is used.</p></li>
 </ul>
-<p>This is based on obervation number 1 and guarantees that the fine training phase always converges.</p>
+<p>This is consistent with <a class="reference internal" href="#assumption-1"><span class="std std-ref">Assumption 1</span></a> and guarantees that the fine training phase always converges.</p>
 </section>
 <section id="sigma-schedule">
 <h4>Sigma Schedule<a class="headerlink" href="#sigma-schedule" title="Link to this heading">¶</a></h4>
 <p>Between growth steps <span class="math notranslate nohighlight">\(\sigma\)</span> is held <strong>constant</strong> within each convergence
 cycle. Only when the map converges and a growth step fires does <span class="math notranslate nohighlight">\(\sigma\)</span>
-advance to its next decayed value. This is consistent with Assumption 1 (constant
+advance to its next decayed value. This is consistent with <a class="reference internal" href="#assumption-1"><span class="std std-ref">Assumption 1</span></a> (constant
 <span class="math notranslate nohighlight">\(\sigma\)</span> guarantees finite convergence within each cycle), while the
 neighbourhood shrinks progressively as the map grows.</p>
-<p>For assumption 3 the map needs to be ordered, not converged. Topological ordering is a much weaker criterium than converge. Since calculating the actual topological fit each epoch is very expensive, we use the follwing heuristic: The map is ordered, when less than <code class="docutils literal notranslate"><span class="pre">winner_stability_threshold</span></code> * n_samples change their winner neuron between batch epochs.</p>
+<p>Per <a class="reference internal" href="#assumption-3"><span class="std std-ref">Assumption 3</span></a>, the map needs to be ordered before
+growth — topological ordering is a strictly weaker condition than weight
+convergence. This follows from the fact that zero winner changes between
+epochs implies an identical weight update, hence no weight change (the map
+has converged). Ordering is therefore achieved before convergence, and
+growing from an ordered-but-not-converged map is sufficient.</p>
+<p>Computing the topographic error (TE) each epoch is not used as the ordering
+criterion, even though in full-search mode it is nearly free (the second BMU
+is a by-product of the distance scan). The reason is that TE does not signal
+readiness to grow: it measures topological quality, not weight stability, and
+it is non-monotone — TE rises transiently after each growth step as new
+neurons are inserted. Winner-stability is a better proxy for the convergence
+cycle endpoint: when fewer than <code class="docutils literal notranslate"><span class="pre">winner_stability_threshold</span></code> of samples
+change their BMU between epochs, the Voronoi regions are stable, which in
+practice coincides with low TE and indicates the map is ready for the next
+growth step.</p>
 </section>
 <section id="robustness-weighting">
 <h4>Robustness Weighting<a class="headerlink" href="#robustness-weighting" title="Link to this heading">¶</a></h4>
@@ -359,7 +374,8 @@ uses the winner-change rate as its convergence criterion instead of weight-delta
 the BMU of sample <span class="math notranslate nohighlight">\(j\)</span> at epoch <span class="math notranslate nohighlight">\(t\)</span>. This criterion responds faster
 to map stabilisation than weight-delta and is well-matched to pointer search
 (stable winners are exactly the signal pointer search relies on).
-Set <code class="docutils literal notranslate"><span class="pre">winner_stability_threshold=None</span></code> to revert to weight-delta convergence.</p>
+Set <code class="docutils literal notranslate"><span class="pre">winner_stability_threshold=None</span></code> to revert to weight-delta convergence.
+This criterion determines when a convergence cycle ends and a growth step may fire.</p>
 </section>
 </section>
 <section id="directed-horizontal-growth">
@@ -468,8 +484,10 @@ dominant training cost roughly as <span class="math notranslate nohighlight">\(\
 <section id="growth-triggering">
 <h4>Growth Triggering<a class="headerlink" href="#growth-triggering" title="Link to this heading">¶</a></h4>
 <p>Unlike the original DBGSOM paper — where new neurons are added after every
-epoch — this implementation is <strong>convergence-triggered</strong>: growth occurs only
-when the map has converged. After each batch weight update, the change in the weight matrix is compared against <code class="docutils literal notranslate"><span class="pre">convergence_threshold</span></code>. When the change falls below this threshold, the map is considered converged and — if still in the coarse phase and below <code class="docutils literal notranslate"><span class="pre">max_neurons</span></code> — a growth step is performed:</p>
+epoch — this implementation uses <strong>convergence-triggered growth</strong>: the map
+trains within a single convergence cycle until the convergence criterion is
+met, then executes a growth step and begins the next cycle with a decayed
+<span class="math notranslate nohighlight">\(\sigma\)</span>. After each batch weight update, the change in the weight matrix is compared against <code class="docutils literal notranslate"><span class="pre">convergence_threshold</span></code>. When the change falls below this threshold, the map is considered converged and — if still in the coarse phase and below <code class="docutils literal notranslate"><span class="pre">max_neurons</span></code> — a growth step is performed:</p>
 <ol class="arabic simple">
 <li><p>The accumulative error <span class="math notranslate nohighlight">\(E_i\)</span> for each neuron is evaluated.</p></li>
 <li><p>For each non-boundary neuron <span class="math notranslate nohighlight">\(n_i\)</span> where <span class="math notranslate nohighlight">\(E_i &gt; GT\)</span>, half its error is distributed to neighboring boundary neurons.</p></li>
@@ -477,7 +495,7 @@ when the map has converged. After each batch weight update, the change in the we
 </ol>
 <p>Waiting for convergence before inserting neurons is deliberate: only once the map has converged do the per-neuron error values constitute stable estimates of the true quantization error. Growing from a transient training state would make the error distribution unreliable and could direct new neurons to the wrong positions (Kohonen, 2014).</p>
 <p>The position and weight of each new neuron are determined by the directed insertion rule (Vasighi and Amini, Section 3.3.1.1): the free adjacent position whose corner neighbor has the highest error is selected, and the new weight is initialized by reflecting the opposite neighbor through the boundary neuron. Because each inserted neuron inherits a weight derived from its already-trained neighbours, the map remains partially ordered after growth. A partially ordered map is empirically known to converge significantly faster than a randomly initialised one (Kohonen, 2001), which is why the weight initialisation rule is central to the algorithm’s efficiency.</p>
-<p>After a growth step, <span class="math notranslate nohighlight">\(\sigma\)</span> is updated via the decay function and <code class="docutils literal notranslate"><span class="pre">converged_</span></code> is reset to <code class="docutils literal notranslate"><span class="pre">False</span></code>, restarting the convergence check.</p>
+<p>After a growth step, <span class="math notranslate nohighlight">\(\sigma\)</span> is updated via the decay function and <code class="docutils literal notranslate"><span class="pre">converged_</span></code> is reset to <code class="docutils literal notranslate"><span class="pre">False</span></code>, starting the next convergence cycle.</p>
 </section>
 </section>
 <section id="first-classification">
