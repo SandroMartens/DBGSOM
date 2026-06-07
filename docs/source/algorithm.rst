@@ -45,6 +45,7 @@ decays toward a small end value (default: 5%) over the course of training.
 
 This algorithm repeats for a given number of iterations or until the weight vectors
 no longer change between iterations.
+
 Neighborhood Functions
 ^^^^^^^^^^^^^^^^^^^^^^
 
@@ -197,9 +198,9 @@ met, then executes a growth step and begins the next cycle with a decayed
 2. For each non-boundary neuron :math:`n_i` where :math:`E_i > GT`, half its error is distributed to neighboring boundary neurons.
 3. New neurons are inserted at all boundary positions where :math:`E_i > GT`, starting with the highest-error neuron.
 
-Waiting for convergence before inserting neurons is deliberate: only once the map has converged do the per-neuron error values constitute stable estimates of the true quantization error. Growing from a transient training state would make the error distribution unreliable and could direct new neurons to the wrong positions (Kohonen, 2014).
+Waiting for convergence before inserting neurons is deliberate: only once the map has converged do the per-neuron error values constitute stable estimates of the true quantization error and topology. 
 
-The position and weight of each new neuron are determined by the directed insertion rule (Vasighi and Amini, Section 3.3.1.1): the free adjacent position whose corner neighbor has the highest error is selected, and the new weight is initialized by reflecting the opposite neighbor through the boundary neuron. Because each inserted neuron inherits a weight derived from its already-trained neighbours, the map remains partially ordered after growth. A partially ordered map is empirically known to converge significantly faster than a randomly initialised one (Kohonen, 2001), which is why the weight initialisation rule is central to the algorithm's efficiency.
+The position and weight of each new neuron are determined by the directed insertion rule (Vasighi and Amini): the free adjacent position whose corner neighbor has the highest error is selected, and the new weight is initialized by reflecting the opposite neighbor through the boundary neuron. Because each inserted neuron inherits a weight derived from its already-trained neighbours, the map remains partially ordered after growth. The next bigger map should converge very fast according to :ref:`assumption 3 <assumption-3>`.
 
 After a growth step, :math:`\sigma` is updated via the decay function and ``converged_`` is reset to ``False``, starting the next convergence cycle.
 
