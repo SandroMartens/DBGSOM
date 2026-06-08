@@ -1,15 +1,39 @@
 Algorithm
 =========
 
-
-
-
 Overview
 --------
 
 The SOM algorithm performs in two steps. First, competition among the neurons to find the winner and second, adaptation of the weight vector of the winner neuron and its topological neighbors. Instead of being confined to a predetermined number of neurons, DBGSOM offers a flexible structure and requires fewer epochs compared to the original SOM, which enables the ability to learn the nonlinear manifolds in high-dimensional feature space.
 
+The following design premises from the literature motivate the implementation choices described below.
 
+Design Premises
+^^^^^^^^^^^^^^^
+.. _assumption-1:
+
+**Premise 1** *(Finite convergence)* — ``[Empirical]``
+A network with constant neighborhood bandwidth :math:`\sigma` always converges in a finite number of iterations.
+
+.. _assumption-2:
+
+**Premise 2** *(Small-network speed)* — ``[Analytical]``
+A small network converges faster than a large one. Follows directly from :ref:`complexity`
+
+.. _assumption-3:
+
+**Premise 3** *(Topology aids convergence)* — ``[Empirical]``
+An ordered or partially ordered map converges significantly faster than a randomly initialised one.
+
+.. _assumption-4:
+
+**Premise 4** *(Smooth interpolation of prototypes)* — ``[Analytical]``
+The manifold can be smoothed, interpolated, and extrapolated locally between neighboring prototypes. 
+
+.. _corallray-1:
+
+**Corallray**
+One can effectively build a large map from training a small one first and then adding new neurons. This can be repeated until the target size is reached.
 
 
 Batch Learning Algorithm
@@ -60,7 +84,7 @@ where :math:`d_{ij}` is the graph distance between neurons :math:`i` and :math:`
 
 **Cut Gaussian** (``"cutgauss"``)
 
-Same as Gaussian, but set to zero for all neuron pairs with graph distance :math:`d_{ij} > 2\sigma`. This concentrates updates on a well-defined neighborhood and suppresses long-range interference.
+Same as Gaussian, but set to zero for all neuron pairs with graph distance :math:`d_{ij} > 2\sigma`. This improves computation speed.
 
 
 
@@ -77,7 +101,7 @@ Distance Metrics
 
 Two distance metrics are supported via the ``metric`` parameter:
 
-- ``"euclidean"`` (default): standard Euclidean distance; BMU search via BLAS ``euclidean_distances``.
+- ``"euclidean"`` (default): standard Euclidean distance.
 - ``"cosine"``: cosine dissimilarity :math:`1 - \langle x, w \rangle`; data and weights are L2-normalised before training and at each update step.
 
 
@@ -85,9 +109,7 @@ Two distance metrics are supported via the ``metric`` parameter:
 
 DBGSOM Algorithm
 ----------------
-Training of the DBGSOM starts from a small number of initial neurons to a larger map by adding new neurons to the network. A batch growing approach for SOM called Directed Batch Growing Self-Organizing Map is used. It uses the accumulative error of the neurons on the grid to direct the growing phase in terms of position and weight initialization of new neurons. After each learning iteration new neurons can be added from boundaries by filling one of the adjacent free positions and assigning a proper weight vector. This implements :ref:`Assumption 2 <assumption-2>` and :ref:`Assumption 3 <assumption-3>`.
-
-
+Training of the DBGSOM starts from four initial neurons. After each learning iteration new neurons can be added from boundaries by filling one of the adjacent free positions and assigning a proper weight vector. This implements :ref:`Premise 2 <assumption-2>` and :ref:`Premise 3 <assumption-3>`. The algorithm uses the accumulative error of the neurons on the grid to direct the growing phase in terms of position and weight initialization of new neurons towards areas of greatest quantization error. 
 
 
 Directed Horizontal Growth
@@ -210,30 +232,6 @@ After a growth step, :math:`\sigma` is updated via the decay function and ``conv
 Implementation Details
 ----------------------
 
-The following assumptions from the literature motivate the implementation choices described below.
-
-
-
-
-Assumptions
-^^^^^^^^^^^
-.. _assumption-1:
-
-**Assumption 1** *(Finite convergence)* —
-A network with constant neighborhood bandwidth :math:`\sigma` always converges in a finite number of iterations. Empirical Evidence.
-
-.. _assumption-2:
-
-**Assumption 2** *(Small-network speed)* —
-A small network converges faster than a large one. Follows directly from :ref:`complexity`
-
-.. _assumption-3:
-
-**Assumption 3** *(Topology aids convergence)* —
-A partially ordered map converges significantly faster than a randomly initialised one. Empirical Evidence.
-
-
-
 
 Convergence Cycles
 ^^^^^^^^^^^^^^^^^^
@@ -254,7 +252,7 @@ remaining epochs form the fine phase.
 - **Fine phase** (refinement cycle): no further growth. :math:`\sigma` is fixed
   to ``sigma_fine`` if set, otherwise ``sigma_end`` is used.
 
-This is consistent with :ref:`Assumption 1 <assumption-1>`: because :math:`\sigma` is
+This is consistent with :ref:`Premise 1 <assumption-1>`: because :math:`\sigma` is
 constant within each cycle, finite convergence is guaranteed for every cycle including the
 final fine phase.
 
@@ -296,7 +294,8 @@ behaviour.
 Convergence cycles eliminate this instability. Waiting until :math:`f 	o 1`
 (winner-stability criterion) before each growth step makes
 :math:`GT_{\mathrm{eff}} pprox GT`. A stable equilibrium neuron count exists for all
-:math:`\lambda > \lambda_{\min} = QE^*(4) / \lVert \operatorname{std}(X) Vert`,
+:math:`\lambda > \lambda_{\min} = QE^*(4) / \lVert \operatorname{std}(X) 
+Vert`,
 where :math:`QE^*(4)` is the converged quantization error of the initial four-neuron map.
 
 
@@ -307,11 +306,11 @@ Sigma Schedule
 ^^^^^^^^^^^^^^
 Between growth steps :math:`\sigma` is held **constant** within each convergence
 cycle. Only when the map converges and a growth step fires does :math:`\sigma`
-advance to its next decayed value. This is consistent with :ref:`Assumption 1 <assumption-1>` (constant
+advance to its next decayed value. This is consistent with :ref:`Premise 1 <assumption-1>` (constant
 :math:`\sigma` guarantees finite convergence within each cycle), while the
 neighbourhood shrinks progressively as the map grows.
 
-Per :ref:`Assumption 3 <assumption-3>`, the map needs to be ordered before
+Per :ref:`Premise 3 <assumption-3>`, the map needs to be ordered before
 growth — topological ordering is a strictly weaker condition than weight
 convergence. This follows from the fact that zero winner changes between
 epochs implies an identical weight update, hence no weight change (the map
@@ -434,9 +433,6 @@ Reference: Qu et al., *Entropy-Defined Direct Batch Growing Hierarchical Self-Or
 
 
 .. _complexity:
-
-Algorithmic Complexity
-----------------------
 Algorithmic complexity
 ----------------------
 The following variables are used throughout:
