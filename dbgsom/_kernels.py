@@ -168,6 +168,44 @@ def numba_find_winners_pointer(
     return distances, winners
 
 
+@nb.njit(cache=True, parallel=True, fastmath=True)
+def numba_find_winners_pointer_cosine(
+    data: npt.NDArray,
+    weights: npt.NDArray,
+    prev_winners: npt.NDArray,
+    neighbor_matrix: npt.NDArray,
+) -> tuple[npt.NDArray, npt.NDArray]:
+    """Find BMU per sample via pointer search using cosine similarity.
+
+    Searches only prev_winner + its graph neighbors.
+    Assumes data and weights are already L2-normalised (unit vectors).
+    """
+    n = data.shape[0]
+    n_features = data.shape[1]
+    winners = np.empty(n, np.int64)
+    distances = np.empty(n, np.float64)
+    for i in nb.prange(n):  # ty:ignore[not-iterable]
+        pw = prev_winners[i]
+        sim = 0.0
+        for k in range(n_features):
+            sim += data[i, k] * weights[pw, k]
+        best_sim = sim
+        best_idx = pw
+        for j in range(neighbor_matrix.shape[1]):
+            nidx = neighbor_matrix[pw, j]
+            if nidx < 0:
+                break
+            sim = 0.0
+            for k in range(n_features):
+                sim += data[i, k] * weights[nidx, k]
+            if sim > best_sim:
+                best_sim = sim
+                best_idx = nidx
+        winners[i] = best_idx
+        distances[i] = 1.0 - best_sim
+    return distances, winners
+
+
 @nb.njit(fastmath=True)
 def numba_quantization_error(
     winners: npt.NDArray, length: int, distances: npt.NDArray

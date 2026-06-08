@@ -36,6 +36,7 @@ from ._kernels import (
     numba_find_winners_cosine,
     numba_find_winners_euclidean,
     numba_find_winners_pointer,
+    numba_find_winners_pointer_cosine,
     numba_quantization_error,
     numba_voronoi_set_centers,
 )
@@ -710,8 +711,11 @@ class BaseSom(BaseEstimator, ABC):
                 self._distance_matrix = nx.floyd_warshall_numpy(self.som_)
                 self.weights_ = self._extract_values_from_graph("weight")
                 self._neurons_added = False
-                self._prev_winners = None  # neuron indices changed — invalidate
                 self._build_neighbor_matrix()
+                # _prev_winners indices remain valid: NetworkX preserves insertion
+                # order, so existing neurons keep their indices after growth.
+                # New neurons appear at the end and will be found via the rebuilt
+                # _neighbor_matrix in the next pointer search.
 
             distances, winners = self._get_winning_neurons(
                 data, n_bmu=1, prev_winners=self._prev_winners
