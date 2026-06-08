@@ -811,24 +811,31 @@ class BaseSom(BaseEstimator, ABC):
     ) -> tuple[npt.NDArray, npt.NDArray]:
         """Return distances and indices of the n_bmu nearest prototypes per sample.
 
-        Euclidean: BLAS euclidean_distances for both n_bmu=1 and n_bmu>1.
-        Cosine n_bmu=1: numba_find_winners_cosine (fused JIT, no matrix alloc).
-        n_bmu>1: argpartition (post-training topographic error only).
+        Euclidean: BLAS euclidean_distances for n_bmu>1; Numba pointer search for n_bmu=1.
+        Cosine: data normalised once up front; Numba pointer search or fused dot-product
+        for n_bmu=1; argpartition for n_bmu>1 (post-training topographic error only).
         """
-        if (
+        if self.metric == "cosine":
+            data = normalize(data)
+
+        use_pointer = (
             prev_winners is not None
             and n_bmu == 1
-            and self.metric != "cosine"
             and (
                 self.pointer_search == "all"
                 or (self.pointer_search == "fine" and self._training_phase == "fine")
             )
-        ):
+        )
+        if use_pointer:
+            if self.metric == "cosine":
+                return numba_find_winners_pointer_cosine(
+                    data, self.weights_, prev_winners, self._neighbor_matrix
+                )
             return numba_find_winners_pointer(
                 data, self.weights_, prev_winners, self._neighbor_matrix
             )
+
         if self.metric == "cosine":
-            data = normalize(data)
             if n_bmu == 1:
                 return numba_find_winners_cosine(data, self.weights_)
             sim_matrix = data @ self.weights_.T
@@ -839,6 +846,7 @@ class BaseSom(BaseEstimator, ABC):
             winners = part[row_idx, order]
             distances = dist_matrix[row_idx, winners]
             return distances, winners
+
         if n_bmu == 1:
             # Numba prange kernel instead of BLAS euclidean_distances:
             # benchmarks show ~2x speedup on AMD/OpenBLAS; Intel/MKL is
