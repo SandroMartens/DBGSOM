@@ -1630,16 +1630,6 @@ during both ``fit`` and ``predict``.
 
             <tr class="default">
                 <td><i class="copy-paste-icon"
-                     onclick="copyToClipboard('pointer_search_radius',
-                              this.parentElement.nextElementSibling)"
-                ></i></td>
-                <td class="param">pointer_search_radius</td>
-                <td class="value">1</td>
-            </tr>
-    
-
-            <tr class="default">
-                <td><i class="copy-paste-icon"
                      onclick="copyToClipboard('smoothing_steps',
                               this.parentElement.nextElementSibling)"
                 ></i></td>
@@ -1757,7 +1747,7 @@ during both ``fit`` and ``predict``.
            <tr class="default">
                <td class="param"><a class="param-doc-link" style="text-decoration:none;">random_state_</a></td>
                <td class="fitted-att-type">RandomState</td>
-               <td>RandomState(M...0x7FC318FCEB40</td>
+               <td>RandomState(M...0x7FF21191AB40</td>
 
 
            </tr>
@@ -1766,7 +1756,7 @@ during both ``fit`` and ``predict``.
            <tr class="default">
                <td class="param"><a class="param-doc-link" style="text-decoration:none;">som_</a></td>
                <td class="fitted-att-type">Graph</td>
-               <td>&lt;networkx.cla...x7fc322eb75c0&gt;</td>
+               <td>&lt;networkx.cla...x7ff2120b8bc0&gt;</td>
 
 
            </tr>
@@ -2067,7 +2057,7 @@ Reveals the structure of the learned representation in weight space.
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** (0 minutes 9.899 seconds)
+   **Total running time of the script:** (0 minutes 10.307 seconds)
 
 
 .. _sphx_glr_download_auto_examples_plot_digit_classification.py:
