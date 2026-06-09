@@ -16,6 +16,7 @@ try:
     import pandas as pd
     import scipy.spatial.distance
     import seaborn.objects as so
+    from scipy.sparse import csr_array, issparse
     from scipy.sparse.csgraph import shortest_path as csgraph_shortest_path
     from sklearn.base import BaseEstimator, clone
     from sklearn.decomposition import SparseCoder
@@ -951,10 +952,15 @@ class BaseSom(BaseEstimator, ABC):
         gaussian_kernel = self._calculate_gaussian_neighborhood()
 
         # Step 4 — weighted[i,j] = h[i,j] * n_j; contract over j via BLAS
-        weighted = gaussian_kernel * neuron_activations
-        numerator = weighted @ voronoi_set_centers
-        denominator = weighted.sum(axis=1, keepdims=True)
-        zero_denom = (denominator == 0).squeeze()
+        if issparse(gaussian_kernel):
+            weighted = gaussian_kernel.multiply(neuron_activations)
+            numerator = weighted @ voronoi_set_centers
+            denominator = np.asarray(weighted.sum(axis=1)).reshape(-1, 1)
+        else:
+            weighted = gaussian_kernel * neuron_activations
+            numerator = weighted @ voronoi_set_centers
+            denominator = weighted.sum(axis=1, keepdims=True)
+        zero_denom = (denominator == 0).ravel()
         safe_denom = np.where(denominator == 0, 1.0, denominator)
         new_weights = numerator / safe_denom
         new_weights[zero_denom] = self.weights_[zero_denom]
@@ -974,16 +980,40 @@ class BaseSom(BaseEstimator, ABC):
             G=self.som_, values=dict(zip(self.neurons_, self.weights_)), name="weight"
         )
 
-    def _calculate_gaussian_neighborhood(self) -> npt.NDArray:
+    def _calculate_gaussian_neighborhood(self) -> npt.NDArray | csr_array:
         """Calculate the neighborhood function for all neuron pairs.
 
-        "gaussian"  : standard Gaussian over graph distances
-        "cutgauss"  : Gaussian with flanks set to zero beyond 2 * sigma
+        "gaussian"  : standard Gaussian over graph distances; entries < 1e-6
+                      treated as zero when sparsity > 90 %
+        "cutgauss"  : Gaussian truncated to zero beyond 2 * sigma; uses
+                      sparse CSR when sparsity > 90 %
+
+        Returns dense ndarray or CSR sparse array depending on fill ratio.
         """
         sigma = self._calculate_current_sigma()
-        h = np.exp(-(self._distance_matrix**2 / (2 * sigma**2)))
+        dm = self._distance_matrix  # int16
+        K = dm.shape[0]
+        two_sigma_sq = 2.0 * sigma**2
+
         if self.neighborhood_function == "cutgauss":
-            h *= self._distance_matrix <= 2 * sigma
+            mask = dm <= (2 * sigma)
+            if mask.mean() < 0.10:  # >90 % sparse → sparse faster
+                rows, cols = np.nonzero(mask)
+                h_vals = np.exp(
+                    -(dm[rows, cols].astype(np.float64) ** 2) / two_sigma_sq
+                )
+                return csr_array((h_vals, (rows, cols)), shape=(K, K))
+            h = np.exp(-(dm.astype(np.float64) ** 2) / two_sigma_sq)
+            h *= mask
+            return h
+
+        # gaussian: threshold negligible entries to create sparsity
+        dm_f = dm.astype(np.float64)
+        h = np.exp(-(dm_f**2) / two_sigma_sq)
+        mask = h >= 1e-6
+        if mask.mean() < 0.10:
+            rows, cols = np.nonzero(mask)
+            return csr_array((h[rows, cols], (rows, cols)), shape=(K, K))
         return h
 
     def _calculate_exp_similarity(self, distances: np.ndarray) -> npt.NDArray:
