@@ -82,6 +82,7 @@ examples = [
     "minisom>=2.3.6",
     "scikit-image>=0.23.0",
     "susi>=1.4.3",
+    "torchsom>=0.1.0",
     "umap-learn>=0.5.12",
 ]
 docs = [
