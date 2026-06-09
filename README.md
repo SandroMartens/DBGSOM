@@ -11,9 +11,9 @@
 
 # DBGSOM
 
-DBGSOM (**D**irected **B**atch **G**rowing **S**elf-**O**rganizing **M**ap) is a Neural Network that can be used for Clusterung, Classification and Nonlinear Projection/Manifold learning and Data Visualization.
+DBGSOM (**D**irected **B**atch **G**rowing **S**elf-**O**rganizing **M**ap) is a Neural Network that can be used for Clustering, Classification and Nonlinear Projection/Manifold learning and Data Visualization.
 
-The network automaticallyly determines the number of prototypes needed to represent the data. Starting from 4 neurons, the map expands at boundary positions where quantization error exceeds a configurable threshold: no need to pre-specify cluster count. The result is a topology-preserving 2D grid where neighboring neurons represent similar inputs.
+The network automatically determines the number of prototypes needed to represent the data. Starting from 4 neurons, the map expands at boundary positions where quantization error exceeds a configurable threshold: no need to pre-specify cluster count. The result is a topology-preserving 2D grid where neighboring neurons represent similar inputs.
 
 ## Features
 

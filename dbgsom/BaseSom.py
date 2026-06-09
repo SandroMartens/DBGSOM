@@ -799,20 +799,20 @@ class BaseSom(BaseEstimator, ABC):
         return som
 
     def _build_neighbor_matrix(self) -> None:
-        """Build padded (K × max_candidates) neighbor index array for pointer search.
+        """Build padded (K × max_degree) neighbor index array for pointer search.
 
-        Includes all direct (1-hop) graph neighbours.
-        Uses the already-computed `_distance_matrix` (Floyd-Warshall).
+        Reads 1-hop adjacency directly from the graph (O(K)) instead of
+        scanning the Floyd-Warshall distance matrix (O(K²)).
         """
-        K = len(self.neurons_)
-        rows = []
-        for i in range(K):
-            nbrs = np.where(
-                (self._distance_matrix[i] <= 1) & (self._distance_matrix[i] > 0)
-            )[0].astype(np.int64)
-            rows.append(nbrs)
-        max_len = max(len(n) for n in rows) if rows else 1
-        mat = np.full((K, max_len), -1, dtype=np.int64)
+        node_to_idx = {node: i for i, node in enumerate(self.neurons_)}
+        rows = [
+            np.array(
+                [node_to_idx[nb] for nb in self.som_.neighbors(node)], dtype=np.int64
+            )
+            for node in self.neurons_
+        ]
+        max_len = max(len(r) for r in rows) if rows else 1
+        mat = np.full((len(self.neurons_), max_len), -1, dtype=np.int64)
         for i, nbrs in enumerate(rows):
             mat[i, : len(nbrs)] = nbrs
         self._neighbor_matrix = mat
@@ -1058,6 +1058,12 @@ class BaseSom(BaseEstimator, ABC):
             new_weights[node] = w + self.smoothing_epsilon * (w_interp - w)
         for node, weight in new_weights.items():
             self.som_.nodes[node]["weight"] = weight
+        if self.metric == "cosine":
+            for node in new_weights:
+                w = self.som_.nodes[node]["weight"]
+                norm = np.linalg.norm(w)
+                if norm > 0:
+                    self.som_.nodes[node]["weight"] = w / norm
 
     def _add_new_neurons(self) -> None:
         """Add new neurons to places where the error is above
@@ -1168,8 +1174,14 @@ class BaseSom(BaseEstimator, ABC):
             w_base = w_boundary.copy()
 
         if best_corner is not None:
-            return (w_base + self.som_.nodes[best_corner]["weight"]) / 2
-        return w_base
+            w_new = (w_base + self.som_.nodes[best_corner]["weight"]) / 2
+        else:
+            w_new = w_base
+        if self.metric == "cosine":
+            norm = np.linalg.norm(w_new)
+            if norm > 0:
+                w_new = w_new / norm
+        return w_new
 
     def _insert_neuron(
         self, boundary_node: tuple[int, int]
