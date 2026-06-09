@@ -140,12 +140,6 @@ class BaseSom(BaseEstimator, ABC):
         - ``"all"``: pointer search in both phases. Faster but lower
           quantization accuracy; improves topographic error.
 
-    pointer_search_radius : int, default=1
-        Graph-hop radius for the pointer-based BMU search. Candidates are
-        all neurons within this many hops of the previous winner.
-        Larger radius → better quality, smaller speedup.
-        Only relevant when ``pointer_search != "none"``.
-
     smoothing_steps : int, default=0
         Number of smoothing steps applied to the weight vectors before each
         growth event. Each step moves every weight towards the barycentric
@@ -181,7 +175,6 @@ class BaseSom(BaseEstimator, ABC):
         n_jobs: int = 1,
         winner_stability_threshold: float | None = 0.01,
         pointer_search: str = "fine",
-        pointer_search_radius: int = 1,
         smoothing_steps: int = 0,
         smoothing_epsilon: float = 0.5,
     ) -> None:
@@ -206,7 +199,6 @@ class BaseSom(BaseEstimator, ABC):
         self.n_jobs = n_jobs
         self.winner_stability_threshold = winner_stability_threshold
         self.pointer_search = pointer_search
-        self.pointer_search_radius = pointer_search_radius
         self.smoothing_steps = smoothing_steps
         self.smoothing_epsilon = smoothing_epsilon
 
@@ -228,7 +220,6 @@ class BaseSom(BaseEstimator, ABC):
         "metric": [StrOptions({"euclidean", "cosine"})],
         "winner_stability_threshold": [Interval(Real, 0, 1, closed="both"), None],
         "pointer_search": [StrOptions({"none", "fine", "all"})],
-        "pointer_search_radius": [Interval(Integral, 1, None, closed="left")],
         "smoothing_steps": [Interval(Integral, 0, None, closed="left")],
         "smoothing_epsilon": [Interval(Real, 0, 1, closed="right")],
     }
@@ -810,15 +801,14 @@ class BaseSom(BaseEstimator, ABC):
     def _build_neighbor_matrix(self) -> None:
         """Build padded (K × max_candidates) neighbor index array for pointer search.
 
-        Includes all neurons within `pointer_search_radius` graph hops.
+        Includes all direct (1-hop) graph neighbours.
         Uses the already-computed `_distance_matrix` (Floyd-Warshall).
         """
         K = len(self.neurons_)
-        r = self.pointer_search_radius
         rows = []
         for i in range(K):
             nbrs = np.where(
-                (self._distance_matrix[i] <= r) & (self._distance_matrix[i] > 0)
+                (self._distance_matrix[i] <= 1) & (self._distance_matrix[i] > 0)
             )[0].astype(np.int64)
             rows.append(nbrs)
         max_len = max(len(n) for n in rows) if rows else 1

@@ -81,7 +81,7 @@ class SomVQ(TransformerMixin, ClusterMixin, BaseSom):
         Additional parameters inherited from :class:`BaseSom`. See its
         documentation for ``neighborhood_function``,
         ``winner_stability_threshold``, ``pointer_search``,
-        ``pointer_search_radius``, ``sigma_fine``, and others.
+        ``sigma_fine``, and others.
 
     Attributes
     ----------
