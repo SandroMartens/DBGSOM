@@ -11,29 +11,29 @@
 
 # DBGSOM
 
-DBGSOM (**D**irected **B**atch **G**rowing **S**elf-**O**rganizing **M**ap) is a Neural Network that can be used for Clustering, Classification and Nonlinear Projection/Manifold learning and Data Visualization.
+DBGSOM (**D**irected **B**atch **G**rowing **S**elf-**O**rganizing **M**ap): A Neural Network for Clustering, Classification, Nonlinear Projection/Manifold learning, Data Visualization.
 
 The network automatically determines the number of prototypes needed to represent the data. Starting from 4 neurons, the map expands at boundary positions where quantization error exceeds a configurable threshold: no need to pre-specify cluster count. The result is a topology-preserving 2D grid where neighboring neurons represent similar inputs.
 
 ## Features
 
-- **No cluster count needed** — the map grows until quantization error falls below threshold; `lambda_` controls sensitivity
+- **No cluster count needed** — map grows until quantization error falls below threshold; `lambda_` controls sensitivity
 - **sklearn-compatible** — drop-in for `KMeans`, `DBSCAN`: implements `fit_predict`, `transform`, `score`, and `predict_proba`
 - **Topology-preserving** — related samples cluster as grid neighbors; topographic error < 5% on Digits
 - **Faster than classical SOMs** — batch learning rule trains on all samples per epoch (vs. online, sample-by-sample)
-- **Built-in visualization** — `plot()` renders the neuron grid coloured by density, label, error or hit count.
+- **Built-in visualization** — `plot()` renders neuron grid coloured by density, label, error or hit count.
 
 ## How it works
 
-**In brief:** Four neurons initialize → samples are assigned to nearest neuron → neuron weights update toward assigned samples → boundary neurons with high error spawn new neighbors → σ decays (convergence cycle ends) → repeat until `max_neurons` or `n_iter` reached. Neighoring neurons influence each others weight update -> Topology is preserved during training.
+**In brief:** Four neurons initialize → samples assigned to nearest neuron → weights update toward assigned samples → boundary neurons with high error spawn new neighbors → σ decays → repeat until `max_neurons` or `n_iter` reached. Neighboring neurons influence each other's weight update → topology preserved during training.
 
-The DBGSOM algorithm builds a two-dimensional rectangular map of prototypes (neurons) where each neuron is connected to its four neighbors. Four neurons are initialized with random weight vectors drawn from the input data. During training every sample is assigned to its nearest neuron (best matching unit). The neuron weights are updated towards the mean of all samples mapped to them. Neighboring neurons influence each other's updates according to a neighborhood function so that the low-dimensional ordering of the map is preserved. The neighborhood width shrinks over time, allowing the map to first learn the global structure and then adapt to local structur. A growing mechanism expands the map as needed: new neurons are inserted at boundary positions where the quantization error exceeds a configurable growing threshold.
+DBGSOM builds a 2D rectangular prototype map where each neuron connects to four neighbors. Four neurons init with random weights from input data. Each epoch: every sample is assigned to the nearest neuron (BMU); weights are updated toward mean of the mapped samples. A neighborhood function couples neighboring neurons so that low-dimensional map ordering is preserved; neighborhood width shrinks over time (global → local structure). A growing mechanism inserts new neurons at boundary positions where quantization error exceeds growing threshold.
 
 ## How to install
 
 ### Download from PyPI
 
-DBGSOM can be installed from PyPI via `uv` (recommended):
+Install from PyPI via `uv` (recommended):
 
 ```bash
 uv add dbgsom
@@ -47,7 +47,7 @@ pip install dbgsom
 
 ### Install from source
 
-Clone the repository and install with `uv` (recommended):
+Clone and install with `uv` (recommended):
 
 ```bash
 git clone https://github.com/SandroMartens/DBGSOM.git
@@ -115,7 +115,7 @@ proba = clf.predict_proba(X_test)          # class probabilities
 
 ### Transform
 
-Both estimators implement `transform()`, which represents each sample as a sparse non-negative linear combination of the prototype weight vectors:
+Both estimators implement `transform()` — represents each sample as sparse non-negative linear combination of prototype weights:
 
 ```python
 coefs = vq.transform(X)   # shape (n_samples, n_prototypes)
@@ -123,7 +123,7 @@ coefs = vq.transform(X)   # shape (n_samples, n_prototypes)
 
 ### Visualization
 
-`plot()` renders the SOM neurons as dots and the neighbourhood edges as grey lines, all via seaborn objects.
+`plot()` renders SOM neurons as dots and neighborhood edges as grey lines via seaborn objects.
 
 ```python
 vq.plot(color="density")                       # continuous -> colour gradient
@@ -140,16 +140,16 @@ Supported attributes for `color` / `pointsize`:
 | `color`     | any node attribute            | Numeric attributes → continuous colour scale; int/str with ≤ 20 unique values → legend |
 | `pointsize` | any numeric attribute         | Node size proportional to attribute value                                              |
 | `layout`    | `'grid'` _(default)_, `'pca'` | Node placement algorithm                                                               |
-| `palette`   | any Matplotlib colormap       | Applied to the colour mapping                                                          |
+| `palette`   | any Matplotlib colormap       | Applied to colour mapping                                                              |
 
 ## Examples
 
-| Example                                                         | Description                                                                                                                                                                |
-| --------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| ![example](examples/export/2d_example.png)                      | With two-dimensional input we can clearly see how the prototypes (red) approximate the input distribution (white) while preserving the square topology to their neighbors. |
-| ![The fashion mnist dataset](examples/export/fashion_mnist.png) | After training on the Fashion-MNIST dataset we can plot the weight of each prototype. Neighboring prototypes are pairwise similar.                                         |
-| ![digits](examples/export/digits_classes.png)                   | Each prototype is coloured by its majority class. Samples from the same class cluster together. Trained on MNIST digits.                                                   |
-| ![darknet_pca](examples/export/darknet_pca.png)                 | Linear transformations like PCA can colour-code relative distances between prototypes in the input space. See the _darknet_ example notebook.                              |
+| Example                                                         | Description                                                                                              |
+| --------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| ![example](examples/export/2d_example.png)                      | 2D input: prototypes (red) approximate input distribution (white), square topology preserved.            |
+| ![The fashion mnist dataset](examples/export/fashion_mnist.png) | Fashion-MNIST: weight of each prototype plotted; neighboring prototypes pairwise similar.                |
+| ![digits](examples/export/digits_classes.png)                   | Each prototype coloured by majority class; same-class samples cluster together. Trained on MNIST digits. |
+| ![darknet_pca](examples/export/darknet_pca.png)                 | PCA colour-codes relative distances between prototypes in input space. See _darknet_ notebook.           |
 
 ## Comparisons
 
@@ -157,13 +157,13 @@ Supported attributes for `color` / `pointsize`:
 
 ![SOM comparison](examples/export/som_comparison.png)
 
-_DBGSOM (dynamic grid, size determined automatically) vs. MiniSom and SuSi (fixed grids) vs. KMeans (no topology). All trained on the same Digits embedding._
+_DBGSOM (dynamic grid, size determined automatically) vs. MiniSom and SuSi (fixed grids) vs. KMeans (no topology). All trained on same Digits embedding._
 
 ### Clustering metrics (Digits dataset)
 
 ![Clustering metrics](examples/export/clustering_metrics_digits.png)
 
-_ARI, Silhouette, Davies-Bouldin, and training time. All algorithms use the same number of clusters — the neuron count DBGSOM determined automatically._
+_ARI, Silhouette, Davies-Bouldin, training time. All algorithms use same cluster count — determined automatically by DBGSOM._
 
 Full benchmark notebooks:
 
@@ -202,4 +202,4 @@ Martens, S. (2025). DBGSOM: A Python implementation of the Directed Batch Growin
 
 ## License
 
-dbgsom is licensed under the MIT license.
+dbgsom is licensed under MIT license.
