@@ -146,6 +146,17 @@ class BaseSom(BaseEstimator, ABC):
         Larger radius → better quality, smaller speedup.
         Only relevant when ``pointer_search != "none"``.
 
+    smoothing_steps : int, default=0
+        Number of smoothing steps applied to the weight vectors before each
+        growth event. Each step moves every weight towards the barycentric
+        interpolation of its three nearest non-collinear graph neighbours
+        (Kohonen, 2001, eq. 3.80). Smoothing produces better-initialised
+        weights for newly inserted neurons. ``0`` disables smoothing.
+
+    smoothing_epsilon : float, default=0.5
+        Step size for each smoothing step (ε in eq. 3.80). Must be in (0, 1].
+        Larger values smooth more aggressively per step.
+
     """
 
     def __init__(
@@ -171,6 +182,8 @@ class BaseSom(BaseEstimator, ABC):
         winner_stability_threshold: float | None = 0.01,
         pointer_search: str = "fine",
         pointer_search_radius: int = 1,
+        smoothing_steps: int = 0,
+        smoothing_epsilon: float = 0.5,
     ) -> None:
         super().__init__()
         self.lambda_ = lambda_
@@ -194,6 +207,8 @@ class BaseSom(BaseEstimator, ABC):
         self.winner_stability_threshold = winner_stability_threshold
         self.pointer_search = pointer_search
         self.pointer_search_radius = pointer_search_radius
+        self.smoothing_steps = smoothing_steps
+        self.smoothing_epsilon = smoothing_epsilon
 
     _parameter_constraints = {
         "n_iter": [Interval(Integral, 1, None, closed="left")],
@@ -214,6 +229,8 @@ class BaseSom(BaseEstimator, ABC):
         "winner_stability_threshold": [Interval(Real, 0, 1, closed="both"), None],
         "pointer_search": [StrOptions({"none", "fine", "all"})],
         "pointer_search_radius": [Interval(Integral, 1, None, closed="left")],
+        "smoothing_steps": [Interval(Integral, 0, None, closed="left")],
+        "smoothing_epsilon": [Interval(Real, 0, 1, closed="right")],
     }
 
     def __sklearn_is_fitted__(self) -> bool:
@@ -1006,6 +1023,52 @@ class BaseSom(BaseEstimator, ABC):
 
                 self.som_.nodes[node]["error"] /= 2
 
+    def _find_barycentric_triple(self, neighbors: list) -> tuple | None:
+        """Return (a, b, c, A) — first neighbour triple forming a non-degenerate
+        triangle, or None if no such triple exists.
+        """
+        for i in range(len(neighbors)):
+            for j in range(i + 1, len(neighbors)):
+                for k in range(j + 1, len(neighbors)):
+                    a, b, c = neighbors[i], neighbors[j], neighbors[k]
+                    A = np.array(
+                        [[a[0] - c[0], b[0] - c[0]], [a[1] - c[1], b[1] - c[1]]],
+                        dtype=float,
+                    )
+                    if abs(np.linalg.det(A)) > 1e-10:
+                        return (a, b, c, A)
+        return None
+
+    def _smooth_weights(self) -> None:
+        """Apply one smoothing step to all weight vectors (Kohonen eq. 3.80).
+
+        Each neuron's weight moves by smoothing_epsilon towards the barycentric
+        interpolation of three non-collinear graph neighbours. Updates are
+        buffered and written simultaneously to avoid order-dependency.
+        Neurons with fewer than three neighbours are left unchanged.
+        """
+        new_weights: dict[tuple, np.ndarray] = {}
+        for node in self.som_.nodes:
+            neighbors = list(self.som_.neighbors(node))
+            if len(neighbors) < 3:
+                continue
+            triple = self._find_barycentric_triple(neighbors)
+            if triple is None:
+                continue
+            a, b, c, A = triple
+            hx, hy = node
+            rhs = np.array([hx - c[0], hy - c[1]], dtype=float)
+            gamma, delta = np.linalg.solve(A, rhs)
+            w_interp = (
+                gamma * self.som_.nodes[a]["weight"]
+                + delta * self.som_.nodes[b]["weight"]
+                + (1 - gamma - delta) * self.som_.nodes[c]["weight"]
+            )
+            w = self.som_.nodes[node]["weight"]
+            new_weights[node] = w + self.smoothing_epsilon * (w_interp - w)
+        for node, weight in new_weights.items():
+            self.som_.nodes[node]["weight"] = weight
+
     def _add_new_neurons(self) -> None:
         """Add new neurons to places where the error is above
         the growing threshold. Begin with the neuron with the largest
@@ -1015,6 +1078,9 @@ class BaseSom(BaseEstimator, ABC):
         enhance the topology preservation of self-organizing map", Applied Soft
         Computing, 2017.
         """
+        for _ in range(self.smoothing_steps):
+            self._smooth_weights()
+
         error_values = self._extract_values_from_graph("error")
         sorted_indices = np.argsort(-error_values)
         self._neurons_added = False
