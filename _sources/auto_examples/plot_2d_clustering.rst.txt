@@ -983,6 +983,26 @@ Key hyperparameters:
                 <td class="value">1</td>
             </tr>
     
+
+            <tr class="default">
+                <td><i class="copy-paste-icon"
+                     onclick="copyToClipboard('smoothing_steps',
+                              this.parentElement.nextElementSibling)"
+                ></i></td>
+                <td class="param">smoothing_steps</td>
+                <td class="value">0</td>
+            </tr>
+    
+
+            <tr class="default">
+                <td><i class="copy-paste-icon"
+                     onclick="copyToClipboard('smoothing_epsilon',
+                              this.parentElement.nextElementSibling)"
+                ></i></td>
+                <td class="param">smoothing_epsilon</td>
+                <td class="value">0.5</td>
+            </tr>
+    
                       </tbody>
                     </table>
                 </details>
@@ -1083,7 +1103,7 @@ Key hyperparameters:
            <tr class="default">
                <td class="param"><a class="param-doc-link" style="text-decoration:none;">random_state_</a></td>
                <td class="fitted-att-type">RandomState</td>
-               <td>RandomState(M...0x7F9207738340</td>
+               <td>RandomState(M...0x7FC326880440</td>
 
 
            </tr>
@@ -1092,7 +1112,7 @@ Key hyperparameters:
            <tr class="default">
                <td class="param"><a class="param-doc-link" style="text-decoration:none;">som_</a></td>
                <td class="fitted-att-type">Graph</td>
-               <td>&lt;networkx.cla...x7f91f50adee0&gt;</td>
+               <td>&lt;networkx.cla...x7fc31742c200&gt;</td>
 
 
            </tr>
@@ -1435,7 +1455,7 @@ Lower values indicate better topology preservation.
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** (0 minutes 0.487 seconds)
+   **Total running time of the script:** (0 minutes 0.476 seconds)
 
 
 .. _sphx_glr_download_auto_examples_plot_2d_clustering.py:
