@@ -10,7 +10,7 @@ authors = [
 ]
 description = "A Python implementation of the Directed Batch Growing Self-Organizing Map"
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.12,<3.14"
 license = "MIT"
 classifiers = [
     "Development Status :: 5 - Production/Stable",
@@ -30,6 +30,7 @@ dependencies = [
     "numpy>=2.1.0",
     "pandas>=3.0.0",
     "scikit-learn>=1.5.0",
+    "scipy>=1.10.0",
     "seaborn>=0.10.0",
     "tqdm>=4.0.0",
 ]
@@ -42,6 +43,15 @@ dependencies = [
 markers = [
     "slow: marks tests as slow (deselect with -m 'not slow')",
 ]
+
+[[tool.uv.index]]
+url = "https://download.pytorch.org/whl/cu128"
+explicit = true
+name = "pytorch-cu128"
+
+[tool.uv.sources]
+torch = { index = "pytorch-cu128" }
+torchvision = { index = "pytorch-cu128" }
 
 [tool.ruff.lint]
 select = [
@@ -66,6 +76,7 @@ max-complexity = 10  # Alles über Komplexität 10 blockiert den Build
 [dependency-groups]
 dev = [
     "coverage>=7.14.0",
+    # "cuda",
     "ipykernel>=7.2.0",
     "line-profiler>=4.0.0",
     "pre-commit>=4.6.0",
@@ -82,7 +93,9 @@ examples = [
     "minisom>=2.3.6",
     "scikit-image>=0.23.0",
     "susi>=1.4.3",
+    "torch",
     "torchsom>=0.1.0",
+    "torchvision",
     "umap-learn>=0.5.12",
 ]
 docs = [
