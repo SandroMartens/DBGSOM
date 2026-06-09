@@ -123,7 +123,14 @@ class BaseSom(BaseEstimator, ABC):
 
     neighborhood_function : str, default="gaussian"
         Kernel function for the neighborhood update. Options: ``"gaussian"``,
-        ``"cutgauss"`` (Gaussian truncated at 3σ).
+        ``"cutgauss"`` (Gaussian truncated at ``neighborhood_cutoff * sigma``).
+
+    neighborhood_cutoff : float, default=3.0
+        Cutoff radius for ``"cutgauss"`` as a multiple of the current sigma.
+        Entries at graph distance ``d > neighborhood_cutoff * sigma`` are set
+        to zero. Has no effect for ``"gaussian"``. Recommended range: 2–3.
+        At 3σ the kernel value at the boundary is ~0.011 (≈ 1%); at 2σ it
+        is 0.135 (13.5%), causing noticeably fewer neurons to grow.
 
     winner_stability_threshold : float or None, default=0.01
         Convergence criterion for the coarse training phase based on winner
@@ -165,6 +172,7 @@ class BaseSom(BaseEstimator, ABC):
         vertical_growth: bool = False,
         decay_function: str = "exponential",
         neighborhood_function: str = "gaussian",
+        neighborhood_cutoff: float = 3.0,
         verbose: bool = False,
         coarse_training_frac: float = 0.5,
         random_state: int | None | np.random.RandomState = None,
@@ -188,6 +196,7 @@ class BaseSom(BaseEstimator, ABC):
         self.sigma_fine = sigma_fine
         self.decay_function = decay_function
         self.neighborhood_function = neighborhood_function
+        self.neighborhood_cutoff = neighborhood_cutoff
         self.verbose = verbose
         self.coarse_training_frac = coarse_training_frac
         self.random_state = random_state
@@ -217,6 +226,7 @@ class BaseSom(BaseEstimator, ABC):
         # "sigma_fine": [Interval(Real, 0, self.sigma_end, closed="neither"), None],
         "decay_function": [StrOptions({"exponential", "linear"})],
         "neighborhood_function": [StrOptions({"gaussian", "cutgauss"})],
+        "neighborhood_cutoff": [Interval(Real, 1, None, closed="left")],
         "growth_criterion": [StrOptions({"entropy", "quantization_error"})],
         "tau_2": [Interval(Real, 0, 1, closed="neither")],
         "metric": [StrOptions({"euclidean", "cosine"})],
@@ -996,7 +1006,7 @@ class BaseSom(BaseEstimator, ABC):
         two_sigma_sq = 2.0 * sigma**2
 
         if self.neighborhood_function == "cutgauss":
-            mask = dm <= (2 * sigma)
+            mask = dm <= (self.neighborhood_cutoff * sigma)
             if mask.mean() < 0.10:  # >90 % sparse → sparse faster
                 rows, cols = np.nonzero(mask)
                 h_vals = np.exp(
