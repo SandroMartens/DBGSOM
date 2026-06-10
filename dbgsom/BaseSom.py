@@ -392,12 +392,15 @@ class BaseSom(BaseEstimator, ABC):
     def _write_node_statistics(self, X: npt.NDArray) -> None:
         average_distances, densities, hit_counts = self._calculate_node_statistics(X)
 
-        for density, hit_count, average_distance, node in zip(
-            densities, hit_counts, average_distances, self.som_.nodes
-        ):
-            self.som_.nodes[node]["density"] = density
-            self.som_.nodes[node]["hit_count"] = hit_count
-            self.som_.nodes[node]["average_distance"] = average_distance
+        nx.set_node_attributes(
+            self.som_,
+            {
+                n: {"density": d, "hit_count": h, "average_distance": a}
+                for n, d, h, a in zip(
+                    self.som_.nodes, densities, hit_counts, average_distances
+                )
+            },
+        )
 
     def _write_edge_statistics(self) -> None:
         som = self.som_
@@ -500,7 +503,9 @@ class BaseSom(BaseEstimator, ABC):
         pos = self._compute_graph_layout(layout, nodes, X=X)
 
         # -- Node DataFrame ---------------------------------------------------
-        node_data = pd.DataFrame(dict(self.som_.nodes)).T.reset_index(drop=True)
+        node_data = pd.DataFrame(
+            [attrs for _, attrs in self.som_.nodes.data()]
+        ).reset_index(drop=True)
         coords = pd.DataFrame(
             [(pos[n][0], pos[n][1]) for n in nodes], columns=["x", "y"]
         )
@@ -1063,9 +1068,9 @@ class BaseSom(BaseEstimator, ABC):
                 length=self.weights_.shape[0],
                 distances=distances,
             )
-            for i, error in enumerate(errors):
-                neuron = self.neurons_[i]
-                self.som_.nodes[neuron]["error"] = error
+            nx.set_node_attributes(
+                self.som_, dict(zip(self.neurons_, errors.tolist())), "error"
+            )
 
     def _distribute_errors(self) -> None:
         """Distributes the error values of neurons in the SOM which are not boundary
@@ -1162,7 +1167,7 @@ class BaseSom(BaseEstimator, ABC):
 
         for i in sorted_indices:
             node = nodes_list[i]
-            node_degree = nx.degree(self.som_, node)
+            node_degree = self.som_.degree(node)
             if error_values[i] > self.growing_threshold_ and node_degree < 4:
                 new_node, new_weight = self._insert_neuron(node)
                 self._add_node_to_graph(node=new_node, weight=new_weight)
@@ -1275,13 +1280,9 @@ class BaseSom(BaseEstimator, ABC):
         return best_p, w_new
 
     def _add_node_to_graph(self, node: tuple[int, int], weight: np.ndarray) -> None:
-        self.som_.add_node(node)
-        attributes = {
-            "weight": weight,
-            "error": 0,
-            "epoch_created": self._current_epoch,
-        }
-        self.som_.nodes[node].update(attributes)
+        self.som_.add_node(
+            node, weight=weight, error=0, epoch_created=self._current_epoch
+        )
         self._add_new_connections(node)
         self._node_to_idx[node] = len(self.neurons_)
         self.neurons_.append(node)
