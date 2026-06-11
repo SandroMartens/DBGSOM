@@ -68,7 +68,7 @@ Public API: `from dbgsom import SomVQ, SomClassifier`.
 ### Growth mechanism
 
 - **Growing threshold**: `GT = lambda_ * ||std(X)||` (Qu et al. 2019)
-- Neurons with error > GT → "boundary nodes"
+- Neurons with accumulated error > GT → "boundary nodes"
 - New neurons inserted at free grid positions adjacent to boundary nodes; weight init by reflecting opposite neighbor through boundary
 - After insertion: `_node_to_idx` and `neurons_` updated immediately; `_distance_matrix` extended incrementally in O(K²); `weights_` and `_neighbor_matrix` rebuilt at next epoch start
 
@@ -83,7 +83,7 @@ Public API: `from dbgsom import SomVQ, SomClassifier`.
 
 ### Distance matrix
 
-`_distance_matrix` stores **graph hop counts** as `int16` (not weight-space Euclidean distances). Callers needing float cast locally with `.astype(np.float64)`. Init via `scipy.sparse.csgraph.shortest_path`; extended incrementally via `_extend_distance_matrix()` — correct only because edges never removed.
+`_distance_matrix` stores **graph hop counts** as `int16` (not weight-space Euclidean distances). Callers needing float (e.g. topographic product, kernel) cast locally with `.astype(np.float64)`. Init via `scipy.sparse.csgraph.shortest_path`; extended incrementally via `_extend_distance_matrix()` — correct only because edges never removed.
 
 ### Neighborhood kernel dispatch (`_calculate_gaussian_neighborhood`)
 
@@ -91,21 +91,21 @@ Returns dense `ndarray` or `csr_array` by sparsity:
 
 - `cutgauss`: mask `dm <= neighborhood_cutoff * σ`; sparse path when >90% zeros
 - `gaussian`: threshold at h < 1e-6; same sparsity check
-- `cutgauss_phase` (default `"fine"`) auto-switches to cutgauss in fine phase regardless of `neighborhood_function`; at σ≤1 and K≥200 yields ~98% sparsity, activates CSR where gaussian stays dense
+- `cutgauss_phase` (default `"fine"`) auto-switches to cutgauss in fine phase regardless of `neighborhood_function`; at σ≤1 and K≥200 this yields ~98% sparsity and activates CSR where gaussian stays dense
 
 Weight update in `_update_weights()` dispatches on `issparse()`.
 
 ### Accuracy vs. performance paths
 
-Defaults = **performance path** — empirically validated to match full-accuracy quality.
+All heuristic shortcuts are phase-gated or opt-in. The defaults are the **performance path** — empirically validated to match full-accuracy quality while being significantly faster.
 
-| Parameter               | Accuracy (slow) | Performance (default) | Mechanism                                   |
-| ----------------------- | --------------- | --------------------- | ------------------------------------------- |
-| `pointer_search`        | `"none"`        | `"fine"`              | O(N·K) full scan vs. O(N·deg) graph walk    |
-| `cutgauss_phase`        | `"none"`        | `"fine"`              | Dense Gaussian vs. sparse CSR in fine phase |
-| `neighborhood_function` | `"gaussian"`    | `"gaussian"`          | Full Gaussian in coarse regardless          |
+| Parameter | Accuracy (slow) | Performance (default) | Mechanism |
+| ------------------- | --------------- | --------------------- | ------------------------------------------- |
+| `pointer_search` | `"none"` | `"fine"` | O(N·K) full scan vs. O(N·deg) graph walk |
+| `cutgauss_phase` | `"none"` | `"fine"` | Dense Gaussian vs. sparse CSR in fine phase |
+| `neighborhood_function` | `"gaussian"` | `"gaussian"` | Full Gaussian in coarse regardless |
 
-Coarse phase always uses full Gaussian + full BMU scan even with defaults: topology formation is correctness-critical. Both shortcuts activate only in fine phase (stable map, small σ).
+Coarse phase always uses full Gaussian + full BMU scan (even with defaults): topology formation is correctness-critical. Both shortcuts activate only in the fine phase, where the map is stable and σ is small.
 
 ### sklearn compatibility
 

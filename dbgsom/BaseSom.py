@@ -174,6 +174,33 @@ class BaseSom(BaseEstimator, ABC):
         Step size for each smoothing step (ε in eq. 3.80). Must be in (0, 1].
         Larger values smooth more aggressively per step.
 
+    Notes
+    -----
+    **Accuracy vs. performance paths**
+
+    The default parameters implement a *performance path* with two heuristic
+    shortcuts that activate only during the fine phase (stable map, small σ):
+
+    .. list-table::
+       :header-rows: 1
+
+       * - Parameter
+         - Accuracy (slow)
+         - Performance (default)
+         - Mechanism
+       * - ``pointer_search``
+         - ``"none"``
+         - ``"fine"``
+         - O(N·K) full scan → O(N·deg) graph walk
+       * - ``cutgauss_phase``
+         - ``"none"``
+         - ``"fine"``
+         - Dense Gaussian → sparse CSR (~98% at K≥200, σ≤1)
+
+    The coarse phase always uses the full Gaussian kernel and full BMU scan
+    regardless of these settings — topology formation is correctness-critical
+    and both shortcuts are unsafe when σ is large or the map is still growing.
+
     """
 
     def __init__(
