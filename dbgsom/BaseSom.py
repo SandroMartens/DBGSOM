@@ -149,6 +149,20 @@ class BaseSom(BaseEstimator, ABC):
         - ``"all"``: pointer search in both phases. Faster but lower
           quantization accuracy; improves topographic error.
 
+    cutgauss_phase : {"none", "fine", "all"}, default="fine"
+        Controls when to apply the ``cutgauss`` truncation to the neighborhood
+        kernel, independently of ``neighborhood_function``.
+
+        - ``"none"``: no automatic cutgauss; respects ``neighborhood_function``.
+        - ``"fine"``: switch to cutgauss during fine phase only. Recommended
+          default — at typical fine-phase sigma (≤1) and K≥200 this activates
+          the sparse CSR path (~98% sparsity) for a large weight-update speedup,
+          while coarse phase retains the full Gaussian for topology formation.
+        - ``"all"``: cutgauss in both phases.
+
+        Has no additional effect when ``neighborhood_function="cutgauss"``
+        (already always cutgauss).
+
     smoothing_steps : int, default=0
         Number of smoothing steps applied to the weight vectors before each
         growth event. Each step moves every weight towards the barycentric
@@ -185,6 +199,7 @@ class BaseSom(BaseEstimator, ABC):
         n_jobs: int = 1,
         winner_stability_threshold: float | None = 0.01,
         pointer_search: str = "fine",
+        cutgauss_phase: str = "fine",
         smoothing_steps: int = 0,
         smoothing_epsilon: float = 0.5,
     ) -> None:
@@ -210,6 +225,7 @@ class BaseSom(BaseEstimator, ABC):
         self.n_jobs = n_jobs
         self.winner_stability_threshold = winner_stability_threshold
         self.pointer_search = pointer_search
+        self.cutgauss_phase = cutgauss_phase
         self.smoothing_steps = smoothing_steps
         self.smoothing_epsilon = smoothing_epsilon
 
@@ -232,6 +248,7 @@ class BaseSom(BaseEstimator, ABC):
         "metric": [StrOptions({"euclidean", "cosine"})],
         "winner_stability_threshold": [Interval(Real, 0, 1, closed="both"), None],
         "pointer_search": [StrOptions({"none", "fine", "all"})],
+        "cutgauss_phase": [StrOptions({"none", "fine", "all"})],
         "smoothing_steps": [Interval(Integral, 0, None, closed="left")],
         "smoothing_epsilon": [Interval(Real, 0, 1, closed="right")],
     }
@@ -1010,7 +1027,14 @@ class BaseSom(BaseEstimator, ABC):
         K = dm.shape[0]
         two_sigma_sq = 2.0 * sigma**2
 
-        if self.neighborhood_function == "cutgauss":
+        phase = getattr(self, "_training_phase", "coarse")
+        use_cutgauss = (
+            self.neighborhood_function == "cutgauss"
+            or self.cutgauss_phase == "all"
+            or (self.cutgauss_phase == "fine" and phase == "fine")
+        )
+
+        if use_cutgauss:
             mask = dm <= (self.neighborhood_cutoff * sigma)
             if mask.mean() < 0.10:  # >90 % sparse → sparse faster
                 rows, cols = np.nonzero(mask)
