@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+Guidance for Claude Code (claude.ai/code) working in this repo.
 
 ## Commands
 
@@ -49,7 +49,7 @@ Public API: `from dbgsom import SomVQ, SomClassifier`.
 ### Training flow (`BaseSom`)
 
 1. `fit()` → `_initialize_som()` → `_grow_som()`
-2. Two phases controlled by `coarse_training_frac` (default 0.5):
+2. Two phases via `coarse_training_frac` (default 0.5):
    - **Coarse**: σ decays from `sigma_start` to `sigma_end`; neurons grow where error > GT
    - **Fine**: σ fixed at `sigma_fine`; no growth; stops at convergence
 3. Per epoch: BMU search → weight update → error accumulation → growth check
@@ -68,9 +68,9 @@ Public API: `from dbgsom import SomVQ, SomClassifier`.
 ### Growth mechanism
 
 - **Growing threshold**: `GT = lambda_ * ||std(X)||` (Qu et al. 2019)
-- Neurons whose accumulated error exceeds GT are "boundary nodes"
-- New neurons inserted at free grid positions adjacent to boundary nodes; weight initialized by reflecting the opposite neighbor through the boundary
-- After insertion: `_node_to_idx` and `neurons_` updated immediately; `_distance_matrix` extended incrementally in O(K²); `weights_` and `_neighbor_matrix` rebuilt at start of next epoch
+- Neurons with accumulated error > GT → "boundary nodes"
+- New neurons inserted at free grid positions adjacent to boundary nodes; weight init by reflecting opposite neighbor through boundary
+- After insertion: `_node_to_idx` and `neurons_` updated immediately; `_distance_matrix` extended incrementally in O(K²); `weights_` and `_neighbor_matrix` rebuilt at next epoch start
 
 ### BMU search dispatch (`_get_winning_neurons`)
 
@@ -83,13 +83,13 @@ Public API: `from dbgsom import SomVQ, SomClassifier`.
 
 ### Distance matrix
 
-`_distance_matrix` stores **graph hop counts** as `int16` (not weight-space Euclidean distances). Callers that need float (e.g. topographic product, kernel) cast locally with `.astype(np.float64)`. Initialized via `scipy.sparse.csgraph.shortest_path`; extended incrementally via `_extend_distance_matrix()` — correct only because edges are never removed.
+`_distance_matrix` stores **graph hop counts** as `int16` (not weight-space Euclidean distances). Callers needing float (e.g. topographic product, kernel) cast locally with `.astype(np.float64)`. Init via `scipy.sparse.csgraph.shortest_path`; extended incrementally via `_extend_distance_matrix()` — correct only because edges never removed.
 
 ### Neighborhood kernel dispatch (`_calculate_gaussian_neighborhood`)
 
-Returns dense `ndarray` or `csr_array` depending on sparsity:
+Returns dense `ndarray` or `csr_array` by sparsity:
 
-- `cutgauss`: mask `dm <= neighborhood_cutoff * σ`; uses sparse path when >90% zeros
+- `cutgauss`: mask `dm <= neighborhood_cutoff * σ`; sparse path when >90% zeros
 - `gaussian`: threshold at h < 1e-6; same sparsity check
 - Sparse path only beneficial when σ ≤ 2 and K ≥ 400 (see `benchmarks/cutoff_benchmark.py`)
 
@@ -97,11 +97,11 @@ Weight update in `_update_weights()` dispatches on `issparse()`.
 
 ### sklearn compatibility
 
-Both `SomVQ` and `SomClassifier` pass `check_estimator`. Parameter validation uses `_parameter_constraints` (sklearn `Interval` / `StrOptions`). All hyperparameters set in `__init__` match `self.param_name` exactly — required for `clone()` and `get_params()`.
+`SomVQ` and `SomClassifier` pass `check_estimator`. Param validation uses `_parameter_constraints` (sklearn `Interval` / `StrOptions`). All hyperparams in `__init__` match `self.param_name` exactly — required for `clone()` and `get_params()`.
 
 ## Important constraints
 
-- `_distance_matrix` is `int16`: never write `np.inf` into it. Cast to float64 first.
-- `neurons_` order must stay in sync with `_node_to_idx` and `weights_` rows. Both are updated together in `_add_node_to_graph()`.
-- The incremental distance matrix update is only correct as long as `_add_new_connections()` only adds edges, never removes them.
-- Numba kernels in `_kernels.py` are `cache=True` — first call compiles, subsequent calls load from `__pycache__`. A JIT signature change requires clearing the cache.
+- `_distance_matrix` is `int16`: never write `np.inf`. Cast to float64 first.
+- `neurons_` order must stay in sync with `_node_to_idx` and `weights_` rows. Both updated together in `_add_node_to_graph()`.
+- Incremental distance matrix update correct only while `_add_new_connections()` adds edges, never removes.
+- Numba kernels in `_kernels.py` are `cache=True` — first call compiles, subsequent load from `__pycache__`. JIT signature change requires cache clear.
