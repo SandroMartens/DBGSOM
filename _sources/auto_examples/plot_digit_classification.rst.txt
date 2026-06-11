@@ -1640,6 +1640,16 @@ during both ``fit`` and ``predict``.
 
             <tr class="default">
                 <td><i class="copy-paste-icon"
+                     onclick="copyToClipboard('cutgauss_phase',
+                              this.parentElement.nextElementSibling)"
+                ></i></td>
+                <td class="param">cutgauss_phase</td>
+                <td class="value">&#x27;fine&#x27;</td>
+            </tr>
+    
+
+            <tr class="default">
+                <td><i class="copy-paste-icon"
                      onclick="copyToClipboard('smoothing_steps',
                               this.parentElement.nextElementSibling)"
                 ></i></td>
@@ -1721,7 +1731,7 @@ during both ``fit`` and ``predict``.
            <tr class="default">
                <td class="param"><a class="param-doc-link" style="text-decoration:none;">n_iter_</a></td>
                <td class="fitted-att-type">int</td>
-               <td>64</td>
+               <td>63</td>
 
 
            </tr>
@@ -1748,7 +1758,7 @@ during both ``fit`` and ``predict``.
            <tr class="default">
                <td class="param"><a class="param-doc-link" style="text-decoration:none;">quantization_error_</a></td>
                <td class="fitted-att-type">float</td>
-               <td>5.109</td>
+               <td>5.11</td>
 
 
            </tr>
@@ -1757,7 +1767,7 @@ during both ``fit`` and ``predict``.
            <tr class="default">
                <td class="param"><a class="param-doc-link" style="text-decoration:none;">random_state_</a></td>
                <td class="fitted-att-type">RandomState</td>
-               <td>RandomState(M...0x7F20FCABAA40</td>
+               <td>RandomState(M...0x7FCAEA726C40</td>
 
 
            </tr>
@@ -1766,7 +1776,7 @@ during both ``fit`` and ``predict``.
            <tr class="default">
                <td class="param"><a class="param-doc-link" style="text-decoration:none;">som_</a></td>
                <td class="fitted-att-type">Graph</td>
-               <td>&lt;networkx.cla...x7f20fd0147d0&gt;</td>
+               <td>&lt;networkx.cla...x7fcaf47512b0&gt;</td>
 
 
            </tr>
@@ -1775,7 +1785,7 @@ during both ``fit`` and ``predict``.
            <tr class="default">
                <td class="param"><a class="param-doc-link" style="text-decoration:none;">topographic_error_</a></td>
                <td class="fitted-att-type">float</td>
-               <td>0.1553</td>
+               <td>0.1558</td>
 
 
            </tr>
@@ -1784,7 +1794,7 @@ during both ``fit`` and ``predict``.
            <tr class="default">
                <td class="param"><a class="param-doc-link" style="text-decoration:none;">topographic_product_</a></td>
                <td class="fitted-att-type">float</td>
-               <td>-0.07162</td>
+               <td>-0.07066</td>
 
 
            </tr>
@@ -1794,7 +1804,7 @@ during both ``fit`` and ``predict``.
                <td class="param"><a class="param-doc-link" style="text-decoration:none;">weights_</a></td>
                <td class="fitted-att-type">ndarray[float64](27, 64)</td>
                <td>[[ 0.  ,-0.22,-0.1 ,..., 0.61, 0.05,-0.19],
-     [ 0.  , 0.2 , 0.72,..., 0.52,-0.17,-0.19],
+     [ 0.  , 0.2 , 0.7 ,..., 0.51,-0.17,-0.19],
      [ 0.  ,-0.14, 0.33,...,-0.36,-0.37,-0.19],
      ...,
      [ 0.  ,-0.33,-0.65,...,-0.7 ,-0.5 ,-0.2 ],
@@ -2006,8 +2016,8 @@ Print accuracy and topographic quality metrics.
 
  .. code-block:: none
 
-    Accuracy:           0.8720
-    Topographic error:  0.1553
+    Accuracy:           0.8715
+    Topographic error:  0.1558
     Quantization error: 5.1095
 
 
@@ -2067,7 +2077,7 @@ Reveals the structure of the learned representation in weight space.
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** (0 minutes 9.990 seconds)
+   **Total running time of the script:** (0 minutes 9.271 seconds)
 
 
 .. _sphx_glr_download_auto_examples_plot_digit_classification.py:
