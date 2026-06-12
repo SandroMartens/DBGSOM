@@ -310,8 +310,7 @@ no longer change between iterations.</p>
 \[h_{c_{j, i}} = \exp \left(- \frac{d_{ij}^2}{2{\sigma}^2}\right)\]</div>
 </div>
 <p>where <span class="math notranslate nohighlight">\(d_{ij}\)</span> is the graph distance between neurons <span class="math notranslate nohighlight">\(i\)</span> and <span class="math notranslate nohighlight">\(c_j\)</span> on the SOM grid.</p>
-<p><strong>Cut Gaussian</strong> (<code class="docutils literal notranslate"><span class="pre">&quot;cutgauss&quot;</span></code>)</p>
-<p>Same as Gaussian, but set to zero for all neuron pairs with graph distance <span class="math notranslate nohighlight">\(d_{ij} &gt; 2\sigma\)</span>. This improves computation speed.</p>
+<p><strong>Cut Gaussian</strong> (<code class="docutils literal notranslate"><span class="pre">&quot;cutgauss&quot;</span></code>) — sparse approximation; see <a class="reference internal" href="#numerical-optimizations"><span class="std std-ref">Performance Optimizations</span></a>.</p>
 </section>
 <section id="decay-functions">
 <h3>Decay Functions<a class="headerlink" href="#decay-functions" title="Link to this heading">¶</a></h3>
@@ -351,7 +350,6 @@ no longer change between iterations.</p>
 <p>where <span class="math notranslate nohighlight">\(\operatorname{std}(X)\)</span> is the vector of per-feature standard deviations and
 <span class="math notranslate nohighlight">\(\lambda\)</span> is set via <code class="docutils literal notranslate"><span class="pre">lambda_</span></code> (default 115.0, paper-optimized). This makes GT directly
 comparable in scale to the per-neuron cumulative error.</p>
-<p>Reference: Qu et al., <em>Statistics-enhanced Direct Batch Growth Self-Organizing Mapping for efficient DoS Attack Detection</em>, IEEE Access, 2019.</p>
 </section>
 </section>
 <section id="estimating-the-equilibrium-neuron-count">
@@ -433,7 +431,7 @@ scaling <span class="math notranslate nohighlight">\(K \sim (n/\lambda)^{d/(d+1)
 vanishes.</p>
 </div>
 <p><strong>Runtime consequence.</strong> Substituting <span class="math notranslate nohighlight">\(K_{\mathrm{eq}}\)</span> for <span class="math notranslate nohighlight">\(m\)</span> in the
-fit complexity <span class="math notranslate nohighlight">\(O\!\left(e \cdot n \cdot m \cdot d + m^4\right)\)</span> gives an
+fit complexity <span class="math notranslate nohighlight">\(O\!\left(e \cdot n \cdot m \cdot d + m^3\right)\)</span> gives an
 approximate total cost of:</p>
 <div class="math-wrapper docutils container">
 <div class="math notranslate nohighlight">
@@ -472,43 +470,6 @@ met, then executes a growth step and begins the next cycle with a decayed
 <span class="math notranslate nohighlight">\(\sigma\)</span>.
 Waiting for convergence before inserting neurons is deliberate: only once the map has converged do the per-neuron error values constitute stable estimates of the true quantization error and topology.</p>
 <p>After a growth step, <span class="math notranslate nohighlight">\(\sigma\)</span> is updated via the decay function and <code class="docutils literal notranslate"><span class="pre">converged_</span></code> is reset to <code class="docutils literal notranslate"><span class="pre">False</span></code>, starting the next convergence cycle.</p>
-<section id="growth-stability">
-<h4>Growth Stability<a class="headerlink" href="#growth-stability" title="Link to this heading">¶</a></h4>
-<p>The original DBGSOM (Vasighi &amp; Amini, 2017) triggers a growth step after <em>every</em> training
-epoch, without waiting for convergence. This introduces an instability: at epoch
-<span class="math notranslate nohighlight">\(t = 1\)</span> the weight vectors have not yet settled, so the per-neuron quantization
-error is inflated relative to the converged value:</p>
-<div class="math-wrapper docutils container">
-<div class="math notranslate nohighlight">
-\[f(\sigma, K) = \frac{\overline{QE}(K,\, t=1)}{QE^*(K)} &gt; 1\]</div>
-</div>
-<p>The effective growing threshold is reduced to <span class="math notranslate nohighlight">\(GT_{\mathrm{eff}} = GT / f &lt; GT\)</span>,
-causing more boundary neurons to trigger growth than intended.</p>
-<p>This leads to a bifurcation at a critical spreading factor <span class="math notranslate nohighlight">\(\lambda_c\)</span>. Let
-<span class="math notranslate nohighlight">\(\lambda_c\)</span> be the value at which the inflated error equals the growing threshold
-at the minimum map size (four neurons):</p>
-<div class="math-wrapper docutils container">
-<div class="math notranslate nohighlight">
-\[\lambda_c = \frac{\overline{QE}(K_{\min},\, t=1)}{\lVert \operatorname{std}(X) \rVert}\]</div>
-</div>
-<ul class="simple">
-<li><p><span class="math notranslate nohighlight">\(\lambda &gt; \lambda_c\)</span>: growth does not trigger at epoch 1; the map converges to
-a stable size.</p></li>
-<li><p><span class="math notranslate nohighlight">\(\lambda &lt; \lambda_c\)</span>: growth triggers every epoch; the map expands until
-<code class="docutils literal notranslate"><span class="pre">max_neurons</span></code> is reached regardless of the data structure.</p></li>
-</ul>
-<p><span class="math notranslate nohighlight">\(f\)</span> is largest when <span class="math notranslate nohighlight">\(\sigma\)</span> is large (coarse phase), because a wide
-neighbourhood function smooths weight updates and prevents neurons from accurately
-representing their assigned samples. Small changes to <span class="math notranslate nohighlight">\(\lambda\)</span> near
-<span class="math notranslate nohighlight">\(\lambda_c\)</span> therefore switch the algorithm between convergent and divergent
-behaviour.</p>
-<p>Convergence cycles eliminate this instability. Waiting until <span class="math notranslate nohighlight">\(f   o 1\)</span>
-(winner-stability criterion) before each growth step makes
-<span class="math notranslate nohighlight">\(GT_{\mathrm{eff}} pprox GT\)</span>. A stable equilibrium neuron count exists for all
-<span class="math notranslate nohighlight">\(\lambda &gt; \lambda_{\min} = QE^*(4) / \lVert \operatorname{std}(X)
-Vert\)</span>,
-where <span class="math notranslate nohighlight">\(QE^*(4)\)</span> is the converged quantization error of the initial four-neuron map.</p>
-</section>
 </section>
 <section id="sigma-schedule">
 <h3>Sigma Schedule<a class="headerlink" href="#sigma-schedule" title="Link to this heading">¶</a></h3>
@@ -543,28 +504,6 @@ growth step.</p>
 </div>
 <p>Samples far from their BMU (outliers) receive lower weights, making the map more robust to noise. Samples close to their BMU receive a weight near 1.</p>
 <p>Reference: D’Urso et al., <em>Smoothed self-organizing map for robust clustering</em>, Information Sciences, 2019.</p>
-</section>
-<section id="accelerated-bmu-search">
-<h3>Accelerated BMU Search<a class="headerlink" href="#accelerated-bmu-search" title="Link to this heading">¶</a></h3>
-<p>BMU search dominates runtime for large maps (see <a class="reference internal" href="#complexity"><span class="std std-ref">Algorithmic complexity</span></a>). To reduce
-this cost, a pointer-based search restricts each sample’s winner search to the
-neuron that won in the previous epoch and its graph neighbours.</p>
-<p>Controlled by <code class="docutils literal notranslate"><span class="pre">pointer_search</span></code>:</p>
-<ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">&quot;none&quot;</span></code>: full search over all neurons — <span class="math notranslate nohighlight">\(O(n \cdot m \cdot d)\)</span> per epoch.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">&quot;fine&quot;</span></code> (default): pointer search only during the fine training phase, where
-the map is stable and winners rarely move beyond the local neighbourhood.
-Near-identical quality at approximately 3× speedup.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">&quot;all&quot;</span></code>: pointer search in both phases. Improves topographic error (map
-topology is more locally consistent) but reduces quantization accuracy.
-Use a larger <code class="docutils literal notranslate"><span class="pre">pointer_search_radius</span></code> to recover quality.</p></li>
-</ul>
-<p>The search radius is set via <code class="docutils literal notranslate"><span class="pre">pointer_search_radius</span></code> (default 1). Candidates
-are all neurons within that many graph hops of the previous winner, read from
-the already-computed distance matrix.</p>
-<p>For a 2D grid SOM the number of candidate neurons at radius <span class="math notranslate nohighlight">\(r\)</span> is
-approximately <span class="math notranslate nohighlight">\(2r^2 + 2r + 1\)</span>, giving a speedup of roughly
-<span class="math notranslate nohighlight">\(m \,/\, (2r^2 + 2r + 1)\)</span> relative to the full search.</p>
 </section>
 <section id="winner-stability-convergence">
 <h3>Winner-Stability Convergence<a class="headerlink" href="#winner-stability-convergence" title="Link to this heading">¶</a></h3>
@@ -625,7 +564,7 @@ This criterion determines when a convergence cycle ends and a growth step may fi
 <section id="space-complexity">
 <h4>Space complexity<a class="headerlink" href="#space-complexity" title="Link to this heading">¶</a></h4>
 <p>The weight matrix and the input data each contribute <span class="math notranslate nohighlight">\(O(m \cdot d)\)</span> and <span class="math notranslate nohighlight">\(O(n \cdot d)\)</span>.
-Additionally, the Floyd–Warshall distance matrix between all neuron pairs is stored as an
+Additionally, the all-pairs shortest-path distance matrix between all neuron pairs is stored as an
 <span class="math notranslate nohighlight">\(m \times m\)</span> array, adding <span class="math notranslate nohighlight">\(O(m^2)\)</span>.
 The <strong>stored</strong> state after training is therefore:</p>
 <div class="math-wrapper docutils container">
@@ -668,27 +607,28 @@ kernel with the <span class="math notranslate nohighlight">\(m \times d\)</span>
 \[T_{\text{update}} = O(n \cdot d + m^2 \cdot d) \text{ per epoch}\]</div>
 </div>
 <p>When <span class="math notranslate nohighlight">\(n \gg m^2 / d\)</span> the Voronoi step dominates; otherwise the matrix multiply does.</p>
-<p><strong>Floyd–Warshall recomputation</strong> — whenever a new neuron is inserted the graph distance
-matrix is recomputed from scratch. With up to <cite>m</cite> growth steps and an <span class="math notranslate nohighlight">\(O(m^3)\)</span> cost
-per step, the cumulative growth overhead is:</p>
+<p><strong>Incremental distance matrix update</strong> — whenever a new neuron is inserted,
+<code class="docutils literal notranslate"><span class="pre">_extend_distance_matrix</span></code> appends one row/column in <span class="math notranslate nohighlight">\(O(K^2)\)</span> (where <span class="math notranslate nohighlight">\(K\)</span>
+is the current neuron count) instead of recomputing from scratch. Over <span class="math notranslate nohighlight">\(m\)</span> growth
+steps (K growing from 4 to m) the cumulative cost is:</p>
 <div class="math-wrapper docutils container">
 <div class="math notranslate nohighlight">
-\[T_{\text{growth}} = O(m^4)\]</div>
+\[T_{\text{growth}} = \sum_{K=4}^{m} O(K^2) = O(m^3)\]</div>
 </div>
 <p>The total fit complexity is therefore:</p>
 <div class="math-wrapper docutils container">
 <div class="math notranslate nohighlight">
-\[T_{\text{fit}} = O\!\left(e \cdot (n \cdot m \cdot d + n \cdot d + m^2 \cdot d) + m^4\right)\]</div>
+\[T_{\text{fit}} = O\!\left(e \cdot (n \cdot m \cdot d + n \cdot d + m^2 \cdot d) + m^3\right)\]</div>
 </div>
 <p>Simplified (absorbing <span class="math notranslate nohighlight">\(n \cdot d\)</span> into <span class="math notranslate nohighlight">\(n \cdot m \cdot d\)</span> since <span class="math notranslate nohighlight">\(m \geq 1\)</span>):</p>
 <div class="math-wrapper docutils container">
 <div class="math notranslate nohighlight">
-\[T_{\text{fit}} = O\!\left(e \cdot (n \cdot m \cdot d + m^2 \cdot d) + m^4\right)\]</div>
+\[T_{\text{fit}} = O\!\left(e \cdot (n \cdot m \cdot d + m^2 \cdot d) + m^3\right)\]</div>
 </div>
 <ul class="simple">
 <li><p>When <span class="math notranslate nohighlight">\(n \gg m\)</span> the BMU search dominates: <span class="math notranslate nohighlight">\(O(n \cdot m \cdot d \cdot e)\)</span>.</p></li>
 <li><p>When <span class="math notranslate nohighlight">\(m \gg n\)</span> the weight update dominates: <span class="math notranslate nohighlight">\(O(m^2 \cdot d \cdot e)\)</span>.</p></li>
-<li><p>The <span class="math notranslate nohighlight">\(m^4\)</span> Floyd–Warshall term is independent of <cite>n</cite> and <cite>e</cite> and is bounded by
+<li><p>The <span class="math notranslate nohighlight">\(m^3\)</span> growth term is independent of <cite>n</cite> and <cite>e</cite> and is bounded by
 <code class="docutils literal notranslate"><span class="pre">max_neurons</span></code>.</p></li>
 </ul>
 </section>
@@ -700,6 +640,71 @@ per step, the cumulative growth overhead is:</p>
 <div class="math notranslate nohighlight">
 \[T_{\text{predict}} = O(n \cdot m \cdot d)\]</div>
 </div>
+</section>
+</section>
+<section id="performance-optimizations">
+<span id="numerical-optimizations"></span><h2>Performance Optimizations<a class="headerlink" href="#performance-optimizations" title="Link to this heading">¶</a></h2>
+<p>We implement a few adaptations to the textbook algorithm that significantly speed up the computation. This allows the map to scale much better to larger training sets and network sizes. These optimizations can be used in both phases, just fine phase (default), or not at all.</p>
+<section id="accelerated-bmu-search">
+<h3>Accelerated BMU Search<a class="headerlink" href="#accelerated-bmu-search" title="Link to this heading">¶</a></h3>
+<p>BMU search dominates runtime for large maps (see <a class="reference internal" href="#complexity"><span class="std std-ref">Algorithmic complexity</span></a>). To reduce
+this cost, a pointer-based search restricts each sample’s winner search to the
+neuron that won in the previous epoch and its graph neighbours.</p>
+<p>Controlled by <code class="docutils literal notranslate"><span class="pre">pointer_search</span></code>:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">&quot;none&quot;</span></code>: full search over all neurons — <span class="math notranslate nohighlight">\(O(n \cdot m \cdot d)\)</span> per epoch.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">&quot;fine&quot;</span></code> (default): pointer search only during the fine training phase, where
+the map is stable and winners rarely move beyond the local neighbourhood.
+Near-identical quality at approximately 3× speedup.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">&quot;all&quot;</span></code>: pointer search in both phases. Improves topographic error (map
+topology is more locally consistent) but reduces quantization accuracy.</p></li>
+</ul>
+<p>The search radius is set via <code class="docutils literal notranslate"><span class="pre">pointer_search_radius</span></code> (default 1). Candidates
+are all neurons within that many graph hops of the previous winner, read from
+the already-computed distance matrix.</p>
+<p>For a 2D grid SOM the number of candidate neurons at radius <span class="math notranslate nohighlight">\(r\)</span> is
+approximately <span class="math notranslate nohighlight">\(2r^2 + 2r + 1\)</span>, giving a speedup of roughly
+<span class="math notranslate nohighlight">\(m \,/\, (2r^2 + 2r + 1)\)</span> relative to the full search.</p>
+</section>
+<section id="cut-gaussian-neighborhood-kernel">
+<h3>Cut Gaussian Neighborhood Kernel<a class="headerlink" href="#cut-gaussian-neighborhood-kernel" title="Link to this heading">¶</a></h3>
+<p>Same as Gaussian, but set to zero for all neuron pairs with graph distance <span class="math notranslate nohighlight">\(d_{ij} &gt; 2\sigma\)</span>. During the weight update we calculate the <span class="math notranslate nohighlight">\(m * m\)</span> distance kernel between all neurons.  Because with sufficiently small sigmas the neighborhood matrix is sparse, we can use sparse matrix multiplication to ignore most of the terms during the update, making the complexity <span class="math notranslate nohighlight">\(O(m)\)</span>.</p>
+</section>
+<section id="growth-stability">
+<h3>Growth Stability<a class="headerlink" href="#growth-stability" title="Link to this heading">¶</a></h3>
+<p>The original DBGSOM (Vasighi &amp; Amini, 2017) triggers a growth step after <em>every</em> training
+epoch, without waiting for convergence. This introduces an instability: at epoch
+<span class="math notranslate nohighlight">\(t = 1\)</span> the weight vectors have not yet settled, so the per-neuron quantization
+error is inflated relative to the converged value:</p>
+<div class="math-wrapper docutils container">
+<div class="math notranslate nohighlight">
+\[f(\sigma, K) = \frac{\overline{QE}(K,\, t=1)}{QE^*(K)} &gt; 1\]</div>
+</div>
+<p>The effective growing threshold is reduced to <span class="math notranslate nohighlight">\(GT_{\mathrm{eff}} = GT / f &lt; GT\)</span>,
+causing more boundary neurons to trigger growth than intended.</p>
+<p>This leads to a bifurcation at a critical spreading factor <span class="math notranslate nohighlight">\(\lambda_c\)</span>. Let
+<span class="math notranslate nohighlight">\(\lambda_c\)</span> be the value at which the inflated error equals the growing threshold
+at the minimum map size (four neurons):</p>
+<div class="math-wrapper docutils container">
+<div class="math notranslate nohighlight">
+\[\lambda_c = \frac{\overline{QE}(K_{\min},\, t=1)}{\lVert \operatorname{std}(X) \rVert}\]</div>
+</div>
+<ul class="simple">
+<li><p><span class="math notranslate nohighlight">\(\lambda &gt; \lambda_c\)</span>: growth does not trigger at epoch 1; the map converges to
+a stable size.</p></li>
+<li><p><span class="math notranslate nohighlight">\(\lambda &lt; \lambda_c\)</span>: growth triggers every epoch; the map expands until
+<code class="docutils literal notranslate"><span class="pre">max_neurons</span></code> is reached regardless of the data structure.</p></li>
+</ul>
+<p><span class="math notranslate nohighlight">\(f\)</span> is largest when <span class="math notranslate nohighlight">\(\sigma\)</span> is large (coarse phase), because a wide
+neighbourhood function smooths weight updates and prevents neurons from accurately
+representing their assigned samples. Small changes to <span class="math notranslate nohighlight">\(\lambda\)</span> near
+<span class="math notranslate nohighlight">\(\lambda_c\)</span> therefore switch the algorithm between convergent and divergent
+behaviour.</p>
+<p>Convergence cycles eliminate this instability. Waiting until <span class="math notranslate nohighlight">\(f \to 1\)</span>
+(winner-stability criterion) before each growth step makes
+<span class="math notranslate nohighlight">\(GT_{\mathrm{eff}} \approx GT\)</span>. A stable equilibrium neuron count exists for all
+<span class="math notranslate nohighlight">\(\lambda &gt; \lambda_{\min} = QE^*(4) / \lVert \operatorname{std}(X) \rVert\)</span>,
+where <span class="math notranslate nohighlight">\(QE^*(4)\)</span> is the converged quantization error of the initial four-neuron map.</p>
 </section>
 </section>
 </section>
@@ -783,13 +788,9 @@ per step, the cumulative growth overhead is:</p>
 </ul>
 </li>
 <li><a class="reference internal" href="#implementation-details">Implementation Details</a><ul>
-<li><a class="reference internal" href="#convergence-cycles">Convergence Cycles</a><ul>
-<li><a class="reference internal" href="#growth-stability">Growth Stability</a></li>
-</ul>
-</li>
+<li><a class="reference internal" href="#convergence-cycles">Convergence Cycles</a></li>
 <li><a class="reference internal" href="#sigma-schedule">Sigma Schedule</a></li>
 <li><a class="reference internal" href="#robustness-weighting">Robustness Weighting</a></li>
-<li><a class="reference internal" href="#accelerated-bmu-search">Accelerated BMU Search</a></li>
 <li><a class="reference internal" href="#winner-stability-convergence">Winner-Stability Convergence</a></li>
 </ul>
 </li>
@@ -805,6 +806,12 @@ per step, the cumulative growth overhead is:</p>
 </ul>
 </li>
 <li><a class="reference internal" href="#runtime">Runtime</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#performance-optimizations">Performance Optimizations</a><ul>
+<li><a class="reference internal" href="#accelerated-bmu-search">Accelerated BMU Search</a></li>
+<li><a class="reference internal" href="#cut-gaussian-neighborhood-kernel">Cut Gaussian Neighborhood Kernel</a></li>
+<li><a class="reference internal" href="#growth-stability">Growth Stability</a></li>
 </ul>
 </li>
 </ul>
