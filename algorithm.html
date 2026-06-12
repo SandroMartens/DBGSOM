@@ -292,6 +292,15 @@ decays toward a small end value (default: 5%) over the course of training.</p>
 <p>This algorithm repeats for a given number of iterations or until the weight vectors
 no longer change between iterations.</p>
 </section>
+<section id="two-phase-training">
+<h3>Two-phase training<a class="headerlink" href="#two-phase-training" title="Link to this heading">¶</a></h3>
+<p>Kohonen recommends a training split into two phases:</p>
+<ol class="arabic simple">
+<li><p>Coarse phase</p></li>
+<li><p>Fine phase</p></li>
+</ol>
+<p>During the <em>coarse</em> phase <cite>sigma</cite> decays monotonically each iteration. During the <em>fine</em> phase <cite>sigma</cite> stays constant. The global structure of the data is learned at the beginning (coarse), while the fine phase guarantees final convergence.</p>
+</section>
 <section id="neighborhood-functions">
 <h3>Neighborhood Functions<a class="headerlink" href="#neighborhood-functions" title="Link to this heading">¶</a></h3>
 <p>Two neighborhood functions are available via the <code class="docutils literal notranslate"><span class="pre">neighborhood_function</span></code> parameter:</p>
@@ -319,12 +328,22 @@ no longer change between iterations.</p>
 </section>
 <section id="dbgsom-algorithm">
 <h2>DBGSOM Algorithm<a class="headerlink" href="#dbgsom-algorithm" title="Link to this heading">¶</a></h2>
-<p>Training of the DBGSOM starts from four initial neurons. After each learning iteration new neurons can be added from boundaries by filling one of the adjacent free positions and assigning a proper weight vector. This implements <a class="reference internal" href="#assumption-2"><span class="std std-ref">Premise 2</span></a> and <a class="reference internal" href="#assumption-3"><span class="std std-ref">Premise 3</span></a>. The algorithm uses the accumulative error of the neurons on the grid to direct the growing phase in terms of position and weight initialization of new neurons towards areas of greatest quantization error.</p>
+<p>Training of the DBGSOM starts from four initial neurons. The algorithm trains according to the normal batch som. After each learning iteration new neurons can be added from boundaries by filling one of the adjacent free positions and assigning a proper weight vector. This implements <a class="reference internal" href="#assumption-2"><span class="std std-ref">Premise 2</span></a> and <a class="reference internal" href="#assumption-3"><span class="std std-ref">Premise 3</span></a>. The algorithm uses the accumulative error of the neurons on the grid to direct the growing phase in terms of position and weight initialization of new neurons towards areas of greatest quantization error.</p>
 <section id="directed-horizontal-growth">
 <h3>Directed Horizontal Growth<a class="headerlink" href="#directed-horizontal-growth" title="Link to this heading">¶</a></h3>
+<section id="growth-triggering">
+<h4>Growth Triggering<a class="headerlink" href="#growth-triggering" title="Link to this heading">¶</a></h4>
+<p>After each batch weight update, the change in the weight matrix is compared against <code class="docutils literal notranslate"><span class="pre">convergence_threshold</span></code>. When the change falls below this threshold, the map is considered converged and — if still in the coarse phase and below <code class="docutils literal notranslate"><span class="pre">max_neurons</span></code> — a growth step is performed:</p>
+<ol class="arabic simple">
+<li><p>The accumulative error <span class="math notranslate nohighlight">\(E_i\)</span> for each neuron is evaluated.</p></li>
+<li><p>For each non-boundary neuron <span class="math notranslate nohighlight">\(n_i\)</span> where <span class="math notranslate nohighlight">\(E_i &gt; GT\)</span>, half its error is distributed to neighboring boundary neurons.</p></li>
+<li><p>New neurons are inserted at all boundary positions where <span class="math notranslate nohighlight">\(E_i &gt; GT\)</span>, starting with the highest-error neuron.</p></li>
+</ol>
+<p>The position and weight of each new neuron are determined by the directed insertion rule (Vasighi and Amini): the free adjacent position whose corner neighbor has the highest error is selected, and the new weight is initialized by reflecting the opposite neighbor through the boundary neuron. Because each inserted neuron inherits a weight derived from its already-trained neighbours, the map remains partially ordered after growth. The next bigger map should converge very fast according to <a class="reference internal" href="#assumption-3"><span class="std std-ref">assumption 3</span></a>.</p>
+</section>
 <section id="growing-threshold">
 <h4>Growing Threshold<a class="headerlink" href="#growing-threshold" title="Link to this heading">¶</a></h4>
-<p>The growing threshold <code class="docutils literal notranslate"><span class="pre">GT</span></code> is computed via the statistics-enhanced formula (Qu et al. 2019, Eq. 5):</p>
+<p>The growing threshold <code class="docutils literal notranslate"><span class="pre">GT</span></code> is computed via the statistics-enhanced formula:</p>
 <div class="math-wrapper docutils container">
 <div class="math notranslate nohighlight">
 \[GT = \lambda \cdot \left\lVert \operatorname{std}(X) \right\rVert\]</div>
@@ -334,13 +353,14 @@ no longer change between iterations.</p>
 comparable in scale to the per-neuron cumulative error.</p>
 <p>Reference: Qu et al., <em>Statistics-enhanced Direct Batch Growth Self-Organizing Mapping for efficient DoS Attack Detection</em>, IEEE Access, 2019.</p>
 </section>
+</section>
 <section id="estimating-the-equilibrium-neuron-count">
-<h4>Estimating the equilibrium neuron count<a class="headerlink" href="#estimating-the-equilibrium-neuron-count" title="Link to this heading">¶</a></h4>
+<h3>Estimating the equilibrium neuron count<a class="headerlink" href="#estimating-the-equilibrium-neuron-count" title="Link to this heading">¶</a></h3>
 <p>The GT formula implies a statistical estimate of the final map size before training.
-A neuron <em>i</em> triggers growth when its accumulated squared error exceeds GT:</p>
+A neuron <em>i</em> triggers growth when its accumulated quantization error (sum of Euclidean distances) exceeds <span class="math notranslate nohighlight">\(GT\)</span>:</p>
 <div class="math-wrapper docutils container">
 <div class="math notranslate nohighlight">
-\[\sum_{j:\,c_j = i} \lVert x_j - w_i \rVert^2 &gt; GT\]</div>
+\[\sum_{j:\,c_j = i} \lVert x_j - w_i \rVert &gt; GT\]</div>
 </div>
 <p>At convergence, the growth trigger for a boundary neuron <span class="math notranslate nohighlight">\(b\)</span> is:</p>
 <div class="math-wrapper docutils container">
@@ -389,8 +409,7 @@ gives a conservative upper bound on the natural stopping point.</p>
 </tbody>
 </table>
 </div>
-<p>For data on an isotropic Gaussian manifold with intrinsic dimension <span class="math notranslate nohighlight">\(d\)</span>,
-the within-cell variance scales as <span class="math notranslate nohighlight">\(\overline{QE} \sim \lVert\operatorname{std}(X)\rVert \cdot K^{-1/d}\)</span>.
+<p>For data on an isotropic Gaussian manifold with intrinsic dimension <span class="math notranslate nohighlight">\(d\)</span>, the within-cell variance scales as <span class="math notranslate nohighlight">\(\overline{QE} \sim \lVert\operatorname{std}(X)\rVert \cdot K^{-1/d}\)</span>.
 Substituting into the equilibrium equation yields the closed-form growth law
 (the <span class="math notranslate nohighlight">\(\tfrac{3}{2}\)</span> prefactor does not affect the exponent):</p>
 <div class="math-wrapper docutils container">
@@ -423,32 +442,15 @@ approximate total cost of:</p>
 <p>Increasing <code class="docutils literal notranslate"><span class="pre">lambda_</span></code> therefore reduces both the neuron count <strong>and</strong> the
 dominant training cost roughly as <span class="math notranslate nohighlight">\(\lambda^{-d/(d+1)}\)</span>.</p>
 </section>
-<section id="growth-triggering">
-<h4>Growth Triggering<a class="headerlink" href="#growth-triggering" title="Link to this heading">¶</a></h4>
-<p>Unlike the original DBGSOM paper — where new neurons are added after every
-epoch — this implementation uses <strong>convergence-triggered growth</strong>: the map
-trains within a single convergence cycle until the convergence criterion is
-met, then executes a growth step and begins the next cycle with a decayed
-<span class="math notranslate nohighlight">\(\sigma\)</span>. After each batch weight update, the change in the weight matrix is compared against <code class="docutils literal notranslate"><span class="pre">convergence_threshold</span></code>. When the change falls below this threshold, the map is considered converged and — if still in the coarse phase and below <code class="docutils literal notranslate"><span class="pre">max_neurons</span></code> — a growth step is performed:</p>
-<ol class="arabic simple">
-<li><p>The accumulative error <span class="math notranslate nohighlight">\(E_i\)</span> for each neuron is evaluated.</p></li>
-<li><p>For each non-boundary neuron <span class="math notranslate nohighlight">\(n_i\)</span> where <span class="math notranslate nohighlight">\(E_i &gt; GT\)</span>, half its error is distributed to neighboring boundary neurons.</p></li>
-<li><p>New neurons are inserted at all boundary positions where <span class="math notranslate nohighlight">\(E_i &gt; GT\)</span>, starting with the highest-error neuron.</p></li>
-</ol>
-<p>Waiting for convergence before inserting neurons is deliberate: only once the map has converged do the per-neuron error values constitute stable estimates of the true quantization error and topology.</p>
-<p>The position and weight of each new neuron are determined by the directed insertion rule (Vasighi and Amini): the free adjacent position whose corner neighbor has the highest error is selected, and the new weight is initialized by reflecting the opposite neighbor through the boundary neuron. Because each inserted neuron inherits a weight derived from its already-trained neighbours, the map remains partially ordered after growth. The next bigger map should converge very fast according to <a class="reference internal" href="#assumption-3"><span class="std std-ref">assumption 3</span></a>.</p>
-<p>After a growth step, <span class="math notranslate nohighlight">\(\sigma\)</span> is updated via the decay function and <code class="docutils literal notranslate"><span class="pre">converged_</span></code> is reset to <code class="docutils literal notranslate"><span class="pre">False</span></code>, starting the next convergence cycle.</p>
-</section>
-</section>
 </section>
 <section id="implementation-details">
 <h2>Implementation Details<a class="headerlink" href="#implementation-details" title="Link to this heading">¶</a></h2>
-<section id="convergence-cycles">
-<h3>Convergence Cycles<a class="headerlink" href="#convergence-cycles" title="Link to this heading">¶</a></h3>
-<p>Training is structured as a sequence of <strong>convergence cycles</strong>. Each cycle trains at fixed
+<p>We take the two-phase algorithm and adapt it to the growing algorithm of DBGSOM.  Training is structured as a sequence of <strong>convergence cycles</strong>. Each cycle trains at fixed
 <span class="math notranslate nohighlight">\(\sigma\)</span> until the convergence criterion is met. In the <em>coarse phase</em> a growth step
 fires at the end of the cycle and <span class="math notranslate nohighlight">\(\sigma\)</span> decays before the next cycle begins. In the
 <em>fine phase</em> no growth occurs and <span class="math notranslate nohighlight">\(\sigma\)</span> is fixed.</p>
+<section id="convergence-cycles">
+<h3>Convergence Cycles<a class="headerlink" href="#convergence-cycles" title="Link to this heading">¶</a></h3>
 <p>This is inspired by the classical two-phase SOM training (Kohonen, 2001), but rather than a
 hard split into two monolithic phases, each phase is realised as one or more convergence
 cycles. The coarse phase spans the first <code class="docutils literal notranslate"><span class="pre">coarse_training_frac</span> <span class="pre">*</span> <span class="pre">n_iter</span></code> epochs; the
@@ -463,6 +465,13 @@ to <code class="docutils literal notranslate"><span class="pre">sigma_fine</span
 <p>This is consistent with <a class="reference internal" href="#assumption-1"><span class="std std-ref">Premise 1</span></a>: because <span class="math notranslate nohighlight">\(\sigma\)</span> is
 constant within each cycle, finite convergence is guaranteed for every cycle including the
 final fine phase.</p>
+<p>Unlike the original DBGSOM paper — where new neurons are added after every
+epoch — this implementation uses <strong>convergence-triggered growth</strong>: the map
+trains within a single convergence cycle until the convergence criterion is
+met, then executes a growth step and begins the next cycle with a decayed
+<span class="math notranslate nohighlight">\(\sigma\)</span>.
+Waiting for convergence before inserting neurons is deliberate: only once the map has converged do the per-neuron error values constitute stable estimates of the true quantization error and topology.</p>
+<p>After a growth step, <span class="math notranslate nohighlight">\(\sigma\)</span> is updated via the decay function and <code class="docutils literal notranslate"><span class="pre">converged_</span></code> is reset to <code class="docutils literal notranslate"><span class="pre">False</span></code>, starting the next convergence cycle.</p>
 <section id="growth-stability">
 <h4>Growth Stability<a class="headerlink" href="#growth-stability" title="Link to this heading">¶</a></h4>
 <p>The original DBGSOM (Vasighi &amp; Amini, 2017) triggers a growth step after <em>every</em> training
@@ -758,6 +767,7 @@ per step, the cumulative growth overhead is:</p>
 <li><a class="reference internal" href="#batch-learning-algorithm">Batch Learning Algorithm</a><ul>
 <li><a class="reference internal" href="#bmu-search">BMU Search</a></li>
 <li><a class="reference internal" href="#weight-update">Weight Update</a></li>
+<li><a class="reference internal" href="#two-phase-training">Two-phase training</a></li>
 <li><a class="reference internal" href="#neighborhood-functions">Neighborhood Functions</a></li>
 <li><a class="reference internal" href="#decay-functions">Decay Functions</a></li>
 <li><a class="reference internal" href="#distance-metrics">Distance Metrics</a></li>
@@ -765,11 +775,11 @@ per step, the cumulative growth overhead is:</p>
 </li>
 <li><a class="reference internal" href="#dbgsom-algorithm">DBGSOM Algorithm</a><ul>
 <li><a class="reference internal" href="#directed-horizontal-growth">Directed Horizontal Growth</a><ul>
-<li><a class="reference internal" href="#growing-threshold">Growing Threshold</a></li>
-<li><a class="reference internal" href="#estimating-the-equilibrium-neuron-count">Estimating the equilibrium neuron count</a></li>
 <li><a class="reference internal" href="#growth-triggering">Growth Triggering</a></li>
+<li><a class="reference internal" href="#growing-threshold">Growing Threshold</a></li>
 </ul>
 </li>
+<li><a class="reference internal" href="#estimating-the-equilibrium-neuron-count">Estimating the equilibrium neuron count</a></li>
 </ul>
 </li>
 <li><a class="reference internal" href="#implementation-details">Implementation Details</a><ul>
