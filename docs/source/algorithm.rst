@@ -92,9 +92,7 @@ Two neighborhood functions are available via the ``neighborhood_function`` param
 
 where :math:`d_{ij}` is the graph distance between neurons :math:`i` and :math:`c_j` on the SOM grid.
 
-**Cut Gaussian** (``"cutgauss"``)
-
-Same as Gaussian, but set to zero for all neuron pairs with graph distance :math:`d_{ij} > 2\sigma`. This improves computation speed.
+**Cut Gaussian** (``"cutgauss"``) — sparse approximation; see :ref:`numerical-optimizations`.
 
 
 
@@ -148,7 +146,7 @@ where :math:`\operatorname{std}(X)` is the vector of per-feature standard deviat
 :math:`\lambda` is set via ``lambda_`` (default 115.0, paper-optimized). This makes GT directly
 comparable in scale to the per-neuron cumulative error.
 
-Reference: Qu et al., *Statistics-enhanced Direct Batch Growth Self-Organizing Mapping for efficient DoS Attack Detection*, IEEE Access, 2019.
+.. Reference: Qu et al., *Statistics-enhanced Direct Batch Growth Self-Organizing Mapping for efficient DoS Attack Detection*, IEEE Access, 2019.
 
 
 Estimating the equilibrium neuron count
@@ -219,7 +217,7 @@ observation that doubling the dataset does not double the map size.
    vanishes.
 
 **Runtime consequence.** Substituting :math:`K_{\mathrm{eq}}` for :math:`m` in the
-fit complexity :math:`O\!\left(e \cdot n \cdot m \cdot d + m^4\right)` gives an
+fit complexity :math:`O\!\left(e \cdot n \cdot m \cdot d + m^3\right)` gives an
 approximate total cost of:
 
 .. math::
@@ -267,52 +265,6 @@ Waiting for convergence before inserting neurons is deliberate: only once the ma
 After a growth step, :math:`\sigma` is updated via the decay function and ``converged_`` is reset to ``False``, starting the next convergence cycle.
 
 
-Growth Stability
-""""""""""""""""
-
-The original DBGSOM (Vasighi & Amini, 2017) triggers a growth step after *every* training
-epoch, without waiting for convergence. This introduces an instability: at epoch
-:math:`t = 1` the weight vectors have not yet settled, so the per-neuron quantization
-error is inflated relative to the converged value:
-
-.. math::
-
-   f(\sigma, K) = \frac{\overline{QE}(K,\, t=1)}{QE^*(K)} > 1
-
-The effective growing threshold is reduced to :math:`GT_{\mathrm{eff}} = GT / f < GT`,
-causing more boundary neurons to trigger growth than intended.
-
-This leads to a bifurcation at a critical spreading factor :math:`\lambda_c`. Let
-:math:`\lambda_c` be the value at which the inflated error equals the growing threshold
-at the minimum map size (four neurons):
-
-.. math::
-
-   \lambda_c = \frac{\overline{QE}(K_{\min},\, t=1)}{\lVert \operatorname{std}(X) \rVert}
-
-- :math:`\lambda > \lambda_c`: growth does not trigger at epoch 1; the map converges to
-  a stable size.
-
-- :math:`\lambda < \lambda_c`: growth triggers every epoch; the map expands until
-  ``max_neurons`` is reached regardless of the data structure.
-
-:math:`f` is largest when :math:`\sigma` is large (coarse phase), because a wide
-neighbourhood function smooths weight updates and prevents neurons from accurately
-representing their assigned samples. Small changes to :math:`\lambda` near
-:math:`\lambda_c` therefore switch the algorithm between convergent and divergent
-behaviour.
-
-Convergence cycles eliminate this instability. Waiting until :math:`f 	o 1`
-(winner-stability criterion) before each growth step makes
-:math:`GT_{\mathrm{eff}} pprox GT`. A stable equilibrium neuron count exists for all
-:math:`\lambda > \lambda_{\min} = QE^*(4) / \lVert \operatorname{std}(X) 
-Vert`,
-where :math:`QE^*(4)` is the converged quantization error of the initial four-neuron map.
-
-
-
-
-
 Sigma Schedule
 ^^^^^^^^^^^^^^
 Between growth steps :math:`\sigma` is held **constant** within each convergence
@@ -353,34 +305,6 @@ Before the batch weight update, each sample :math:`x_j` is assigned a robustness
 Samples far from their BMU (outliers) receive lower weights, making the map more robust to noise. Samples close to their BMU receive a weight near 1.
 
 Reference: D'Urso et al., *Smoothed self-organizing map for robust clustering*, Information Sciences, 2019.
-
-
-
-
-Accelerated BMU Search
-^^^^^^^^^^^^^^^^^^^^^^
-
-BMU search dominates runtime for large maps (see :ref:`complexity`). To reduce
-this cost, a pointer-based search restricts each sample's winner search to the
-neuron that won in the previous epoch and its graph neighbours.
-
-Controlled by ``pointer_search``:
-
-- ``"none"``: full search over all neurons — :math:`O(n \cdot m \cdot d)` per epoch.
-- ``"fine"`` (default): pointer search only during the fine training phase, where
-  the map is stable and winners rarely move beyond the local neighbourhood.
-  Near-identical quality at approximately 3× speedup.
-- ``"all"``: pointer search in both phases. Improves topographic error (map
-  topology is more locally consistent) but reduces quantization accuracy.
-  Use a larger ``pointer_search_radius`` to recover quality.
-
-The search radius is set via ``pointer_search_radius`` (default 1). Candidates
-are all neurons within that many graph hops of the previous winner, read from
-the already-computed distance matrix.
-
-For a 2D grid SOM the number of candidate neurons at radius :math:`r` is
-approximately :math:`2r^2 + 2r + 1`, giving a speedup of roughly
-:math:`m \,/\, (2r^2 + 2r + 1)` relative to the full search.
 
 
 
@@ -461,7 +385,7 @@ Space complexity
 """"""""""""""""
 
 The weight matrix and the input data each contribute :math:`O(m \cdot d)` and :math:`O(n \cdot d)`.
-Additionally, the Floyd–Warshall distance matrix between all neuron pairs is stored as an
+Additionally, the all-pairs shortest-path distance matrix between all neuron pairs is stored as an
 :math:`m \times m` array, adding :math:`O(m^2)`.
 The **stored** state after training is therefore:
 
@@ -507,26 +431,27 @@ With ``pointer_search="fine"`` (default), the fine-phase search is restricted to
 
 When :math:`n \gg m^2 / d` the Voronoi step dominates; otherwise the matrix multiply does.
 
-**Floyd–Warshall recomputation** — whenever a new neuron is inserted the graph distance
-matrix is recomputed from scratch. With up to `m` growth steps and an :math:`O(m^3)` cost
-per step, the cumulative growth overhead is:
+**Incremental distance matrix update** — whenever a new neuron is inserted,
+``_extend_distance_matrix`` appends one row/column in :math:`O(K^2)` (where :math:`K`
+is the current neuron count) instead of recomputing from scratch. Over :math:`m` growth
+steps (K growing from 4 to m) the cumulative cost is:
 
 .. math::
-    T_{\text{growth}} = O(m^4)
+    T_{\text{growth}} = \sum_{K=4}^{m} O(K^2) = O(m^3)
 
 The total fit complexity is therefore:
 
 .. math::
-    T_{\text{fit}} = O\!\left(e \cdot (n \cdot m \cdot d + n \cdot d + m^2 \cdot d) + m^4\right)
+    T_{\text{fit}} = O\!\left(e \cdot (n \cdot m \cdot d + n \cdot d + m^2 \cdot d) + m^3\right)
 
 Simplified (absorbing :math:`n \cdot d` into :math:`n \cdot m \cdot d` since :math:`m \geq 1`):
 
 .. math::
-    T_{\text{fit}} = O\!\left(e \cdot (n \cdot m \cdot d + m^2 \cdot d) + m^4\right)
+    T_{\text{fit}} = O\!\left(e \cdot (n \cdot m \cdot d + m^2 \cdot d) + m^3\right)
 
 * When :math:`n \gg m` the BMU search dominates: :math:`O(n \cdot m \cdot d \cdot e)`.
 * When :math:`m \gg n` the weight update dominates: :math:`O(m^2 \cdot d \cdot e)`.
-* The :math:`m^4` Floyd–Warshall term is independent of `n` and `e` and is bounded by
+* The :math:`m^3` growth term is independent of `n` and `e` and is bounded by
   ``max_neurons``.
 
 Runtime
@@ -536,3 +461,81 @@ Prediction requires only a single BMU search over the fitted weight matrix:
 
 .. math::
     T_{\text{predict}} = O(n \cdot m \cdot d)
+
+.. _numerical-optimizations:
+
+Performance Optimizations
+-----------------------
+
+We implement a few adaptations to the textbook algorithm that significantly speed up the computation. This allows the map to scale much better to larger training sets and network sizes. These optimizations can be used in both phases, just fine phase (default), or not at all.
+
+
+Accelerated BMU Search
+^^^^^^^^^^^^^^^^^^^^^^
+
+BMU search dominates runtime for large maps (see :ref:`complexity`). To reduce
+this cost, a pointer-based search restricts each sample's winner search to the
+neuron that won in the previous epoch and its graph neighbours.
+
+Controlled by ``pointer_search``:
+
+- ``"none"``: full search over all neurons — :math:`O(n \cdot m \cdot d)` per epoch.
+- ``"fine"`` (default): pointer search only during the fine training phase, where
+  the map is stable and winners rarely move beyond the local neighbourhood.
+  Near-identical quality at approximately 3× speedup.
+- ``"all"``: pointer search in both phases. Improves topographic error (map
+  topology is more locally consistent) but reduces quantization accuracy.
+
+The search radius is set via ``pointer_search_radius`` (default 1). Candidates
+are all neurons within that many graph hops of the previous winner, read from
+the already-computed distance matrix.
+
+For a 2D grid SOM the number of candidate neurons at radius :math:`r` is
+approximately :math:`2r^2 + 2r + 1`, giving a speedup of roughly
+:math:`m \,/\, (2r^2 + 2r + 1)` relative to the full search.
+
+Cut Gaussian Neighborhood Kernel
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Same as Gaussian, but set to zero for all neuron pairs with graph distance :math:`d_{ij} > 2\sigma`. During the weight update we calculate the :math:`m * m` distance kernel between all neurons.  Because with sufficiently small sigmas the neighborhood matrix is sparse, we can use sparse matrix multiplication to ignore most of the terms during the update, making the complexity :math:`O(m)`.
+
+Growth Stability
+^^^^^^^^^^^^^^^^
+
+The original DBGSOM (Vasighi & Amini, 2017) triggers a growth step after *every* training
+epoch, without waiting for convergence. This introduces an instability: at epoch
+:math:`t = 1` the weight vectors have not yet settled, so the per-neuron quantization
+error is inflated relative to the converged value:
+
+.. math::
+
+   f(\sigma, K) = \frac{\overline{QE}(K,\, t=1)}{QE^*(K)} > 1
+
+The effective growing threshold is reduced to :math:`GT_{\mathrm{eff}} = GT / f < GT`,
+causing more boundary neurons to trigger growth than intended.
+
+This leads to a bifurcation at a critical spreading factor :math:`\lambda_c`. Let
+:math:`\lambda_c` be the value at which the inflated error equals the growing threshold
+at the minimum map size (four neurons):
+
+.. math::
+
+   \lambda_c = \frac{\overline{QE}(K_{\min},\, t=1)}{\lVert \operatorname{std}(X) \rVert}
+
+- :math:`\lambda > \lambda_c`: growth does not trigger at epoch 1; the map converges to
+  a stable size.
+
+- :math:`\lambda < \lambda_c`: growth triggers every epoch; the map expands until
+  ``max_neurons`` is reached regardless of the data structure.
+
+:math:`f` is largest when :math:`\sigma` is large (coarse phase), because a wide
+neighbourhood function smooths weight updates and prevents neurons from accurately
+representing their assigned samples. Small changes to :math:`\lambda` near
+:math:`\lambda_c` therefore switch the algorithm between convergent and divergent
+behaviour.
+
+Convergence cycles eliminate this instability. Waiting until :math:`f \to 1`
+(winner-stability criterion) before each growth step makes
+:math:`GT_{\mathrm{eff}} \approx GT`. A stable equilibrium neuron count exists for all
+:math:`\lambda > \lambda_{\min} = QE^*(4) / \lVert \operatorname{std}(X) \rVert`,
+where :math:`QE^*(4)` is the converged quantization error of the initial four-neuron map.

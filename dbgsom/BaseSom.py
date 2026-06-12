@@ -1533,7 +1533,7 @@ class BaseSom(BaseEstimator, ABC):
         X = validate_data(self, X, reset=False)
         self._delaunay_matrix = self._calculate_delaunay_triangulation(X)
 
-        # self._distance_matrix is the Floyd-Warshall graph distance on the SOM,
+        # self._distance_matrix is the all-pairs shortest-path distance on the SOM graph,
         # computed during fit(). It is the correct d_map for the topographic function.
         map_dist_matrix = self._distance_matrix
 
