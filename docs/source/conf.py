@@ -27,6 +27,7 @@ extensions = [
     "sphinx.ext.autosummary",
     "sphinx_autodoc_typehints",
     "sphinx.ext.napoleon",
+    "sphinx.ext.mathjax",
     "sphinx_gallery.gen_gallery",
 ]
 numpydoc_class_members_toctree = False
