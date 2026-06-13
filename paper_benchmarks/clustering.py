@@ -30,7 +30,7 @@ DBGSOM_PARAMS = dict(
     n_iter=500,
     lambda_=15.8,
     sigma_end=1,
-    max_neurons=100,
+    # max_neurons=100,
     random_state=RANDOM_STATE,
 )
 
@@ -96,7 +96,7 @@ def train_minisom(X_train, X_test, y_test, n_neurons):
         learning_rate=0.5,
         random_seed=RANDOM_STATE,
     )
-    som.train(X_train, num_iteration=len(X_train) * 10, verbose=False)
+    som.train(X_train, num_iteration=500 * n_neurons, verbose=False)
     elapsed = time.perf_counter() - t0
 
     def _winner_flat(x):
@@ -153,6 +153,7 @@ def train_torchsom(X_train, X_test, y_test, n_neurons):
         side,
         side,
         X_train.shape[1],
+        epochs=36,
         sigma=0.2 * np.sqrt(n_neurons),
         batch_size=len(X_train),  # full-batch
     )

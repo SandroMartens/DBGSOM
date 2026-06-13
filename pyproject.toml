@@ -2,6 +2,9 @@
 requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
+[tool.setuptools.packages.find]
+include = ["dbgsom*"]
+
 [project]
 name = "dbgsom"
 version = "1.2.5"
@@ -10,7 +13,7 @@ authors = [
 ]
 description = "A Python implementation of the Directed Batch Growing Self-Organizing Map"
 readme = "README.md"
-requires-python = ">=3.12,<3.14"
+requires-python = ">=3.12"
 license = "MIT"
 classifiers = [
     "Development Status :: 5 - Production/Stable",

@@ -23,7 +23,7 @@ bibliography: paper.bib
 
 Self-Organizing Maps (SOMs) [@Kohonen2001; @Kohonen2013] are unsupervised neural networks that learn a topology-preserving, low-dimensional representation of high-dimensional input data. The network maps input samples onto a discrete grid of prototype neurons such that similar inputs activate spatially proximate neurons. SOMs can be used for classification, clustering, vector quantization and nonlinear projection.
 
-Classical SOMs require the grid dimensions to be specified prior to training, which in practice demands domain knowledge or trial-and-error tuning.
+<!-- Classical SOMs require the grid dimensions to be specified prior to training, which in practice demands domain knowledge or trial-and-error tuning. -->
 
 `DBGSOM` is based on the Directed Batch Growing Self-Organizing Map algorithm of @Vasighi2017 in Python. Starting from four initial neurons, the map first learns and then grows autonomously recursively in a number of convergence cycles. This happens by inserting new neurons at boundary positions at the end of each cycle where the local quantization error exceeds a configurable threshold. Training follows the batch learning rule, in which weight updates are computed over the entire dataset per epoch rather than sample-by-sample, yielding faster convergence than online SOMs. The resulting map size is determined by the data, eliminating the need to pre-specify the number of prototypes.
 
@@ -33,7 +33,7 @@ The library provides two estimators: `SomVQ` for unsupervised vector quantizatio
 
 scikit-learn [@Pedregosa2012] is one of the most used Python libraries for non-deep-learning machine learning. This is because it allows end-to-end processing from pre-processing, training to scoring many different estimators. The core library of scikit-learn doesn't contain any self-organizing maps.
 
-`DBGSOM` addresses one of the major drawbacks of classical SOMs: The need to specify the layout and size of the map before the training. A single sensitivity parameter (`lambda*`) let's the map grow until the desired accuracy is met. The scikit-learn-compatible API, including `fit`, `predict`, `fit_predict`, `transform`, and `predict_proba`, enables drop-in use in cross-validation pipelines, `Pipeline` objects, and `GridSearchCV`.
+`DBGSOM` addresses one of the major drawbacks of classical SOMs: The need to specify the layout and size of the map before the training. A single sensitivity parameter (`lambda`) lets the map grow until the desired accuracy is met. The scikit-learn-compatible API, including `fit`, `predict`, `fit_predict`, `transform`, and `predict_proba`, enables drop-in use in cross-validation pipelines, `Pipeline` objects, and `GridSearchCV`.
 
 The `transform` method departs from conventional SOM practice: rather than returning the index of the best-matching unit, it computes a sparse non-negative linear combination of prototype weights, yielding a meaningful embedding of each sample in prototype space [@Kohonen2007]. This allows a better encoding than the direct n-to-1 mapping to a single winner neuron. This representation is compatible with downstream scikit-learn estimators and dimensionality reduction workflows.
 
@@ -68,25 +68,28 @@ Benchmarks comparing DBGSOM to MiniSom, SuSi, KMeans, and AgglomerativeClusterin
 
 On Fashion MNIST (10k samples) with automatically determined cluster count (via DBGSOM's growing mechanism, applied as cluster count for all algorithms):
 
-| Metric             | DBGSOM | MiniSom | SuSi  | torchsom |
-| ------------------ | ------ | ------- | ----- | -------- |
-| Quantization error | 16.51  | 17.27   | 17.64 | 19.23    |
-| Topographic error  | 0.067  | 0.085   | 0.013 | 0.0715   |
-| Neurons            | 131    | 131     | 131   | 131      |
+| Algorithm | n_prototypes | Time (s) | QE     | TE     | ARI   | Silhouette |
+| --------- | ------------ | -------- | ------ | ------ | ----- | ---------- |
+| DBGSOM    | 107          | 1.064    | 4.8767 | 0.0264 | 0.169 | -0.038     |
+| MiniSom   | 121          | 0.721    | 4.7559 | 0.1583 | 0.172 | 0.026      |
+| SuSi      | 121          | 0.137    | 5.688  | 0.0861 | 0.252 | -0.076     |
+| torchsom  | 121          | 0.63     | 6.8255 | 0.3722 | 0.44  | -0.029     |
 
 Lower bound for `Qe` using kmeans: `15.7153`.
-
-# Implementation Notes
 
 `DBGSOM` is implemented in Python and uses NumPy [@Harris2020] for array operations and Numba [@Lam2015] for JIT-compiled distance computations. The map topology is represented as a NetworkX [@Hagberg2008] graph, which simplifies the implementation of neighborhood queries and the growth mechanism. Visualization is provided via seaborn objects [@Waskom2021], supporting continuous and categorical color encoding of prototype attributes.
 
 The package is distributed via PyPI (`pip install dbgsom`) and versioned according to semantic versioning. Continuous integration is configured via GitHub Actions, including unit tests, code quality checks with Ruff, and automated PyPI releases.
 
-![foo](paper_benchmarks/results/som_grid.png){width=80%}
-![foo](paper_benchmarks/results/som_pca.png){width=80%}
+| Grid projection                                                      | PCA projection                                                     |
+| -------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| ![Grid projection](paper_benchmarks/results/som_grid.png){width=40%} | ![PCA projection](paper_benchmarks/results/som_pca.png){width=40%} |
+
+<!-- ![Grid projection](paper_benchmarks/results/som_grid.png){width=40%}
+![PCA projection](paper_benchmarks/results/som_pca.png){width=40%} -->
 
 # AI usage disclosure
 
-No generative AI was used prior to release v1.2.0. Claude Code was used in Code: to create benchmarks, refactor code, improve performance, implement mathematical formulas. In documentation: Mainly for editing and keeping consistency between reference papers, documentation and actual implementation.
+No generative AI was used prior to release v1.2.0. Claude Code was used in Code: to create benchmarks, refactor code, improve performance, implement mathematical formulas, debugging. In documentation: Mainly for editing and keeping consistency between reference papers, documentation and actual implementation.
 
 # References

@@ -17,18 +17,20 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+from sklearn.datasets import make_blobs
+from sklearn.preprocessing import StandardScaler
 
 from dbgsom import SomVQ
 
 RANDOM_STATE = 42
-N_SIZES = [500, 1000, 2000, 5000, 10000, 20000, 50000]
+N_SIZES = [500, 1000, 2000, 5000, 10000, 20000, 50000, 80_0000]
 D = 30
 RESULTS_DIR = Path(__file__).parent / "results"
 
 DBGSOM_PARAMS = dict(
-    n_iter=2000,
-    lambda_=70,
-    max_neurons=1000,
+    n_iter=1000,
+    lambda_=100,
+    max_neurons=300,
     sigma_end=1,
     pointer_search="all",
     neighborhood_function="cutgauss",
@@ -48,15 +50,18 @@ class BenchResult:
 
 
 def make_data(n: int) -> np.ndarray:
-    rng = np.random.default_rng(RANDOM_STATE)
-    return rng.standard_normal((n, D)).astype(np.float32)
+    X, _ = make_blobs(n_samples=n, n_features=D, centers=10, random_state=RANDOM_STATE)
+    return StandardScaler().fit_transform(X).astype(np.float32)
 
 
-def _qe_from_weights(X: np.ndarray, weights: np.ndarray) -> float:
-    """Mean distance from each sample to its nearest prototype."""
-    # weights: (k, dim)
-    dists = np.linalg.norm(X[:, None, :] - weights[None, :, :], axis=2)
-    return float(np.mean(np.min(dists, axis=1)))
+def _qe_from_weights(X: np.ndarray, weights: np.ndarray, chunk: int = 2000) -> float:
+    """Mean distance from each sample to its nearest prototype (chunked to cap RAM)."""
+    mins = np.empty(len(X), dtype=np.float32)
+    for i in range(0, len(X), chunk):
+        sl = X[i : i + chunk]
+        d = np.linalg.norm(sl[:, None, :] - weights[None, :, :], axis=2)
+        mins[i : i + chunk] = d.min(axis=1)
+    return float(mins.mean())
 
 
 def benchmark_dbgsom(X: np.ndarray) -> BenchResult:
@@ -84,11 +89,10 @@ def benchmark_minisom(X: np.ndarray, n_nodes: int) -> BenchResult | None:
         side,
         side,
         X.shape[1],
-        sigma=1.0,
-        learning_rate=0.5,
+        sigma=0.2 * np.sqrt(n_nodes),
         random_seed=RANDOM_STATE,
     )
-    som.train(X, num_iteration=len(X) * 20, verbose=False)
+    som.train(X, num_iteration=500 * n_nodes, verbose=False)
     elapsed = time.perf_counter() - t0
 
     weights = som.get_weights().reshape(-1, X.shape[1])  # (side*side, dim)
@@ -107,8 +111,10 @@ def benchmark_susi(X: np.ndarray, n_nodes: int) -> BenchResult | None:
     som = SOMClustering(
         n_rows=side,
         n_columns=side,
+        train_mode_unsupervised="online",
         random_state=RANDOM_STATE,
-        n_iter_unsupervised=1 * len(X),
+        n_iter_unsupervised=500 * n_nodes,
+        # n_iter_unsupervised=50,
     )
     som.fit(X)  # type: ignore[arg-type]
     elapsed = time.perf_counter() - t0
@@ -134,7 +140,7 @@ def benchmark_torchsom(X: np.ndarray, n_nodes: int) -> BenchResult | None:
         side,
         X.shape[1],
         device="cuda",
-        learning_rate=1,
+        epochs=50,
         batch_size=len(X),  # full-batch
         sigma=0.2 * np.sqrt(n_nodes),
     )

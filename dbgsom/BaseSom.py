@@ -1383,7 +1383,11 @@ class BaseSom(BaseEstimator, ABC):
         number of graph hops along one side of an approximately square map.
         """
         s = sqrt(n_neurons) - 1
-        sigma_start = self.sigma_start if self.sigma_start is not None else 0.2 * s
+        sigma_start = (
+            self.sigma_start
+            if self.sigma_start is not None
+            else 0.2 * (np.sqrt(self._effective_max_neurons) - 1)
+        )
         sigma_end = self.sigma_end if self.sigma_end is not None else 0.05 * s
         return sigma_start, sigma_end
 
