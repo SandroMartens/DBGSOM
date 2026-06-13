@@ -1,0 +1,4 @@
+Algorithm,n_prototypes,Time (s),QE,TE,ARI,Silhouette
+DBGSOM,56,0.906,4.8073,0.1858,0.285,0.044
+MiniSom,64,32.675,4.6633,—,0.241,0.075
+SuSi,64,0.11,5.912,—,0.359,-0.035

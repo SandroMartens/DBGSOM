@@ -13,7 +13,7 @@ authors:
     orcid: 0009-0005-6546-9015
     affiliation: 1
 affiliations:
-  - name: Independent Researcher # TODO: ggf. anpassen
+  - name: Independent Researcher
     index: 1
 date: 2025-01-01 # TODO: Einreichungsdatum anpassen
 bibliography: paper.bib
@@ -33,7 +33,7 @@ The library provides two estimators: `SomVQ` for unsupervised vector quantizatio
 
 scikit-learn [@Pedregosa2012] is one of the most used Python libraries for non-deep-learning machine learning. This is because it allows end-to-end processing from pre-processing, training to scoring many different estimators. The core library of scikit-learn doesn't contain any self-organizing maps.
 
-`DBGSOM` addresses one of the major drawbacks of classical SOMs: The need to specify the layout and size of the map before the training. A single sensitivity parameter (`lambda*`) let's the map grow until the desired accuracy is met. The scikit-learn-compatible API — including `fit`, `predict`, `fit_predict`, `transform`, and `predict_proba`— enables drop-in use in cross-validation pipelines, `Pipeline` objects, and `GridSearchCV`.
+`DBGSOM` addresses one of the major drawbacks of classical SOMs: The need to specify the layout and size of the map before the training. A single sensitivity parameter (`lambda*`) let's the map grow until the desired accuracy is met. The scikit-learn-compatible API, including `fit`, `predict`, `fit_predict`, `transform`, and `predict_proba`, enables drop-in use in cross-validation pipelines, `Pipeline` objects, and `GridSearchCV`.
 
 The `transform` method departs from conventional SOM practice: rather than returning the index of the best-matching unit, it computes a sparse non-negative linear combination of prototype weights, yielding a meaningful embedding of each sample in prototype space [@Kohonen2007]. This allows a better encoding than the direct n-to-1 mapping to a single winner neuron. This representation is compatible with downstream scikit-learn estimators and dimensionality reduction workflows.
 
@@ -53,37 +53,39 @@ Since the GSOM has a dynamically changing grid, it cannot easiely implemented in
 
 The DBGSOM training procedure proceeds as follows:
 
-1. **Initialization.** Four neurons are initialized with weights sampled from the input data. Neurons are arranged on a rectangular grid and connected to their four orthogonal neighbors.
+1. **Initialization.** Four neurons are initialized with weights sampled from the input data. Neurons are arranged on a rectangular grid so that they form a square.
 2. **Assignment.** Each training sample is assigned to its nearest neuron (Best Matching Unit, BMU) by Euclidean distance or Cosine distance.
-3. **Weight update.** Neuron weights are updated toward the mean of the samples assigned to them. A neighorhood function lets neurons influence their neighbors weight update. The neighborhood width $\sigma$ decays over training epochs, transitioning the map from global to local organization [@Kohonen_2001].
+3. **Weight update.** Neuron weights are updated toward the mean of the samples assigned to them. A neighorhood function lets neurons influence their neighbors weight update.
 4. **Growth.** Boundary neurons whose accumulated quantization error exceeds the growing threshold $GT = \lambda \cdot \lVert \text{std}(X) \rVert$ spawn new neighboring neurons. Growth is restricted to the first half of training to ensure convergence.
 5. **Termination.** Growth ends when no boundary neurons fulfill $Qe_i > GT$ or `max_neurons` is reached. Training ends when `n_iter` epochs are completed or the map converged.
 
+The neighborhood width $\sigma$ decays over training epochs, transitioning the map from global to local organization.
 Topology preservation is measured by the topographic error `Te` or topographic function `Tf`[@Villmann1997]. `Te` is defined as the proportion of samples for which the first and second BMU are not on adjacent edges on the map grid. The `Tf` measures folds and tears by computing how close or far neuron pairs are in the feature space.
 
 # Research impact statement
 
 Benchmarks comparing DBGSOM to MiniSom, SuSi, KMeans, and AgglomerativeClustering are provided in the repository as Jupyter notebooks (`examples/som_comparison.ipynb`, `examples/clustering_comparison.ipynb`, `examples/manifold_comparison.ipynb`). Evaluations use the scikit-learn Digits dataset (1797 samples, 64 features, 10 classes) and the Fashion-MNIST dataset [@Xiao2017].
 
-On Digits with automatically determined cluster count (via DBGSOM's growing mechanism, applied as cluster count for all algorithms):
+On Fashion MNIST (10k samples) with automatically determined cluster count (via DBGSOM's growing mechanism, applied as cluster count for all algorithms):
 
-| Metric            | DBGSOM | MiniSom | SuSi | KMeans |
-| ----------------- | ------ | ------- | ---- | ------ |
-| ARI               | TODO   | TODO    | TODO | TODO   |
-| Silhouette        | TODO   | TODO    | TODO | TODO   |
-| Topographic error | <5%    | —       | —    | —      |
-| Training time (s) | TODO   | TODO    | TODO | TODO   |
+| Metric             | DBGSOM | MiniSom | SuSi  | torchsom |
+| ------------------ | ------ | ------- | ----- | -------- |
+| Quantization error | 16.51  | 17.27   | 17.64 | 19.23    |
+| Topographic error  | 0.067  | 0.085   | 0.013 | 0.0715   |
+| Neurons            | 131    | 131     | 131   | 131      |
 
-<!-- _TODO: Werte aus `examples/clustering_comparison.ipynb` eintragen._ -->
-
-# AI usage disclosure
-
-No generative AI was used until release v1.1.0 (Feb 2024). Claude Code was used in Code: to create benchmarks, refactor code, improve performance, implement mathematical formulas.In documentation: Mainly for editing and keeping consistency between reference papers, documentation and actual implementation.
+Lower bound for `Qe` using kmeans: `15.7153`.
 
 # Implementation Notes
 
-`DBGSOM` is implemented in Python (≥ 3.12) and uses NumPy for array operations and Numba [@numba] for JIT-compiled distance computations. The map topology is represented as a NetworkX [@networkx] graph, which simplifies the implementation of neighborhood queries and the growth mechanism. Visualization is provided via seaborn objects [@seaborn], supporting continuous and categorical color encoding of prototype attributes.
+`DBGSOM` is implemented in Python and uses NumPy [@Harris2020] for array operations and Numba [@Lam2015] for JIT-compiled distance computations. The map topology is represented as a NetworkX [@Hagberg2008] graph, which simplifies the implementation of neighborhood queries and the growth mechanism. Visualization is provided via seaborn objects [@Waskom2021], supporting continuous and categorical color encoding of prototype attributes.
 
 The package is distributed via PyPI (`pip install dbgsom`) and versioned according to semantic versioning. Continuous integration is configured via GitHub Actions, including unit tests, code quality checks with Ruff, and automated PyPI releases.
+
+![foo](examples\export\digits_classes_pca.png){width=80%}
+
+# AI usage disclosure
+
+No generative AI was used prior to release v1.2.0. Claude Code was used in Code: to create benchmarks, refactor code, improve performance, implement mathematical formulas. In documentation: Mainly for editing and keeping consistency between reference papers, documentation and actual implementation.
 
 # References
