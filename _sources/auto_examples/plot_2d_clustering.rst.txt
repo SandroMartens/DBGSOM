@@ -1050,7 +1050,7 @@ Key hyperparameters:
            <tr class="default">
                <td class="param"><a class="param-doc-link" style="text-decoration:none;">labels_</a></td>
                <td class="fitted-att-type">ndarray[int64](2309,)</td>
-               <td>[37,47,55,...,63,52,37]</td>
+               <td>[23,56,69,...,75,59,23]</td>
 
 
            </tr>
@@ -1077,7 +1077,7 @@ Key hyperparameters:
            <tr class="default">
                <td class="param"><a class="param-doc-link" style="text-decoration:none;">n_iter_</a></td>
                <td class="fitted-att-type">int</td>
-               <td>200</td>
+               <td>166</td>
 
 
            </tr>
@@ -1104,7 +1104,7 @@ Key hyperparameters:
            <tr class="default">
                <td class="param"><a class="param-doc-link" style="text-decoration:none;">quantization_error_</a></td>
                <td class="fitted-att-type">float</td>
-               <td>0.1881</td>
+               <td>0.1681</td>
 
 
            </tr>
@@ -1113,7 +1113,7 @@ Key hyperparameters:
            <tr class="default">
                <td class="param"><a class="param-doc-link" style="text-decoration:none;">random_state_</a></td>
                <td class="fitted-att-type">RandomState</td>
-               <td>RandomState(M...0x7F30A51F7E40</td>
+               <td>RandomState(M...0x7FEF13F2C140</td>
 
 
            </tr>
@@ -1122,7 +1122,7 @@ Key hyperparameters:
            <tr class="default">
                <td class="param"><a class="param-doc-link" style="text-decoration:none;">som_</a></td>
                <td class="fitted-att-type">Graph</td>
-               <td>&lt;networkx.cla...x7f30a2054110&gt;</td>
+               <td>&lt;networkx.cla...x7fef13f1c800&gt;</td>
 
 
            </tr>
@@ -1131,7 +1131,7 @@ Key hyperparameters:
            <tr class="default">
                <td class="param"><a class="param-doc-link" style="text-decoration:none;">topographic_error_</a></td>
                <td class="fitted-att-type">float</td>
-               <td>0.01256</td>
+               <td>0.01602</td>
 
 
            </tr>
@@ -1140,7 +1140,7 @@ Key hyperparameters:
            <tr class="default">
                <td class="param"><a class="param-doc-link" style="text-decoration:none;">topographic_product_</a></td>
                <td class="fitted-att-type">float</td>
-               <td>0.007143</td>
+               <td>0.00694</td>
 
 
            </tr>
@@ -1148,14 +1148,14 @@ Key hyperparameters:
 
            <tr class="default">
                <td class="param"><a class="param-doc-link" style="text-decoration:none;">weights_</a></td>
-               <td class="fitted-att-type">ndarray[float64](64, 2)</td>
-               <td>[[-0.42, 0.32],
-     [-0.09, 0.41],
-     [-0.26,-0.09],
+               <td class="fitted-att-type">ndarray[float64](77, 2)</td>
+               <td>[[-0.28, 0.09],
+     [ 0.02,-0.06],
+     [-0.45,-0.11],
      ...,
-     [-1.33,-1.2 ],
-     [ 1.43, 1.51],
-     [ 1.91,-1.04]]</td>
+     [ 1.73, 1.84],
+     [ 1.93,-1.02],
+     [-0.67, 1.58]]</td>
 
 
            </tr>
@@ -1465,7 +1465,7 @@ Lower values indicate better topology preservation.
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** (0 minutes 0.442 seconds)
+   **Total running time of the script:** (0 minutes 0.453 seconds)
 
 
 .. _sphx_glr_download_auto_examples_plot_2d_clustering.py:

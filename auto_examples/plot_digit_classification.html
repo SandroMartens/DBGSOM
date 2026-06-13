@@ -1945,7 +1945,7 @@ a.param-doc-link::before {
        <tr class="default">
            <td class="param"><a class="param-doc-link" style="text-decoration:none;">n_iter_</a></td>
            <td class="fitted-att-type">int</td>
-           <td>63</td>
+           <td>109</td>
 
 
        </tr>
@@ -1972,7 +1972,7 @@ a.param-doc-link::before {
        <tr class="default">
            <td class="param"><a class="param-doc-link" style="text-decoration:none;">quantization_error_</a></td>
            <td class="fitted-att-type">float</td>
-           <td>5.11</td>
+           <td>4.853</td>
 
 
        </tr>
@@ -1981,7 +1981,7 @@ a.param-doc-link::before {
        <tr class="default">
            <td class="param"><a class="param-doc-link" style="text-decoration:none;">random_state_</a></td>
            <td class="fitted-att-type">RandomState</td>
-           <td>RandomState(M...0x7F30A6FDAC40</td>
+           <td>RandomState(M...0x7FEF15F62D40</td>
 
 
        </tr>
@@ -1990,7 +1990,7 @@ a.param-doc-link::before {
        <tr class="default">
            <td class="param"><a class="param-doc-link" style="text-decoration:none;">som_</a></td>
            <td class="fitted-att-type">Graph</td>
-           <td>&lt;networkx.cla...x7f30b1263590&gt;</td>
+           <td>&lt;networkx.cla...x7fef1fc09a00&gt;</td>
 
 
        </tr>
@@ -1999,7 +1999,7 @@ a.param-doc-link::before {
        <tr class="default">
            <td class="param"><a class="param-doc-link" style="text-decoration:none;">topographic_error_</a></td>
            <td class="fitted-att-type">float</td>
-           <td>0.1558</td>
+           <td>0.07234</td>
 
 
        </tr>
@@ -2008,7 +2008,7 @@ a.param-doc-link::before {
        <tr class="default">
            <td class="param"><a class="param-doc-link" style="text-decoration:none;">topographic_product_</a></td>
            <td class="fitted-att-type">float</td>
-           <td>-0.07066</td>
+           <td>-0.03921</td>
 
 
        </tr>
@@ -2016,14 +2016,14 @@ a.param-doc-link::before {
 
        <tr class="default">
            <td class="param"><a class="param-doc-link" style="text-decoration:none;">weights_</a></td>
-           <td class="fitted-att-type">ndarray[float64](27, 64)</td>
-           <td>[[ 0.  ,-0.22,-0.1 ,..., 0.61, 0.05,-0.19],
- [ 0.  , 0.2 , 0.7 ,..., 0.51,-0.17,-0.19],
- [ 0.  ,-0.14, 0.33,...,-0.36,-0.37,-0.19],
+           <td class="fitted-att-type">ndarray[float64](41, 64)</td>
+           <td>[[ 0.  ,-0.32,-0.53,...,-0.47,-0.48,-0.2 ],
+ [ 0.  ,-0.33,-0.51,..., 0.38,-0.13,-0.19],
+ [ 0.  ,-0.24, 0.19,...,-0.25,-0.42,-0.2 ],
  ...,
- [ 0.  ,-0.33,-0.65,...,-0.7 ,-0.5 ,-0.2 ],
- [ 0.  ,-0.34,-0.95,...,-1.07,-0.51,-0.2 ],
- [ 0.  ,-0.33,-0.26,..., 0.01,-0.42,-0.2 ]]</td>
+ [ 0.  ,-0.34,-0.53,...,-1.1 ,-0.51,-0.2 ],
+ [ 0.  ,-0.28, 0.49,..., 1.35, 3.07, 4.93],
+ [ 0.  ,-0.32,-0.25,..., 0.17,-0.37,-0.19]]</td>
 
 
        </tr>
@@ -2214,9 +2214,9 @@ forceTheme('sk-container-id-1');</script></body>
 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Quantization error: </span><span class="si">{</span><span class="n">som</span><span class="o">.</span><span class="n">quantization_error_</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 </pre></div>
 </div>
-<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>Accuracy:           0.8715
-Topographic error:  0.1558
-Quantization error: 5.1095
+<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>Accuracy:           0.8937
+Topographic error:  0.0723
+Quantization error: 4.8533
 </pre></div>
 </div>
 </section>
@@ -2235,7 +2235,7 @@ Reveals the structure of the learned representation in weight space.</p>
 <div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="n">som</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">layout</span><span class="o">=</span><span class="s2">&quot;pca&quot;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;label&quot;</span><span class="p">,</span> <span class="n">palette</span><span class="o">=</span><span class="s2">&quot;Set1&quot;</span><span class="p">,</span> <span class="n">X</span><span class="o">=</span><span class="n">digits_X</span><span class="p">)</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
 </pre></div>
 </div>
-<img src="../_images/sphx_glr_plot_digit_classification_002.png" srcset="../_images/sphx_glr_plot_digit_classification_002.png" alt="plot digit classification" class = "sphx-glr-single-img"/><p class="sphx-glr-timing"><strong>Total running time of the script:</strong> (0 minutes 10.785 seconds)</p>
+<img src="../_images/sphx_glr_plot_digit_classification_002.png" srcset="../_images/sphx_glr_plot_digit_classification_002.png" alt="plot digit classification" class = "sphx-glr-single-img"/><p class="sphx-glr-timing"><strong>Total running time of the script:</strong> (0 minutes 10.522 seconds)</p>
 <div class="sphx-glr-footer sphx-glr-footer-example docutils container" id="sphx-glr-download-auto-examples-plot-digit-classification-py">
 <div class="sphx-glr-download sphx-glr-download-jupyter docutils container">
 <p><a class="reference download internal" download="" href="../_downloads/fa9e1c4f65b45b67613acd4577892f02/plot_digit_classification.ipynb"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">Jupyter</span> <span class="pre">notebook:</span> <span class="pre">plot_digit_classification.ipynb</span></code></a></p>
