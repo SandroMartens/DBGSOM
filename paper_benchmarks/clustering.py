@@ -29,6 +29,7 @@ RESULTS_DIR = Path(__file__).parent / "results"
 DBGSOM_PARAMS = dict(
     n_iter=500,
     lambda_=15.8,
+    sigma_end=1,
     max_neurons=100,
     random_state=RANDOM_STATE,
 )
@@ -54,6 +55,15 @@ def _row(name, n_proto, elapsed, qe, te, y_true, labels):
 
 
 X_test_global: np.ndarray  # set in main
+
+
+def _topographic_error(X: np.ndarray, weights: np.ndarray, side: int) -> float:
+    """Fraction of samples where 1st and 2nd BMU are not grid-adjacent."""
+    dists = np.linalg.norm(X[:, None, :] - weights[None, :, :], axis=2)
+    top2 = np.argpartition(dists, kth=1, axis=1)[:, :2]
+    r1, c1 = top2[:, 0] // side, top2[:, 0] % side
+    r2, c2 = top2[:, 1] // side, top2[:, 1] % side
+    return float(np.mean((np.abs(r1 - r2) + np.abs(c1 - c2)) != 1))
 
 
 def train_dbgsom(X_train, X_test, y_test):
@@ -82,11 +92,11 @@ def train_minisom(X_train, X_test, y_test, n_neurons):
         side,
         side,
         X_train.shape[1],
-        sigma=1.0,
+        sigma=0.2 * np.sqrt(n_neurons),
         learning_rate=0.5,
         random_seed=RANDOM_STATE,
     )
-    som.train(X_train, num_iteration=len(X_train) * 500, verbose=False)
+    som.train(X_train, num_iteration=len(X_train) * 10, verbose=False)
     elapsed = time.perf_counter() - t0
 
     def _winner_flat(x):
@@ -94,10 +104,13 @@ def train_minisom(X_train, X_test, y_test, n_neurons):
         return r * side + c
 
     labels = np.array([_winner_flat(x) for x in X_test])
-    weights = som.get_weights()
-    qe = float(np.mean([np.linalg.norm(x - weights[som.winner(x)]) for x in X_test]))
+    weights_flat = som.get_weights().reshape(-1, X_train.shape[1])
+    qe = float(
+        np.mean([np.linalg.norm(x - weights_flat[_winner_flat(x)]) for x in X_test])
+    )
+    te = _topographic_error(X_test, weights_flat, side)
     print(f"  MiniSom ({side}×{side}): {elapsed:.3f}s")
-    return _row("MiniSom", side * side, elapsed, qe, None, y_test, labels)
+    return _row("MiniSom", side * side, elapsed, qe, te, y_test, labels)
 
 
 def train_susi(X_train, X_test, y_test, n_neurons):
@@ -119,8 +132,42 @@ def train_susi(X_train, X_test, y_test, n_neurons):
     labels = rows_idx * side + cols_idx
     bmu_weights = som.unsuper_som_[rows_idx, cols_idx]
     qe = float(np.mean(np.linalg.norm(X_test - bmu_weights, axis=1)))
+    weights_flat = som.unsuper_som_.reshape(-1, X_test.shape[1])
+    te = _topographic_error(X_test, weights_flat, side)
     print(f"  SuSi ({side}×{side}): {elapsed:.3f}s")
-    return _row("SuSi", side * side, elapsed, qe, None, y_test, labels)
+    return _row("SuSi", side * side, elapsed, qe, te, y_test, labels)
+
+
+def train_torchsom(X_train, X_test, y_test, n_neurons):
+    try:
+        import torch
+        from torchsom import SOM
+    except ImportError:
+        print("  torchsom not installed — skip (pip install torchsom)")
+        return None
+
+    side = math.ceil(math.sqrt(n_neurons))
+    X_train_t = torch.from_numpy(X_train.astype(np.float32))
+    t0 = time.perf_counter()
+    som = SOM(
+        side,
+        side,
+        X_train.shape[1],
+        sigma=0.2 * np.sqrt(n_neurons),
+        batch_size=len(X_train),  # full-batch
+    )
+    som.fit(X_train_t)
+    elapsed = time.perf_counter() - t0
+
+    # BMU + QE from weights directly — avoids depending on forward pass API
+    weights = som.weights.detach().cpu().numpy().reshape(-1, X_train.shape[1])
+    dists = np.linalg.norm(X_test[:, None, :] - weights[None, :, :], axis=2)
+    labels = np.argmin(dists, axis=1)
+    qe = float(np.mean(np.min(dists, axis=1)))
+    te = _topographic_error(X_test, weights, side)
+
+    print(f"  torchsom ({side}×{side}): {elapsed:.3f}s")
+    return _row("torchsom", side * side, elapsed, qe, te, y_test, labels)
 
 
 def main():
@@ -134,8 +181,10 @@ def main():
     row_dbgsom, n_neurons = train_dbgsom(X_train, X_test, y_test)
     row_minisom = train_minisom(X_train, X_test, y_test, n_neurons)
     row_susi = train_susi(X_train, X_test, y_test, n_neurons)
+    row_torchsom = train_torchsom(X_train, X_test, y_test, n_neurons)
 
-    rows = [r for r in [row_dbgsom, row_minisom, row_susi] if r is not None]
+    all_rows = [row_dbgsom, row_minisom, row_susi, row_torchsom]
+    rows = [r for r in all_rows if r is not None]
     df = pd.DataFrame(rows).set_index("Algorithm")
 
     out = RESULTS_DIR / "clustering_digits.csv"
