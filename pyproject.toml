@@ -56,6 +56,9 @@ name = "pytorch-cu128"
 torch = { index = "pytorch-cu128" }
 torchvision = { index = "pytorch-cu128" }
 
+[tool.uv.extra-build-dependencies]
+somoclu = ["numpy"]
+
 [tool.ruff.lint]
 select = [
     "E", "W",    # PEP 8 Fehler und Warnungen
@@ -94,6 +97,7 @@ examples = [
     "ipywidgets>=8.0.0",
     "minisom>=2.3.6",
     "scikit-image>=0.23.0",
+    "somoclu>=1.7.6",
     "susi>=1.4.3",
     "torch",
     "torchsom>=0.1.0",

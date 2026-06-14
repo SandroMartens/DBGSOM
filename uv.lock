@@ -519,6 +519,7 @@ examples = [
     { name = "ipywidgets" },
     { name = "minisom" },
     { name = "scikit-image" },
+    { name = "somoclu" },
     { name = "susi" },
     { name = "torch" },
     { name = "torchsom" },
@@ -566,6 +567,7 @@ examples = [
     { name = "ipywidgets", specifier = ">=8.0.0" },
     { name = "minisom", specifier = ">=2.3.6" },
     { name = "scikit-image", specifier = ">=0.23.0" },
+    { name = "somoclu", specifier = ">=1.7.6" },
     { name = "susi", specifier = ">=1.4.3" },
     { name = "torch", index = "https://download.pytorch.org/whl/cu128" },
     { name = "torchsom", specifier = ">=0.1.0" },
@@ -2279,6 +2281,17 @@ sdist = { url = "https://files.pythonhosted.org/packages/43/f8/0a71edf031f03c40d
 wheels = [
     { url = "https://files.pythonhosted.org/packages/4c/07/2ebca9b11fb9be7340a818d8d6f63feaebb146be2c4afbd6061701d6df6e/snowballstemmer-3.1.1-py3-none-any.whl", hash = "sha256:7e207fa178741da09cdee59d3ecec3827ad5f92b1fc5c9ff3755b639f71f5752", size = 104164, upload-time = "2026-06-03T00:56:38.614Z" },
 ]
+
+[[package]]
+name = "somoclu"
+version = "1.7.6"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "matplotlib" },
+    { name = "numpy" },
+    { name = "scipy" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/74/b1/a49d8a78fa52cf99947998118fd7baac858e763cb43792e09571c9dc5986/somoclu-1.7.6.tar.gz", hash = "sha256:3c3a7e54c3659ba214c644a0de0a4cc3fe55126a57c9c19920fa5609f5c8f664", size = 1583562, upload-time = "2023-02-18T02:51:00.4Z" }
 
 [[package]]
 name = "soupsieve"

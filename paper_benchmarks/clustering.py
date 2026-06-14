@@ -16,10 +16,9 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-from sklearn.datasets import load_digits
+from sklearn.datasets import make_blobs
 from sklearn.metrics import adjusted_rand_score, silhouette_score
 from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import StandardScaler
 
 from dbgsom import SomVQ
 
@@ -28,16 +27,24 @@ RESULTS_DIR = Path(__file__).parent / "results"
 
 DBGSOM_PARAMS = dict(
     n_iter=500,
-    lambda_=15,
+    lambda_=20,
     sigma_end=1,
     random_state=RANDOM_STATE,
 )
 
 
 def load_data():
-    digits = load_digits()
-    X = StandardScaler().fit_transform(digits.data)
-    y = digits.target
+    X, y = make_blobs(
+        n_samples=10_000,
+        n_features=30,
+        centers=10,
+        random_state=RANDOM_STATE,
+        # return_centers=True,
+    )
+
+    # digits = load_digits()
+    # X = StandardScaler().fit_transform(digits.data)
+    # y = digits.target
     return train_test_split(X, y, test_size=0.2, random_state=RANDOM_STATE, stratify=y)
 
 
@@ -92,7 +99,6 @@ def train_minisom(X_train, X_test, y_test, n_neurons):
         side,
         X_train.shape[1],
         sigma=0.2 * np.sqrt(n_neurons),
-        learning_rate=0.5,
         random_seed=RANDOM_STATE,
     )
     som.train(X_train, num_iteration=500 * n_neurons, verbose=False)
@@ -135,6 +141,22 @@ def train_susi(X_train, X_test, y_test, n_neurons):
     te = _topographic_error(X_test, weights_flat, side)
     print(f"  SuSi ({side}×{side}): {elapsed:.3f}s")
     return _row("SuSi", side * side, elapsed, qe, te, y_test, labels)
+
+
+def train_kmeans(X_train, X_test, y_test, n_clusters):
+    from sklearn.cluster import KMeans
+
+    t0 = time.perf_counter()
+    km = KMeans(n_clusters=n_clusters, random_state=RANDOM_STATE, n_init="auto")
+    km.fit(X_train)
+    elapsed = time.perf_counter() - t0
+
+    labels = km.predict(X_test)
+    centers = km.cluster_centers_
+    dists = np.linalg.norm(X_test[:, None, :] - centers[None, :, :], axis=2)
+    qe = float(np.mean(np.min(dists, axis=1)))
+    print(f"  KMeans ({n_clusters}): {elapsed:.3f}s")
+    return _row("KMeans", n_clusters, elapsed, qe, None, y_test, labels)
 
 
 def train_torchsom(X_train, X_test, y_test, n_neurons):
@@ -182,10 +204,11 @@ def main():
     row_minisom = train_minisom(X_train, X_test, y_test, n_neurons)
     row_susi = train_susi(X_train, X_test, y_test, n_neurons)
     row_torchsom = train_torchsom(X_train, X_test, y_test, n_neurons)
+    row_kmeans = train_kmeans(X_train, X_test, y_test, n_neurons)
 
-    all_rows = [row_dbgsom, row_minisom, row_susi, row_torchsom]
+    all_rows = [row_dbgsom, row_minisom, row_susi, row_torchsom, row_kmeans]
     rows = [r for r in all_rows if r is not None]
-    df = pd.DataFrame(rows).set_index("Algorithm")
+    df = pd.DataFrame(rows).set_index("Algorithm").round(2)
 
     out = RESULTS_DIR / "clustering_digits.csv"
     df.to_csv(out)
