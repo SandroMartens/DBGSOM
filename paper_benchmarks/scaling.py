@@ -23,8 +23,8 @@ from sklearn.preprocessing import StandardScaler
 from dbgsom import SomVQ
 
 RANDOM_STATE = 42
-expo = np.arange(0, 7, step=0.5)
-expo = np.arange(0, 5.5, step=0.5)
+expo = np.arange(0, 8, step=0.5)
+# expo = np.arange(0, 5.5, step=0.5)
 N_SIZES = (1000 * 2**expo).astype("int")
 
 D = 30
@@ -33,7 +33,7 @@ RESULTS_DIR = Path(__file__).parent / "results"
 DBGSOM_PARAMS = dict(
     n_iter=1500,
     lambda_=100,
-    max_neurons=400,
+    max_neurons=500,
     sigma_end=1,
     pointer_search="all",
     neighborhood_function="cutgauss",
@@ -46,7 +46,7 @@ DBGSOM_PARAMS = dict(
 DBGSOM_TEXTBOOK_PARAMS = dict(
     n_iter=1500,
     lambda_=100,
-    max_neurons=400,
+    max_neurons=500,
     sigma_end=1,
     pointer_search="none",
     neighborhood_function="gaussian",
@@ -216,6 +216,7 @@ def main():
             "DBGSOM_qe": round(r_dbgsom.qe, 4),
             "DBGSOM_te": round(r_dbgsom.te, 4) if r_dbgsom.te is not None else None,
             "DBGSOM_textbook_time": round(r_dbgsom_tb.time, 3),
+            "DBGSOM_textbook_n_nodes": round(r_dbgsom_tb.n_nodes, 3),
             "DBGSOM_textbook_qe": round(r_dbgsom_tb.qe, 4),
         }
         competitors = [
