@@ -81,12 +81,11 @@ Lower bound for `Qe` using kmeans: `15.7153`.
 
 The package is distributed via PyPI (`pip install dbgsom`) and versioned according to semantic versioning. Continuous integration is configured via GitHub Actions, including unit tests, code quality checks with Ruff, and automated PyPI releases.
 
-| Grid projection                                                      | PCA projection                                                     |
-| -------------------------------------------------------------------- | ------------------------------------------------------------------ |
-| ![Grid projection](paper_benchmarks/results/som_grid.png){width=40%} | ![PCA projection](paper_benchmarks/results/som_pca.png){width=40%} |
+|                           Grid projection                            |                           PCA projection                           |
+| :------------------------------------------------------------------: | :----------------------------------------------------------------: |
+| ![Grid projection](paper_benchmarks/results/som_grid.png){width=80%} | ![PCA projection](paper_benchmarks/results/som_pca.png){width=80%} |
 
-<!-- ![Grid projection](paper_benchmarks/results/som_grid.png){width=40%}
-![PCA projection](paper_benchmarks/results/som_pca.png){width=40%} -->
+![scaling](paper_benchmarks/results/scaling_plot.png){width=80%}
 
 # AI usage disclosure
 

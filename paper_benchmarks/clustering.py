@@ -28,9 +28,8 @@ RESULTS_DIR = Path(__file__).parent / "results"
 
 DBGSOM_PARAMS = dict(
     n_iter=500,
-    lambda_=15.8,
+    lambda_=15,
     sigma_end=1,
-    # max_neurons=100,
     random_state=RANDOM_STATE,
 )
 
@@ -153,7 +152,7 @@ def train_torchsom(X_train, X_test, y_test, n_neurons):
         side,
         side,
         X_train.shape[1],
-        epochs=36,
+        epochs=50,
         sigma=0.2 * np.sqrt(n_neurons),
         batch_size=len(X_train),  # full-batch
     )

@@ -23,18 +23,34 @@ from sklearn.preprocessing import StandardScaler
 from dbgsom import SomVQ
 
 RANDOM_STATE = 42
-N_SIZES = [500, 1000, 2000, 5000, 10000, 20000, 50000, 80_0000]
+expo = np.arange(0, 7, step=0.5)
+expo = np.arange(0, 5.5, step=0.5)
+N_SIZES = (1000 * 2**expo).astype("int")
+
 D = 30
 RESULTS_DIR = Path(__file__).parent / "results"
 
 DBGSOM_PARAMS = dict(
-    n_iter=1000,
+    n_iter=1500,
     lambda_=100,
-    max_neurons=300,
+    max_neurons=400,
     sigma_end=1,
     pointer_search="all",
     neighborhood_function="cutgauss",
     cutgauss_phase="all",
+    winner_stability_threshold=0.02,
+    smoothing_steps=1,
+    random_state=RANDOM_STATE,
+)
+
+DBGSOM_TEXTBOOK_PARAMS = dict(
+    n_iter=1500,
+    lambda_=100,
+    max_neurons=400,
+    sigma_end=1,
+    pointer_search="none",
+    neighborhood_function="gaussian",
+    cutgauss_phase="none",
     random_state=RANDOM_STATE,
 )
 
@@ -64,9 +80,9 @@ def _qe_from_weights(X: np.ndarray, weights: np.ndarray, chunk: int = 2000) -> f
     return float(mins.mean())
 
 
-def benchmark_dbgsom(X: np.ndarray) -> BenchResult:
+def benchmark_dbgsom(X: np.ndarray, params: dict | None = None) -> BenchResult:
     t0 = time.perf_counter()
-    som = SomVQ(**DBGSOM_PARAMS)
+    som = SomVQ(**(params or DBGSOM_PARAMS))  # type: ignore[arg-type]
     som.fit(X)
     elapsed = time.perf_counter() - t0
     return BenchResult(
@@ -93,6 +109,7 @@ def benchmark_minisom(X: np.ndarray, n_nodes: int) -> BenchResult | None:
         random_seed=RANDOM_STATE,
     )
     som.train(X, num_iteration=500 * n_nodes, verbose=False)
+    # som.train(X, num_iteration=50, verbose=False, use_epochs=True)
     elapsed = time.perf_counter() - t0
 
     weights = som.get_weights().reshape(-1, X.shape[1])  # (side*side, dim)
@@ -125,30 +142,51 @@ def benchmark_susi(X: np.ndarray, n_nodes: int) -> BenchResult | None:
     return BenchResult(time=elapsed, n_nodes=side * side, qe=qe)
 
 
-def benchmark_torchsom(X: np.ndarray, n_nodes: int) -> BenchResult | None:
+_torchsom_warmed_up = False
+
+
+def _warmup_cuda() -> str:
+    """Initialize CUDA once before benchmarking to exclude warmup from timing."""
+    global _torchsom_warmed_up
+    try:
+        import torch
+
+        if torch.cuda.is_available() and not _torchsom_warmed_up:
+            torch.zeros(1).cuda()
+            _torchsom_warmed_up = True
+        return "cuda" if torch.cuda.is_available() else "cpu"
+    except Exception:
+        return "cpu"
+
+
+def benchmark_torchsom(X: np.ndarray, n_nodes: int, device: str) -> BenchResult | None:
     try:
         import torch
         from torchsom import SOM
     except ImportError:
         return None
 
+    if device == "cuda" and not torch.cuda.is_available():
+        return None
+
     side = math.ceil(math.sqrt(n_nodes))
     X_t = torch.from_numpy(X.astype(np.float32))
+    if device == "cuda":
+        X_t = X_t.cuda()
     t0 = time.perf_counter()
     som = SOM(
         side,
         side,
         X.shape[1],
-        device="cuda",
+        device=device,
         epochs=50,
-        batch_size=len(X),  # full-batch
+        batch_size=len(X),  # full-batch, comparable to DBGSOM batch mode
         sigma=0.2 * np.sqrt(n_nodes),
     )
     som.fit(X_t)
     elapsed = time.perf_counter() - t0
 
     try:
-        # torchsom stores weights as a Parameter; convert to numpy
         w = som.weights.detach().cpu().numpy().reshape(-1, X.shape[1])
         qe = _qe_from_weights(X, w)
     except Exception:
@@ -165,9 +203,11 @@ def main():
         X = make_data(n)
 
         r_dbgsom = benchmark_dbgsom(X)
+        r_dbgsom_tb = benchmark_dbgsom(X, DBGSOM_TEXTBOOK_PARAMS)
         r_minisom = benchmark_minisom(X, r_dbgsom.n_nodes)
         r_susi = benchmark_susi(X, r_dbgsom.n_nodes)
-        r_torchsom = benchmark_torchsom(X, r_dbgsom.n_nodes)
+        r_torchsom_cpu = benchmark_torchsom(X, r_dbgsom.n_nodes, "cpu")
+        r_torchsom_gpu = benchmark_torchsom(X, r_dbgsom.n_nodes, "cuda")
 
         row: dict = {
             "N": n,
@@ -175,11 +215,14 @@ def main():
             "DBGSOM_n_nodes": r_dbgsom.n_nodes,
             "DBGSOM_qe": round(r_dbgsom.qe, 4),
             "DBGSOM_te": round(r_dbgsom.te, 4) if r_dbgsom.te is not None else None,
+            "DBGSOM_textbook_time": round(r_dbgsom_tb.time, 3),
+            "DBGSOM_textbook_qe": round(r_dbgsom_tb.qe, 4),
         }
         competitors = [
             ("MiniSom", r_minisom),
             ("SuSi", r_susi),
-            ("torchsom", r_torchsom),
+            ("torchsom_cpu", r_torchsom_cpu),
+            ("torchsom_gpu", r_torchsom_gpu),
         ]
         for label, r in competitors:
             if r is not None:
@@ -188,11 +231,16 @@ def main():
                 row[f"{label}_qe"] = round(r.qe, 4)
 
         rows.append(row)
-        parts = [f"DBGSOM={r_dbgsom.time:.2f}s n={r_dbgsom.n_nodes}"]
+        parts = [
+            f"DBGSOM={r_dbgsom.time:.2f}s",
+            f"DBGSOM_textbook={r_dbgsom_tb.time:.2f}s",
+            f"n={r_dbgsom.n_nodes}",
+        ]
         competitors = [
             ("MiniSom", r_minisom),
             ("SuSi", r_susi),
-            ("torchsom", r_torchsom),
+            ("torchsom_cpu", r_torchsom_cpu),
+            ("torchsom_gpu", r_torchsom_gpu),
         ]
         for label, r in competitors:
             if r is not None:
