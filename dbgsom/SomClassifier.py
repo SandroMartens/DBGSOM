@@ -105,10 +105,6 @@ class SomClassifier(TransformerMixin, ClassifierMixin, BaseSom):
 
     """
 
-    def __sklearn_tags__(self):
-        tags = super().__sklearn_tags__()
-        return tags
-
     def fit(self, X: npt.ArrayLike, y: npt.ArrayLike | None = None) -> "SomClassifier":
         """Train SomClassifier on labelled data.
 
@@ -158,11 +154,6 @@ class SomClassifier(TransformerMixin, ClassifierMixin, BaseSom):
                 self.som_.nodes[neuron]["probabilities"][class_id] = (
                     count / hit_count if hit_count > 0 else 1
                 )
-
-    def _fit(self, X: npt.ArrayLike, y: None | npt.ArrayLike = None):
-        pass
-        # classes, y = np.unique(y, return_inverse=True)
-        # self.classes_ = classes
 
     def predict(self, X: npt.ArrayLike) -> npt.NDArray:
         """Predict class labels for samples in X.

@@ -14,7 +14,6 @@ try:
     import numpy as np
     import numpy.typing as npt
     import pandas as pd
-    import scipy.spatial.distance
     import seaborn.objects as so
     from scipy.sparse import csr_array, issparse
     from scipy.sparse.csgraph import shortest_path as csgraph_shortest_path
@@ -283,11 +282,6 @@ class BaseSom(BaseEstimator, ABC):
     def __sklearn_is_fitted__(self) -> bool:
         return hasattr(self, "weights_")
 
-    def __sklearn_tags__(self):
-        tags = super().__sklearn_tags__()
-        return tags
-        # tags.transformer_tags = True
-
     def fit(self, X: npt.ArrayLike, y: None | npt.ArrayLike = None) -> Self:
         """Train SOM on training data.
 
@@ -309,7 +303,7 @@ class BaseSom(BaseEstimator, ABC):
 
         if y is None:
             X = validate_data(self, X, dtype="numeric", ensure_min_samples=4)
-        elif y is not None:
+        else:
             X, y = validate_data(self, X, y, dtype="numeric", ensure_min_samples=4)
             check_classification_targets(y)
             classes, y = np.unique(y, return_inverse=True)
@@ -343,14 +337,12 @@ class BaseSom(BaseEstimator, ABC):
                 UserWarning,
                 stacklevel=2,
             )
-        # self.rep = self._calculate_rep(X)
         self.topographic_error_ = self._calculate_topographic_error(X)
         distances, _ = self._get_winning_neurons(X, n_bmu=1)
         self.quantization_error_ = float(np.mean(distances))
         self.topographic_product_ = self._compute_topographic_product()
         self.n_features_in_ = X.shape[1]
         self._write_node_statistics(X)
-        self._write_edge_statistics()
         self._label_prototypes(X, y)
 
         # Vertical growing phase
@@ -382,7 +374,6 @@ class BaseSom(BaseEstimator, ABC):
         # todo: refactor in sub classes
         self.vertical_growing_threshold_ = self.tau_2 * self.qe_0_
         _, winners = self._get_winning_neurons(X, n_bmu=1)
-        node_to_idx = {node: i for i, node in enumerate(self.neurons_)}
         relevant_nodes = [
             node
             for (node, error) in self.som_.nodes(data="error")
@@ -391,7 +382,7 @@ class BaseSom(BaseEstimator, ABC):
         for node in relevant_nodes:
             new_som = clone(self)
             new_som.qe_0_ = self.qe_0_
-            node_idx = node_to_idx[node]
+            node_idx = self._node_to_idx[node]
             X_filtered = X[winners == node_idx]
             if y is not None:
                 y_filtered = y[winners == node_idx]
@@ -446,15 +437,6 @@ class BaseSom(BaseEstimator, ABC):
             },
         )
 
-    def _write_edge_statistics(self) -> None:
-        som = self.som_
-
-        for u, v in som.edges:
-            weight_x = som.nodes[u]["weight"]
-            weight_y = som.nodes[v]["weight"]
-            distance = np.linalg.norm(weight_x - weight_y)
-            som.edges[u, v]["weight_distance"] = 1 / float(distance + 0.001)
-
     def _extract_values_from_graph(self, attribute: str) -> np.ndarray:
         """Return an array with some given attribute of the nodes."""
         return np.array([data[attribute] for _, data in self.som_.nodes.data()])
@@ -483,7 +465,7 @@ class BaseSom(BaseEstimator, ABC):
         check_is_fitted(self, attributes=["weights_"])
         if y is None:
             X = validate_data(self, X, reset=False)
-        elif y is not None:
+        else:
             X, y = validate_data(self, X, y, reset=False)
         transformer = SparseCoder(
             dictionary=normalize(self.weights_),
@@ -707,19 +689,6 @@ class BaseSom(BaseEstimator, ABC):
         counts = np.bincount(src, minlength=n)
         total = np.bincount(src, weights=edge_distances, minlength=n)
         return np.where(counts > 0, total / counts, 0.0)
-
-    # def _calculate_rep(self, X: npt.NDArray) -> None:
-    #     """Return the resemble entropy parameter.
-
-    #     1. Calculate histogram of components of each sample.
-    #     2. Calculate entropy of each sample from histogram
-    #     3. Save minimum and maximum rep for all classes
-
-    #     Use 20 bins as default
-    #     """
-    #     hists = []
-    #     for sample in X:
-    #         hists.append(np.histogram(sample, bins=20)[0])
 
     def _initialize_som(self, data: npt.NDArray) -> None:
         """First training phase.
@@ -1108,10 +1077,13 @@ class BaseSom(BaseEstimator, ABC):
         IEEE Access, 2021.
         """
         if self.growth_criterion == "entropy":
+            if y is None:
+                raise ValueError("growth_criterion='entropy' requires y (labels).")
+            from scipy.stats import entropy as _scipy_entropy
+
             for winner_index, neuron in enumerate(self.neurons_):
-                counts = np.bincount(y[winners == winner_index])  # ty:ignore[not-subscriptable]
-                error = scipy.stats.entropy(counts, base=2)
-                self.som_.nodes[neuron]["error"] = error
+                counts = np.bincount(y[winners == winner_index])
+                self.som_.nodes[neuron]["error"] = _scipy_entropy(counts, base=2)
 
         else:
             errors = numba_quantization_error(
@@ -1504,12 +1476,8 @@ class BaseSom(BaseEstimator, ABC):
         chebyshev_dist_matrix = np.abs(neurons_arr[:, None] - neurons_arr[None, :]).max(
             axis=-1
         )
-        topographic_error = 0
-        for node in bmu_indices:
-            distance = chebyshev_dist_matrix[node[0], node[1]]
-            topographic_error += 1 if distance > 1 else 0
-
-        return topographic_error / X.shape[0]
+        bmu_chebyshev = chebyshev_dist_matrix[bmu_indices[:, 0], bmu_indices[:, 1]]
+        return float(np.mean(bmu_chebyshev > 1))
 
     def topographic_function(self, X: npt.ArrayLike) -> npt.NDArray:
         """Compute the topographic function for the SOM.
@@ -1639,9 +1607,8 @@ class BaseSom(BaseEstimator, ABC):
 
         n_neurons = self.som_.number_of_nodes()
         connectivity_matrix = np.zeros(shape=(n_neurons, n_neurons))
-        for node in bmu_indices:
-            connectivity_matrix[node[0], node[1]] = 1
-            connectivity_matrix[node[1], node[0]] = 1
+        connectivity_matrix[bmu_indices[:, 0], bmu_indices[:, 1]] = 1
+        connectivity_matrix[bmu_indices[:, 1], bmu_indices[:, 0]] = 1
 
         distance_matrix = csgraph_shortest_path(connectivity_matrix, directed=False)
 

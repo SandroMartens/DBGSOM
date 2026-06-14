@@ -103,10 +103,6 @@ class SomVQ(TransformerMixin, ClusterMixin, BaseSom):
 
     """
 
-    def __sklearn_tags__(self):
-        tags = super().__sklearn_tags__()
-        return tags
-
     def _label_prototypes(self, X: npt.ArrayLike, y=None) -> None:
         for i, neuron in enumerate(self.som_):
             self.som_.nodes[neuron]["label"] = i
