@@ -16,9 +16,10 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-from sklearn.datasets import make_blobs
+from sklearn.datasets import load_digits
 from sklearn.metrics import adjusted_rand_score, silhouette_score
 from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
 
 from dbgsom import SomVQ
 
@@ -34,18 +35,24 @@ DBGSOM_PARAMS = dict(
 
 
 def load_data():
-    X, y = make_blobs(
-        n_samples=10_000,
-        n_features=30,
-        centers=10,
-        random_state=RANDOM_STATE,
-        # return_centers=True,
-    )
+    # X, y = make_blobs(
+    #     n_samples=10_000,
+    #     n_features=30,
+    #     centers=10,
+    #     random_state=RANDOM_STATE,
+    #     # return_centers=True,
+    # )
 
-    # digits = load_digits()
-    # X = StandardScaler().fit_transform(digits.data)
-    # y = digits.target
-    return train_test_split(X, y, test_size=0.2, random_state=RANDOM_STATE, stratify=y)
+    digits = load_digits()
+    X_train, X_test, y_train, y_test = train_test_split(
+        digits.data,
+        digits.target,
+        test_size=0.2,
+        random_state=RANDOM_STATE,
+        stratify=digits.target,
+    )
+    scaler = StandardScaler().fit(X_train)
+    return scaler.transform(X_train), scaler.transform(X_test), y_train, y_test
 
 
 def _row(name, n_proto, elapsed, qe, te, y_true, labels):
@@ -176,7 +183,7 @@ def train_torchsom(X_train, X_test, y_test, n_neurons):
         X_train.shape[1],
         epochs=50,
         sigma=0.2 * np.sqrt(n_neurons),
-        batch_size=len(X_train),  # full-batch
+        batch_size=int(0.1 * len(X_train)),  # full-batch
     )
     som.fit(X_train_t)
     elapsed = time.perf_counter() - t0

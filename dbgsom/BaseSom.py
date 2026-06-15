@@ -981,7 +981,7 @@ class BaseSom(BaseEstimator, ABC):
 
         # Step 4 — weighted[i,j] = h[i,j] * n_j; contract over j via BLAS
         if issparse(gaussian_kernel):
-            weighted = gaussian_kernel.multiply(neuron_activations)
+            weighted = gaussian_kernel * neuron_activations
             numerator = weighted @ voronoi_set_centers
             denominator = np.asarray(weighted.sum(axis=1)).reshape(-1, 1)
         else:
