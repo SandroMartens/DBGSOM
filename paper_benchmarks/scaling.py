@@ -23,8 +23,7 @@ from sklearn.preprocessing import StandardScaler
 from dbgsom import SomVQ
 
 RANDOM_STATE = 42
-expo = np.arange(0, 8, step=0.5)
-# expo = np.arange(0, 5.5, step=0.5)
+expo = np.arange(0, 7, step=0.5)
 N_SIZES = (1000 * 2**expo).astype("int")
 
 D = 30
@@ -179,8 +178,8 @@ def benchmark_torchsom(X: np.ndarray, n_nodes: int, device: str) -> BenchResult 
         side,
         X.shape[1],
         device=device,
-        epochs=50,
-        batch_size=len(X),  # full-batch, comparable to DBGSOM batch mode
+        epochs=30,
+        batch_size=int(0.1 * len(X)),
         sigma=0.2 * np.sqrt(n_nodes),
     )
     som.fit(X_t)

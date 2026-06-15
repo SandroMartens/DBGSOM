@@ -21,7 +21,6 @@ RESULTS_DIR = Path(__file__).parent / "results"
 
 SERIES = [
     ("DBGSOM_time", "DBGSOM (fast path)", "#1f77b4", "-", "o"),
-    ("DBGSOM_textbook_time", "DBGSOM (textbook)", "#1f77b4", "--", "s"),
     ("MiniSom_time", "MiniSom", "#ff7f0e", "-", "^"),
     ("SuSi_time", "SuSi", "#2ca02c", "-", "D"),
     ("torchsom_cpu_time", "torchsom (CPU)", "#9467bd", "-", "v"),
