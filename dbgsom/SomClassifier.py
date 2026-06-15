@@ -15,93 +15,29 @@ from .BaseSom import BaseSom
 
 
 class SomClassifier(TransformerMixin, ClassifierMixin, BaseSom):
-    """A Directed Batch Growing Self-Organizing Map.
+    """Directed Batch Growing SOM for supervised classification.
 
-    This class implements the classification functionality of the SOM.
-
-    Parameters
-    ----------
-    n_iter : int, default = 200
-        Maximum Number of training epochs.
-
-    max_neurons : int, default = 100
-        Maximum number of neurons in the som.
-
-    vertical_growth : bool, default = False
-        Wether to trigger hierarchical growth.
-
-    decay_function : {'exponential', 'linear'}, default = 'exponential'
-        Decay function to use for neighborhood bandwith sigma.
-
-    verbose : bool, default = False
-
-    coarse_training_frac : float, default = 0.5
-        Fraction of max_iter to use for coarse training.
-
-        Training happens in two phases, coarse and fine training. In coarse training,
-        the neighborhood bandwidth is decreased from sigma_start to sigma_end and
-        the network grows according to the growing rules. In fine training, the
-        bandwidth is constant at sigma_end and no new neurons are added.
-
-    growth_criterion : {"quantization_error", "entropy"}, default = "quantization_error"
-        Method for calculating the error of neurons and samples.
-
-        "quantization_error" : Use the quantization error of the prototypes.
-        The cumulative error is the sum of individual errors of all samples.
-
-        "entropy": For supervised learning we can use the entropy
-        of labels of the samples represented by each prototype as error.
-
-    metric : str, default = "euclidean"
-        The metric to use for computing distances between prototypes and samples. Must
-        be supported by sci-kit learn or scipy.
-
-    random_state : any (optional), default = None
-        Random state for weight initialization.
-
-    convergence_threshold : float, default = 10 ** -5
-        If the sum of all weight changes is smaller than the threshold,
-        convergence is assumed and the training is stopped.
-
-    min_samples_vertical_growth : int, default = 100
-        Minimum samples represented by a prototpye to trigger a vertical growth
-
-    tau_2 : float, default = 0.5
-        Global stopping criterion threshold for vertical growth (τ₂ in the GHSOM paper).
-        A unit is expanded when its quantization error exceeds ``tau_2 * qe_0``.
-
-    sigma_start, sigma_end : {None, numeric}, default = None
-        Start and end value for the neighborhood bandwidth.
-
-        If `None`, it is calculated dynamically in each epoch as
-
-        `sigma_start = 0.2 * sqrt(n_neurons)`
-
-        `sigma_end = max(0.7, 0.05 * sqrt(n_neurons))`
-
-    **kwargs
-        Additional parameters inherited from :class:`BaseSom`. See its
-        documentation for ``neighborhood_function``,
-        ``winner_stability_threshold``, ``pointer_search``,
-        ``sigma_fine``, and others.
+    See :class:`BaseSom` for all parameters.
 
     Attributes
     ----------
     labels_ : ndarray of shape (n_samples,)
-        Labels of each point.
+        Predicted class label of each training sample.
 
-    som_ : NetworkX.graph
-        Graph object containing the neurons with attributes.
+    classes_ : ndarray of shape (n_classes,)
+        Unique class labels seen during fit.
+
+    som_ : networkx.Graph
+        Graph containing neurons with ``weight``, ``label``, ``probabilities`` attributes.
 
     weights_ : ndarray of shape (n_prototypes, n_features)
-        Learned weights of the neurons.
+        Learned prototype weight vectors.
 
     topographic_error_ : float
-        Fraction of training samples where the first and second best matching
-        prototype are not neighbors on the SOM.
+        Fraction of samples whose two nearest prototypes are not grid-adjacent.
 
     quantization_error_ : float
-        Average distance from all training samples to their nearest prototypes.
+        Mean distance from each training sample to its nearest prototype.
 
     """
 

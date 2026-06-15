@@ -20,8 +20,6 @@ try:
     from sklearn.base import BaseEstimator, clone
     from sklearn.decomposition import SparseCoder
     from sklearn.metrics.pairwise import euclidean_distances
-
-    # from line_profiler import profile
     from sklearn.preprocessing import normalize
     from sklearn.utils import check_random_state
     from sklearn.utils._param_validation import Interval, StrOptions
@@ -350,7 +348,6 @@ class BaseSom(BaseEstimator, ABC):
             self._grow_vertical(X, y)
 
         self._fit(X)
-        # self.labels_ = self.predict(X)
         self.n_iter_ = self._current_epoch
 
         return self
@@ -371,7 +368,6 @@ class BaseSom(BaseEstimator, ABC):
         Self-Organizing Mapping for Efficient Network Anomaly Detection",
         IEEE Access, 2021.
         """
-        # todo: refactor in sub classes
         self.vertical_growing_threshold_ = self.tau_2 * self.qe_0_
         _, winners = self._get_winning_neurons(X, n_bmu=1)
         relevant_nodes = [
@@ -392,40 +388,20 @@ class BaseSom(BaseEstimator, ABC):
                 new_som.fit(X_filtered, y_filtered)
                 self.som_.nodes[node]["som"] = new_som
 
-    def _calculate_node_statistics(
-        self, X: npt.NDArray
-    ) -> tuple[npt.NDArray, npt.NDArray, npt.NDArray]:
-        """Write the following statistics as attributes to the graph:
-
-        1. Local density: Use a Gaussian kernel to estimate the local density around
-        each prototype. Use the average distance from all prototype to their neighbors
-        as bandwith sigma.
-
-        2. Hit count: How many samples each prototype represents.
-
-        3. average distance: average distance from each prototype to their neighbors.
-        used for plotting the u matrix
-        """
+    def _write_node_statistics(self, X: npt.NDArray) -> None:
         distances, winners = self._get_winning_neurons(X, n_bmu=1)
         average_distances = self._get_u_matrix()
 
         n_neurons = len(self.neurons_)
         sigma = average_distances.mean()
-
         hit_counts = np.bincount(winners, minlength=n_neurons)
         kernel_values = np.exp(-(distances**2) / (2 * sigma**2)) / (
             sigma * np.sqrt(2 * np.pi)
         )
         sum_densities = np.bincount(winners, weights=kernel_values, minlength=n_neurons)
-
         densities = np.divide(
             sum_densities, hit_counts, out=np.zeros(n_neurons), where=hit_counts > 0
         )
-
-        return average_distances, densities, hit_counts
-
-    def _write_node_statistics(self, X: npt.NDArray) -> None:
-        average_distances, densities, hit_counts = self._calculate_node_statistics(X)
 
         nx.set_node_attributes(
             self.som_,
@@ -608,51 +584,27 @@ class BaseSom(BaseEstimator, ABC):
         palette: str,
         X: np.ndarray | None = None,
     ) -> tuple[str | None, "so.Scale | None"]:
-        """Resolve the colour aesthetic and build the matching seaborn scale.
-
-        Returns
-        -------
-        col_name : str or None
-            Column name in *nodes_df* to use as the ``color`` aesthetic,
-            or ``None`` when no colour mapping is requested.
-        scale : so.Scale or None
-            Ready-to-use scale object, or ``None`` when *col_name* is ``None``.
-
-        """
-        if color is not None:
-            if color not in nodes_df.columns:
-                valid = sorted(nodes_df.columns.tolist())
-                raise ValueError(
-                    f"color={color!r} is not a valid node attribute. "
-                    f"Choose from: {valid}"
-                )
-            if (
-                pd.api.types.is_numeric_dtype(nodes_df[color])
-                and nodes_df[color].nunique() <= 1
-            ):
-                nodes_df[color] = nodes_df[color].astype(str)
-            return color, self._build_color_scale(nodes_df[color], palette)
-
-        return None, None
-
-    def _build_color_scale(
-        self,
-        series: pd.Series,
-        palette: str,
-    ) -> "so.Scale":
-        """Return the appropriate seaborn objects colour scale for *series*.
-
-        Numeric series -> ``so.Continuous`` with *palette* as a matplotlib
-        colormap.  Categorical / string series -> ``so.Nominal`` populated
-        with colours drawn from the named seaborn palette.
-
-        """
+        if color is None:
+            return None, None
+        if color not in nodes_df.columns:
+            raise ValueError(
+                f"color={color!r} is not a valid node attribute. "
+                f"Choose from: {sorted(nodes_df.columns.tolist())}"
+            )
+        if (
+            pd.api.types.is_numeric_dtype(nodes_df[color])
+            and nodes_df[color].nunique() <= 1
+        ):
+            nodes_df[color] = nodes_df[color].astype(str)
+        series = nodes_df[color]
         if pd.api.types.is_numeric_dtype(series):
-            return so.Continuous(palette)
-        import seaborn as sns
+            scale: so.Scale = so.Continuous(palette)
+        else:
+            import seaborn as sns
 
-        colors = sns.color_palette(palette, n_colors=series.nunique())
-        return so.Nominal(values=list(colors))
+            n = series.nunique()
+            scale = so.Nominal(values=list(sns.color_palette(palette, n_colors=n)))
+        return color, scale
 
     def _compute_graph_layout(
         self, layout: str, nodes: list, X: np.ndarray | None = None
@@ -671,12 +623,11 @@ class BaseSom(BaseEstimator, ABC):
     def _get_u_matrix(self) -> np.ndarray[Any, np.dtype[np.float64]]:
         """Calculate the average distance from each neuron to its neighbors in the input space."""  # noqa: E501
         g = self.som_
-        node_to_idx = {node: i for i, node in enumerate(self.neurons_)}
         weights = self.weights_
 
         src, dst = zip(
             *(
-                (node_to_idx[n], node_to_idx[nb])
+                (self._node_to_idx[n], self._node_to_idx[nb])
                 for n in self.neurons_
                 for nb in g.neighbors(n)
             )
@@ -780,7 +731,6 @@ class BaseSom(BaseEstimator, ABC):
             disable=not self.verbose,
             unit=" epochs",
         ):
-            # print(self._calculate_current_sigma())
             self._current_epoch = current_epoch
             if current_epoch > self.coarse_training_frac * self.n_iter:
                 self._training_phase = "fine"
@@ -871,10 +821,10 @@ class BaseSom(BaseEstimator, ABC):
         Reads 1-hop adjacency directly from the graph (O(K)) instead of
         scanning the Floyd-Warshall distance matrix (O(K²)).
         """
-        node_to_idx = {node: i for i, node in enumerate(self.neurons_)}
         rows = [
             np.array(
-                [node_to_idx[nb] for nb in self.som_.neighbors(node)], dtype=np.int64
+                [self._node_to_idx[nb] for nb in self.som_.neighbors(node)],
+                dtype=np.int64,
             )
             for node in self.neurons_
         ]
@@ -943,7 +893,6 @@ class BaseSom(BaseEstimator, ABC):
     def _label_prototypes(self, X, y) -> None:
         raise NotImplementedError
 
-    # @profile
     def _update_weights(
         self, sample_weights: npt.NDArray, winners: npt.NDArray, data: npt.NDArray
     ) -> None:
@@ -1062,7 +1011,6 @@ class BaseSom(BaseEstimator, ABC):
         kernel = 1 - (1 - np.exp(-gamma * distances**2)) ** 0.5
         return kernel
 
-    # @profile
     def _write_accumulative_error(
         self, winners: np.ndarray, y: npt.NDArray | None, distances: np.ndarray
     ) -> None:

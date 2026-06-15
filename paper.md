@@ -23,19 +23,19 @@ bibliography: paper.bib
 
 Self-Organizing Maps (SOMs) [@Kohonen2001; @Kohonen2013] are unsupervised neural networks that learn a topology-preserving, low-dimensional representation of high-dimensional input data. The network maps input samples onto a discrete grid of prototype neurons such that similar inputs activate spatially proximate neurons. SOMs can be used for classification, clustering, vector quantization and nonlinear projection.
 
-`dbgsom` is a Python implementation of the Directed Batch Growing Self-Organizing Map [@Vasighi2017]. Starting from four neurons, the map grows autonomously by inserting new neurons at boundary positions where local quantization error exceeds a configurable threshold. Training follows the batch learning rule: weight updates are computed over the entire dataset per epoch, yielding faster convergence than online SOMs and eliminating the need to specify the map size in advance.
+`dbgsom` is a Python implementation of the Directed Batch Growing Self-Organizing Map [@Vasighi2017]. Starting from four neurons, the map grows autonomously by inserting new neurons according to a growing rule. Training follows the batch learning rule: weight updates are computed over the entire dataset per epoch, yielding faster convergence than online SOMs and eliminating the need to specify the map size in advance.
 
-The library provides two estimators: `SomVQ` for unsupervised vector quantization and clustering, and `SomClassifier` for supervised classification, that integrate directly into standard machine learning workflows with scikit-learn. Performance critical paths are jit-compiler optimized.
+The library provides two estimators: `SomVQ` for unsupervised vector quantization and clustering, and `SomClassifier` for supervised classification, that integrate directly into standard machine learning workflows with scikit-learn.
+
+Performance critical paths are jit-compiler optimized. We show that the quality of the resulting map and performance are comparable or better than similar SOM libraries.
 
 # Statement of Need
 
-scikit-learn [@Pedregosa2012] is one of the most used Python libraries for non-deep-learning machine learning. This is because it allows end-to-end processing from pre-processing, normalization, training to scoring and visualizing many different estimators.
+scikit-learn [@Pedregosa2012] is one of the most used Python libraries for non-deep-learning machine learning. This is because it allows end-to-end processing from data pre-processing, normalization, training to scoring and visualizing many different estimators.
 
 The core library of scikit-learn doesn't contain any SOM implementation. Existing SOM libraries implement scikit-learn _inspired_ APIs, but don't follow the strict API standard [@sklearn2026]. This means they break when used together with other parts of scikit-learn that rely on specific behaviour. `dbgsom` is the only library that fully integrates with scikit-learn.
 
-`dbgsom` addresses one of the major drawbacks of classical SOMs: The need to specify the layout and size of the map before the training. Selecting an appropriate grid size is non-trivial: too small a grid underfits the data; too large a grid wastes capacity and produces uninformative prototypes. In practice, users typically run multiple configurations and evaluate clustering metrics post-hoc. A single sensitivity parameter (`lambda`) lets the map grow until the desired accuracy is met.
-
- <!-- A convergence check can let the training stop at any time before `n_iter` if the map converged, making the algorihtm less sensitive the the a priori runtime setting. -->
+`dbgsom` addresses one of the major drawbacks of classical SOMs: The need to specify the layout and size of the map before the training. Selecting an appropriate grid size is non-trivial: too small a grid underfits the data; too large a grid wastes capacity and produces uninformative prototypes. In practice, users typically run multiple configurations and evaluate clustering metrics post-hoc. A single sensitivity parameter lets the map grow until the desired quantization accuracy is met.
 
 The `transform` method departs from conventional SOM practice: rather than returning the index of the best-matching unit, it computes a sparse non-negative linear combination of prototype weights, yielding a meaningful embedding of each sample in prototype space [@Kohonen2007]. This allows a better encoding than the direct n-to-1 mapping to a single winner neuron.
 
@@ -45,7 +45,7 @@ The intended audience for `dbgsom` is machine learning researchers working with 
 
 # State of the field
 
-Several Python SOM libraries exist, most notably MiniSom [@Vettigli2018], torchsom [@Berthier2025,@Berthier2025a] and SuSi [@Riese2025]. There exist some GSOM [@Alahakoon2000] packages: pysom [@thimalk2026] and GSOM [@Sales2020].
+Several Python SOM libraries exist, most notably MiniSom [@Vettigli2018], torchsom [@Berthier2025, @Berthier2025a] and SuSi [@Riese2025]. There exist some GSOM [@Alahakoon2000] packages: pysom [@thimalk2026] and GSOM [@Sales2020].
 
 The most used package, MiniSom, implements its own custom API. SuSi and torchsom implement parts of the scikit-learn API (some public functions like `fit` and `predict`), but don't follow the exact definitions. MiniSom and SuSi rely on pure Python and Numpy, while torchsom also supports GPU acceleration with CUDA.
 
@@ -64,9 +64,9 @@ Since any growing SOM has a dynamically changing grid, it cannot easiely be impl
 
 # Software design
 
-`dbgsom` is implemented in Python and uses NumPy [@Harris2020] for array operations and Numba [@Lam2015] for JIT-compiled distance computations. The map topology is represented as a NetworkX [@Hagberg2008] graph. Visualization is provided via seaborn objects [@Waskom2021].
+`dbgsom` is implemented in Python and uses NumPy [@Harris2020] for array operations and Numba [@Lam2015] for JIT-compiled distance computations. Sparse matrix operations are performed using SciPy [@Virtanen2020]. The map topology is represented as a NetworkX [@Hagberg2008] graph. Visualization is provided via seaborn [@Waskom2021]. General API behaviour like input validation, error messages, output formats etc. are either directly interhited from scikit-learn or are tested against scikit-learn standards.
 
-Numpy is the default library for linear algebra and array operations in Pyton. Numba allows developers to speed up Python, and specifically Numpy, code by just-in-time compilation. It needs minimal change of the original code and only a small warm up time at program start. NetworkX as graph backend simplifies the implementation of neighborhood queries and the growth mechanism that happen in a growing SOM. Seaborn supports continuous and categorical color encoding of prototype attributes, making it well suited for graph visualizations.
+Numpy is the default library for linear algebra and array operations in Pyton. Numba allows developers to speed up Python, and specifically Numpy, code by just-in-time compilation. It needs minimal change of the original code and only a small warm up time at program start. NetworkX as graph backend simplifies the implementation of neighborhood queries and the growth mechanism that happen in a growing SOM. Seaborn supports continuous and categorical color encoding of prototype attributes, making it well suited for graph visualizations. All dependencies integrate well with each other.
 
 The core feature of the `dbgsom` algorithm is the threshold parameter which defines how many neurons are added. The growing threshold `GT` is defined as: $GT = \lambda \cdot \lVert \text{std}(X) \rVert$
 

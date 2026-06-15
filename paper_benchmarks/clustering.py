@@ -59,11 +59,11 @@ def _row(name, n_proto, elapsed, qe, te, y_true, labels):
     return {
         "Algorithm": name,
         "n_prototypes": n_proto,
-        "Time (s)": round(elapsed, 3),
-        "QE": round(qe, 4),
-        "TE": round(te, 4) if te is not None else "—",
-        "ARI": round(adjusted_rand_score(y_true, labels), 3),
-        "Silhouette": round(silhouette_score(X_test_global, labels), 3),
+        "Time (s)": round(elapsed, 2),
+        "QE": round(qe, 2),
+        "TE": round(te, 2) if te is not None else "—",
+        "ARI": round(adjusted_rand_score(y_true, labels), 2),
+        "Silhouette": round(silhouette_score(X_test_global, labels), 2),
     }
 
 
