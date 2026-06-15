@@ -23,8 +23,6 @@ bibliography: paper.bib
 
 Self-Organizing Maps (SOMs) [@Kohonen2001; @Kohonen2013] are unsupervised neural networks that learn a topology-preserving, low-dimensional representation of high-dimensional input data. The network maps input samples onto a discrete grid of prototype neurons such that similar inputs activate spatially proximate neurons. SOMs can be used for classification, clustering, vector quantization and nonlinear projection.
 
-<!-- Classical SOMs require the grid dimensions to be specified prior to training, which in practice demands domain knowledge or trial-and-error tuning. -->
-
 DBGSOM is a Python implementation of the Directed Batch Growing Self-Organizing Map [@Vasighi2017]. Starting from four neurons, the map grows autonomously by inserting new neurons at boundary positions where local quantization error exceeds a configurable threshold. Training follows the batch learning rule: weight updates are computed over the entire dataset per epoch, yielding faster convergence than online SOMs and eliminating the need to specify the map size in advance.
 
 The library provides two estimators: `SomVQ` for unsupervised vector quantization and clustering, and `SomClassifier` for supervised classification, that integrate directly into standard machine learning workflows with scikit-learn. Performance critical paths are jit-compiler optimized.
@@ -35,9 +33,11 @@ scikit-learn [@Pedregosa2012] is one of the most used Python libraries for non-d
 
 The core library of scikit-learn doesn't contain any SOM implementation. Existing SOM libraries implement scikit-learn _inspired_ APIs, but don't follow the strict API standard [@sklearn2026]. This means they break when used together with other parts of scikit-learn that rely on specific behaviour. DBGSOM is the only library that we are aware of that fully integrates with scikit-learn. This includes `fit`, `predict`, `fit_predict`, `transform`, and `predict_proba` and enables drop-in use in cross-validation pipelines, `Pipeline` objects, and `GridSearchCV`.
 
-`DBGSOM` addresses one of the major drawbacks of classical SOMs: The need to specify the layout and size of the map before the training. A single sensitivity parameter (`lambda`) lets the map grow until the desired accuracy is met. A convergence check can let the training stop at any time before `n_iter` if the map converged, making the algorihtm less sensitive the the a priori runtime setting.
+`DBGSOM` addresses one of the major drawbacks of classical SOMs: The need to specify the layout and size of the map before the training. Selecting an appropriate grid size is non-trivial: too small a grid underfits the data; too large a grid wastes capacity and produces uninformative prototypes. In practice, users typically run multiple configurations and evaluate clustering metrics post-hoc. A single sensitivity parameter (`lambda`) lets the map grow until the desired accuracy is met.
 
-The `transform` method departs from conventional SOM practice: rather than returning the index of the best-matching unit, it computes a sparse non-negative linear combination of prototype weights, yielding a meaningful embedding of each sample in prototype space [@Kohonen2007]. This allows a better encoding than the direct n-to-1 mapping to a single winner neuron. This representation is compatible with downstream scikit-learn estimators and dimensionality reduction workflows.
+ <!-- A convergence check can let the training stop at any time before `n_iter` if the map converged, making the algorihtm less sensitive the the a priori runtime setting. -->
+
+The `transform` method departs from conventional SOM practice: rather than returning the index of the best-matching unit, it computes a sparse non-negative linear combination of prototype weights, yielding a meaningful embedding of each sample in prototype space [@Kohonen2007]. This allows a better encoding than the direct n-to-1 mapping to a single winner neuron.
 
 DBGSOM implements a number of changes to the textbook algorithm, that massively improve the speed of computation and allow scaling to larger datasets and larger networks.
 
@@ -45,7 +45,11 @@ The intended audience for DBGSOM is machine learning researchers working with SO
 
 # State of the field
 
-Several Python SOM libraries exist, most notably MiniSom [@Vettigli2018], torchsom [@Berthier2025] and SuSi [@Riese2025]. The most used package, MiniSom, implements its own custom API. SuSi and torchsom implement parts of the scikit-learn API (namely some public functions), but don't follow the exact definitions. MiniSom and SuSi rely on pure Python and Numpy, while torchsom also supports GPU acceleration with CUDA.
+Several Python SOM libraries exist, most notably MiniSom [@Vettigli2018], torchsom [@Berthier2025] and SuSi [@Riese2025]. There exist some GSOM [@Alahakoon2000] packages: @thimalk2026 and @Sales2020.
+
+The most used package, MiniSom, implements its own custom API. SuSi and torchsom implement parts of the scikit-learn API (some public functions like `fit` and `predict`), but don't follow the exact definitions. MiniSom and SuSi rely on pure Python and Numpy, while torchsom also supports GPU acceleration with CUDA.
+
+Both GSOM packages were not included because of the lack of documentation, tests, recent updates and non-standard API.
 
 | Library  | API                       | GPU            | Framework     | Docs              |
 | -------- | ------------------------- | -------------- | ------------- | ----------------- |
@@ -54,7 +58,7 @@ Several Python SOM libraries exist, most notably MiniSom [@Vettigli2018], torchs
 | SuSi     | sklearn-style             | No             | Numpy         | **Comprehensive** |
 | torchsom | sklearn-style             | **Yes (CUDA)** | **PyTorch**   | **Comprehensive** |
 
-All three implement fixed-grid SOMs that require the user to specify the grid dimensions before training. Selecting an appropriate grid size is non-trivial: too small a grid underfits the data; too large a grid wastes capacity and produces uninformative prototypes. In practice, users typically run multiple configurations and evaluate clustering metrics post-hoc.
+All three implement fixed-grid SOMs that require the user to specify the grid dimensions before training.
 
 Since any growing SOM has a dynamically changing grid, it cannot easiely be implemented into an existing library without rewriting much of the core logic.
 
@@ -111,6 +115,7 @@ _Figure 1: DBGSOM neuron layout on the Digits dataset. Left: neurons positioned 
 ## Performance metrics
 
 On a syntetic dataset with 1k samples to 90k samples, DBGSOM performes faster than the reference libraries with better quantization error.
+
 ![Training time vs. dataset size N for all compared algorithms (log-log scale). DBGSOM fast path uses pointer search and sparse neighborhood. [^1]](paper_benchmarks/results/scaling.png){width=80%}
 
 # AI usage disclosure
