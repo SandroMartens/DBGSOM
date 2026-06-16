@@ -375,7 +375,8 @@ The following variables are used throughout:
 * `n` — number of data samples
 * `m` — number of neurons (grows dynamically; refers to the final neuron count)
 * `d` — data dimension
-* `e` — number of training epochs
+* `e` — total number of training epochs (not a fixed parameter; determined by
+  convergence behaviour and growth steps)
 * `r` - Neighborhood width when using pointer search
 
 Training
