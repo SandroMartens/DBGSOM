@@ -105,9 +105,10 @@ Benchmarks comparing DBGSOM to MiniSom, SuSi, KMeans, and AgglomerativeClusterin
 
 Kmeans is included to give a lower bound for `Qe`.
 
-**Performance metrics**. On a syntetic dataset with 1k samples to 90k samples, `dbgsom` performes faster than the reference libraries.
+**Performance metrics**. On a synthetic dataset with 1k to 90k samples (AMD Ryzen 3700X, 16 GB RAM, Nvidia RTX 5060Ti), `dbgsom` performs faster than the reference libraries.
 
-![Training time vs. dataset size N for all compared algorithms (log-log scale). `dbgsom` fast path uses pointer search and sparse neighborhood. [^1]](paper_benchmarks/results/scaling.png){width=80%}
+![Training time vs. dataset size N for all compared algorithms (log-log scale). `dbgsom` fast path uses pointer search and sparse neighborhood.](paper_benchmarks/results/scaling.png){width=80%}
+
 **Visualization**. `dbgsom` provides standard visualization capabilities for SOMs. Nodes can be plotted using grid coordinates or by PCA projection of the original dataset. Node sizes and colors can encode different properties of each neuron.
 
 |                           Grid projection                            |                           PCA projection                           |
@@ -123,5 +124,3 @@ No generative AI was used prior to release v1.2.0. Claude Code was used in Code:
 All documentations, implementations and experimental results were verified to the best of the authors knowledge. Experiments can be reproduced in the `paper_benchmarks` folder.
 
 # References
-
-[^1]: Hardware: CPU: AMD Ryzen 3700X, 8/16 cores @ 3,7GHz, GPU: Nvidia RTX 5060Ti, 16 GB RAM.
