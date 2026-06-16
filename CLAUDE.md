@@ -29,6 +29,9 @@ uv run ty check dbgsom/
 
 # Run a benchmark
 uv run python benchmarks/cutoff_benchmark.py
+
+# Build documentation
+uv run sphinx-build -b html docs/source docs/build/html
 ```
 
 ## Architecture

@@ -10,10 +10,11 @@ X = StandardScaler().fit_transform(fmnist.data[:10_000].astype(float))
 y = fmnist.target[:10_000]
 
 som = SomVQ(
-    n_iter=500,
-    spreading_factor=0.8,
-    max_neurons=100,
+    n_iter=2000,
+    lambda_=15,
+    max_neurons=300,
     sigma_end=1,
+    verbose=True,
     random_state=42,
 )
 

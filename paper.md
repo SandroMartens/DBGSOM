@@ -15,7 +15,7 @@ authors:
 affiliations:
   - name: Independent Researcher
     index: 1
-date: 2025-01-01 # TODO: Einreichungsdatum anpassen
+date: 2025-16-06 # TODO: Einreichungsdatum anpassen
 bibliography: paper.bib
 ---
 
@@ -31,23 +31,20 @@ Performance critical paths are jit-compiler optimized. We show that the quality 
 
 # Statement of Need
 
-scikit-learn [@Pedregosa2012] is one of the most used Python libraries for non-deep-learning machine learning. This is because it allows end-to-end processing from data pre-processing, normalization, training to scoring and visualizing many different estimators.
+**1. Full scikit-learn compatibility.**
+scikit-learn [@Pedregosa2012] is the dominant Python library for non-deep-learning machine learning, yet its core does not include any SOM implementation. Existing SOM libraries implement scikit-learn _inspired_ APIs but do not conform to the strict API standard [@sklearn2026], breaking when composed with other scikit-learn components (pipelines, cross-validation, grid search). `dbgsom` is the only SOM library that passes `check_estimator` and integrates seamlessly into standard scikit-learn workflows.
 
-The core library of scikit-learn doesn't contain any SOM implementation. Existing SOM libraries implement scikit-learn _inspired_ APIs, but don't follow the strict API standard [@sklearn2026]. This means they break when used together with other parts of scikit-learn that rely on specific behaviour. `dbgsom` is the only library that fully integrates with scikit-learn.
+**2. Automatic map size determination.**
+Classical SOMs require the user to specify grid dimensions before training. Selecting an appropriate size is non-trivial: too small a grid underfits; too large a grid wastes capacity and produces uninformative prototypes. In practice this forces practitioners to train multiple configurations and evaluate clustering metrics post-hoc. `dbgsom` removes this burden: starting from four neurons, the map grows autonomously until the data structure is captured, guided by a principled quantization-error threshold.
 
-`dbgsom` addresses one of the major drawbacks of classical SOMs: The need to specify the layout and size of the map before the training. Selecting an appropriate grid size is non-trivial: too small a grid underfits the data; too large a grid wastes capacity and produces uninformative prototypes. In practice, users typically run multiple configurations and evaluate clustering metrics post-hoc. A single sensitivity parameter lets the map grow until the desired quantization accuracy is met.
-
-The `transform` method departs from conventional SOM practice: rather than returning the index of the best-matching unit, it computes a sparse non-negative linear combination of prototype weights, yielding a meaningful embedding of each sample in prototype space [@Kohonen2007]. This allows a better encoding than the direct n-to-1 mapping to a single winner neuron.
-
-`dbgsom` implements a number of changes to the textbook algorithm, that massively improve the speed of computation and allow scaling to larger datasets and larger networks.
-
-The intended audience for `dbgsom` is machine learning researchers working with SOMs and general data science practiciners who use the scikit-learn ecosystem.
+**3. Target audience.**
+The intended audience is machine learning researchers working with SOMs and data science practitioners using the scikit-learn ecosystem who need a drop-in, topology-learning estimator without manual grid tuning.
 
 # State of the field
 
-Several Python SOM libraries exist, most notably MiniSom [@Vettigli2018], torchsom [@Berthier2025, @Berthier2025a] and SuSi [@Riese2025]. There exist some GSOM [@Alahakoon2000] packages: pysom [@thimalk2026] and GSOM [@Sales2020].
+Several Python SOM libraries exist, most notably `MiniSom` [@Vettigli2018], `torchsom` [@Berthier2025; @Berthier2025a] and `SuSi` [@Riese2025]. There exist some GSOM [@Alahakoon2000] packages: `pygsom` [@thimalk2026] and `GSOM` [@Sales2020].
 
-The most used package, MiniSom, implements its own custom API. SuSi and torchsom implement parts of the scikit-learn API (some public functions like `fit` and `predict`), but don't follow the exact definitions. MiniSom and SuSi rely on pure Python and Numpy, while torchsom also supports GPU acceleration with CUDA.
+The most used package, `MiniSom`, implements its own custom API. `SuSi` and `torchsom` implement parts of the scikit-learn API (some public functions like `fit` and `predict`), but don't follow the exact definitions. `MiniSom` and `SuSi` rely on pure Python and Numpy, while `torchsom` also supports GPU acceleration with CUDA.
 
 Both GSOM packages were not included because of the lack of documentation, tests, recent updates and non-standard API.
 
@@ -60,7 +57,7 @@ Both GSOM packages were not included because of the lack of documentation, tests
 
 All three implement fixed-grid SOMs that require the user to specify the grid dimensions before training.
 
-Since any growing SOM has a dynamically changing grid, it cannot easiely be implemented into an existing library without rewriting much of the core logic.
+Any growing SOM has a dynamically changing grid. Therefore it cannot easiely be implemented into an existing library that uses a static grid without rewriting much of the core logic. DBGSOM especially doesn't have a rectangular layout that can be represented as a two dimensional standard array.
 
 # Software design
 
@@ -84,7 +81,9 @@ Convergence criterium is the Frobenius norm of the change of weights between epo
 
 Topology preservation is measured by the topographic error `Te` or topographic function `Tf`[@Villmann1997].
 
-Performance optimizations include JIT compilation of distance computations via Numba, sparse matrix multiplications for neighborhood weight updates, and a pointer based search algorithm for BMU lookup.
+The `transform` method departs from conventional SOM practice: rather than returning the index of the best-matching unit, it computes a sparse non-negative linear combination of prototype weights, yielding a meaningful embedding of each sample in prototype space [@Kohonen2007]. This allows a better encoding than the direct n-to-1 mapping to a single winner neuron.
+
+`dbgsom` implements a number of changes to the textbook algorithm, that improve the speed of computation and allow scaling to larger datasets and larger networks. Performance optimizations include JIT compilation of distance computations via Numba, sparse matrix multiplications for neighborhood weight updates, and a pointer based search algorithm for BMU lookup.
 
 The package is distributed via PyPI (`pip install dbgsom`) and versioned according to semantic versioning. Continuous integration is configured via GitHub Actions, including unit tests, code quality checks with Ruff, and automated PyPI releases.
 
@@ -94,21 +93,22 @@ The package is distributed via PyPI (`pip install dbgsom`) and versioned accordi
 
 Benchmarks comparing DBGSOM to MiniSom, SuSi, KMeans, and AgglomerativeClustering are provided in the repository as Jupyter notebooks (`examples/som_comparison.ipynb`, `examples/clustering_comparison.ipynb`, `examples/manifold_comparison.ipynb`). Evaluations use the scikit-learn Digits dataset (1797 samples, 64 features, 10 classes) and the Fashion-MNIST dataset [@Xiao2017].
 
-## Quality Metrics
+**Quality Metrics**. On digits with automatically determined cluster count (via `dbgsom`'s growing mechanism, applied as cluster count for all algorithms):
 
-On digits (1800 samples, 10 classes, 64 dimensions) with automatically determined cluster count (via `dbgsom`'s growing mechanism, applied as cluster count for all algorithms):
-
-| Algorithm | n_prototypes | QE       | TE        | ARI      |
-| --------- | ------------ | -------- | --------- | -------- |
-| `dbgsom`  | 121          | **4.84** | **0.026** | 0.17     |
-| MiniSom   | 121          | **4.84** | 0.183     | 0.17     |
-| SuSi      | 121          | 5.69     | 0.086     | **0.25** |
-| torchsom  | 121          | 5.95     | 0.103     | 0.2      |
-| KMeans    | 121          | 4.3      | —         | 0.17     |
+| Algorithm | Prototypes | Quantization error | Topographic error | Adjusted Rand index |
+| --------- | ---------- | ------------------ | ----------------- | ------------------- |
+| `dbgsom`  | 127        | **4.99**           | **0.03**          | 0.18                |
+| MiniSom   | 132        | **4.99**           | 0.14              | 0.16                |
+| SuSi      | 132        | 5.79               | 0.07              | **0.21**            |
+| torchsom  | 132        | 5.12               | 0.09              | 0.16                |
+| KMeans    | 127        | 4.38               | —                 | 0.17                |
 
 Kmeans is included to give a lower bound for `Qe`.
 
-## Visualization
+**Performance metrics**. On a syntetic dataset with 1k samples to 90k samples, `dbgsom` performes faster than the reference libraries.
+
+![Training time vs. dataset size N for all compared algorithms (log-log scale). `dbgsom` fast path uses pointer search and sparse neighborhood. [^1]](paper_benchmarks/results/scaling.png){width=80%}
+**Visualization**. `dbgsom` provides standard visualization capabilities for SOMs. Nodes can be plotted using grid coordinates or by PCA projection of the original dataset. Node sizes and colors can encode different properties of each neuron.
 
 |                           Grid projection                            |                           PCA projection                           |
 | :------------------------------------------------------------------: | :----------------------------------------------------------------: |
@@ -116,16 +116,12 @@ Kmeans is included to give a lower bound for `Qe`.
 
 _Figure 1: `dbgsom` neuron layout on the Digits dataset. Left: neurons positioned on the 2D grid; right: neuron weights projected to PCA space. Node color indicates the majority digit class; node size indicates hit count._
 
-## Performance metrics
-
-On a syntetic dataset with 1k samples to 90k samples, `dbgsom` performes faster than the reference libraries with better quantization error.
-
-![Training time vs. dataset size N for all compared algorithms (log-log scale). `dbgsom` fast path uses pointer search and sparse neighborhood. [^1]](paper_benchmarks/results/scaling.png){width=80%}
-
 # AI usage disclosure
 
 No generative AI was used prior to release v1.2.0. Claude Code was used in Code: to create benchmarks, refactor code, improve performance, implement mathematical formulas, debugging. In documentation: Mainly for editing and keeping consistency between reference papers, documentation and actual implementation.
 
+All documentations, implementations and experimental results were verified to the best of the authors knowledge. Experiments can be reproduced in the `paper_benchmarks` folder.
+
 # References
 
-[^1]: Hardware: CPU: AMD Ryzen 3700X, 8/16 cores, GPU: Nvidia RTX 5060Ti, 16 GB RAM.
+[^1]: Hardware: CPU: AMD Ryzen 3700X, 8/16 cores @ 3,7GHz, GPU: Nvidia RTX 5060Ti, 16 GB RAM.

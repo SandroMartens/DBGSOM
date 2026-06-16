@@ -684,9 +684,8 @@ class BaseSom(BaseEstimator, ABC):
     def _build_distance_matrix(self) -> npt.NDArray:
         """Compute all-pairs shortest paths on the SOM graph via Dijkstra.
 
-        Uses scipy.sparse.csgraph for a 3–5× speedup over NetworkX Floyd-Warshall.
-        Stores as int16 (graph distances are non-negative integers), saving 8×
-        memory vs float64. Requires K < 32768.
+        Uses scipy.sparse.csgraph Dijkstra, storing as int16 (graph distances
+        are non-negative integers), saving 8× memory vs float64. Requires K < 32768.
         """
         adj = nx.to_scipy_sparse_array(
             self.som_, nodelist=self.neurons_, format="csr", weight=None
@@ -819,7 +818,7 @@ class BaseSom(BaseEstimator, ABC):
         """Build padded (K × max_degree) neighbor index array for pointer search.
 
         Reads 1-hop adjacency directly from the graph (O(K)) instead of
-        scanning the Floyd-Warshall distance matrix (O(K²)).
+        scanning the full distance matrix (O(K²)).
         """
         rows = [
             np.array(
@@ -1102,7 +1101,7 @@ class BaseSom(BaseEstimator, ABC):
             a, b, c, A = triple
             hx, hy = node
             rhs = np.array([hx - c[0], hy - c[1]], dtype=float)
-            gamma, delta = np.linalg.solve(A, rhs)
+            gamma, delta = np.linalg.solve(A, b=rhs)
             w_interp = (
                 gamma * self.som_.nodes[a]["weight"]
                 + delta * self.som_.nodes[b]["weight"]

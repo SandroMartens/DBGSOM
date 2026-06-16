@@ -127,7 +127,6 @@ def benchmark_susi(X: np.ndarray, n_nodes: int) -> BenchResult | None:
     som = SOMClustering(
         n_rows=side,
         n_columns=side,
-        train_mode_unsupervised="online",
         random_state=RANDOM_STATE,
         n_iter_unsupervised=500 * n_nodes,
         # n_iter_unsupervised=50,

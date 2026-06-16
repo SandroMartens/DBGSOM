@@ -70,12 +70,12 @@ def _row(name, n_proto, elapsed, qe, te, y_true, labels):
 X_test_global: np.ndarray  # set in main
 
 
-def _topographic_error(X: np.ndarray, weights: np.ndarray, side: int) -> float:
+def _topographic_error(X: np.ndarray, weights: np.ndarray, n_cols: int) -> float:
     """Fraction of samples where 1st and 2nd BMU are not grid-adjacent."""
     dists = np.linalg.norm(X[:, None, :] - weights[None, :, :], axis=2)
     top2 = np.argpartition(dists, kth=1, axis=1)[:, :2]
-    r1, c1 = top2[:, 0] // side, top2[:, 0] % side
-    r2, c2 = top2[:, 1] // side, top2[:, 1] % side
+    r1, c1 = top2[:, 0] // n_cols, top2[:, 0] % n_cols
+    r2, c2 = top2[:, 1] // n_cols, top2[:, 1] % n_cols
     return float(np.mean((np.abs(r1 - r2) + np.abs(c1 - c2)) != 1))
 
 
@@ -99,11 +99,12 @@ def train_minisom(X_train, X_test, y_test, n_neurons):
         print("  MiniSom not installed — skip (pip install minisom)")
         return None
 
-    side = math.ceil(math.sqrt(n_neurons))
+    n_rows = math.floor(math.sqrt(n_neurons))
+    n_cols = math.ceil(math.sqrt(n_neurons))
     t0 = time.perf_counter()
     som = MiniSom(
-        side,
-        side,
+        n_rows,
+        n_cols,
         X_train.shape[1],
         sigma=0.2 * np.sqrt(n_neurons),
         random_seed=RANDOM_STATE,
@@ -111,18 +112,12 @@ def train_minisom(X_train, X_test, y_test, n_neurons):
     som.train(X_train, num_iteration=500 * n_neurons, verbose=False)
     elapsed = time.perf_counter() - t0
 
-    def _winner_flat(x):
-        r, c = som.winner(x)
-        return r * side + c
-
-    labels = np.array([_winner_flat(x) for x in X_test])
+    labels = np.array([r * n_cols + c for r, c in (som.winner(x) for x in X_test)])
     weights_flat = som.get_weights().reshape(-1, X_train.shape[1])
-    qe = float(
-        np.mean([np.linalg.norm(x - weights_flat[_winner_flat(x)]) for x in X_test])
-    )
-    te = _topographic_error(X_test, weights_flat, side)
-    print(f"  MiniSom ({side}×{side}): {elapsed:.3f}s")
-    return _row("MiniSom", side * side, elapsed, qe, te, y_test, labels)
+    qe = float(np.mean(np.linalg.norm(X_test - weights_flat[labels], axis=1)))
+    te = _topographic_error(X_test, weights_flat, n_cols)
+    print(f"  MiniSom ({n_rows}×{n_cols}): {elapsed:.3f}s")
+    return _row("MiniSom", n_rows * n_cols, elapsed, qe, te, y_test, labels)
 
 
 def train_susi(X_train, X_test, y_test, n_neurons):
@@ -132,22 +127,23 @@ def train_susi(X_train, X_test, y_test, n_neurons):
         print("  SuSi not installed — skip (pip install susi)")
         return None
 
-    side = math.ceil(math.sqrt(n_neurons))
+    n_rows = math.floor(math.sqrt(n_neurons))
+    n_cols = math.ceil(math.sqrt(n_neurons))
     t0 = time.perf_counter()
-    som = SOMClustering(n_rows=side, n_columns=side, random_state=RANDOM_STATE)
+    som = SOMClustering(n_rows=n_rows, n_columns=n_cols, random_state=RANDOM_STATE)
     som.fit(X_train)
     elapsed = time.perf_counter() - t0
 
     bmus = np.array(som.get_bmus(X_test))  # (n, 2)
     rows_idx = bmus[:, 0]
     cols_idx = bmus[:, 1]
-    labels = rows_idx * side + cols_idx
+    labels = rows_idx * n_cols + cols_idx
     bmu_weights = som.unsuper_som_[rows_idx, cols_idx]
     qe = float(np.mean(np.linalg.norm(X_test - bmu_weights, axis=1)))
     weights_flat = som.unsuper_som_.reshape(-1, X_test.shape[1])
-    te = _topographic_error(X_test, weights_flat, side)
-    print(f"  SuSi ({side}×{side}): {elapsed:.3f}s")
-    return _row("SuSi", side * side, elapsed, qe, te, y_test, labels)
+    te = _topographic_error(X_test, weights_flat, n_cols)
+    print(f"  SuSi ({n_rows}×{n_cols}): {elapsed:.3f}s")
+    return _row("SuSi", n_rows * n_cols, elapsed, qe, te, y_test, labels)
 
 
 def train_kmeans(X_train, X_test, y_test, n_clusters):
@@ -174,12 +170,13 @@ def train_torchsom(X_train, X_test, y_test, n_neurons):
         print("  torchsom not installed — skip (pip install torchsom)")
         return None
 
-    side = math.ceil(math.sqrt(n_neurons))
+    n_rows = math.floor(math.sqrt(n_neurons))
+    n_cols = math.ceil(math.sqrt(n_neurons))
     X_train_t = torch.from_numpy(X_train.astype(np.float32))
     t0 = time.perf_counter()
     som = SOM(
-        side,
-        side,
+        n_rows,
+        n_cols,
         X_train.shape[1],
         epochs=50,
         sigma=0.2 * np.sqrt(n_neurons),
@@ -193,10 +190,10 @@ def train_torchsom(X_train, X_test, y_test, n_neurons):
     dists = np.linalg.norm(X_test[:, None, :] - weights[None, :, :], axis=2)
     labels = np.argmin(dists, axis=1)
     qe = float(np.mean(np.min(dists, axis=1)))
-    te = _topographic_error(X_test, weights, side)
+    te = _topographic_error(X_test, weights, n_cols)
 
-    print(f"  torchsom ({side}×{side}): {elapsed:.3f}s")
-    return _row("torchsom", side * side, elapsed, qe, te, y_test, labels)
+    print(f"  torchsom ({n_rows}×{n_cols}): {elapsed:.3f}s")
+    return _row("torchsom", n_rows * n_cols, elapsed, qe, te, y_test, labels)
 
 
 def main():
