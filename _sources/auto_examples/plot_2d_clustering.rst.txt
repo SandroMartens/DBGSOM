@@ -1113,7 +1113,7 @@ Key hyperparameters:
            <tr class="default">
                <td class="param"><a class="param-doc-link" style="text-decoration:none;">random_state_</a></td>
                <td class="fitted-att-type">RandomState</td>
-               <td>RandomState(M...0x7F58AB61C140</td>
+               <td>RandomState(M...0x7FFB86471940</td>
 
 
            </tr>
@@ -1122,7 +1122,7 @@ Key hyperparameters:
            <tr class="default">
                <td class="param"><a class="param-doc-link" style="text-decoration:none;">som_</a></td>
                <td class="fitted-att-type">Graph</td>
-               <td>&lt;networkx.cla...x7f58ab6fae40&gt;</td>
+               <td>&lt;networkx.cla...x7ffb89e315e0&gt;</td>
 
 
            </tr>
@@ -1465,7 +1465,7 @@ Lower values indicate better topology preservation.
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** (0 minutes 0.456 seconds)
+   **Total running time of the script:** (0 minutes 0.356 seconds)
 
 
 .. _sphx_glr_download_auto_examples_plot_2d_clustering.py:
