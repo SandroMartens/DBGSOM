@@ -144,12 +144,11 @@ Supported attributes for `color` / `pointsize`:
 
 ## Examples
 
-| Example                                                         | Description                                                                                              |
-| --------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
-| ![example](examples/export/2d_example.png)                      | 2D input: prototypes (red) approximate input distribution (white), square topology preserved.            |
-| ![The fashion mnist dataset](examples/export/fashion_mnist.png) | Fashion-MNIST: weight of each prototype plotted; neighboring prototypes pairwise similar.                |
-| ![digits](examples/export/digits_classes.png)                   | Each prototype coloured by majority class; same-class samples cluster together. Trained on MNIST digits. |
-| ![darknet_pca](examples/export/darknet_pca.png)                 | PCA colour-codes relative distances between prototypes in input space. See _darknet_ notebook.           |
+| Example                                                                   | Description                                                                                              |
+| ------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| ![example](examples/export/2d_example.png)                                | 2D input: prototypes (red) approximate input distribution (white), square topology preserved.            |
+| ![The fashion mnist dataset](examples/export/fashion_mnist_euclidean.png) | Fashion-MNIST: weight of each prototype plotted; neighboring prototypes pairwise similar.                |
+| ![digits](examples/export/digits_classes.png)                             | Each prototype coloured by majority class; same-class samples cluster together. Trained on MNIST digits. |
 
 ## Comparisons
 
