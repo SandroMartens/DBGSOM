@@ -6,7 +6,7 @@
 
 Computation times
 =================
-**00:10.038** total execution time for 3 files **from all galleries**:
+**00:09.965** total execution time for 3 files **from all galleries**:
 
 .. container::
 
@@ -33,10 +33,10 @@ Computation times
      - Time
      - Mem (MB)
    * - :ref:`sphx_glr_auto_examples_plot_digit_classification.py` (``../../examples/plot_digit_classification.py``)
-     - 00:09.583
+     - 00:09.516
      - 0.0
    * - :ref:`sphx_glr_auto_examples_plot_2d_clustering.py` (``../../examples/plot_2d_clustering.py``)
-     - 00:00.455
+     - 00:00.450
      - 0.0
    * - :ref:`sphx_glr_auto_examples_export_figures.py` (``../../examples/export_figures.py``)
      - 00:00.000
