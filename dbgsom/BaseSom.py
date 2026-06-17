@@ -18,7 +18,6 @@ try:
     from scipy.sparse import csr_array, issparse
     from scipy.sparse.csgraph import shortest_path as csgraph_shortest_path
     from sklearn.base import BaseEstimator, clone
-    from sklearn.decomposition import SparseCoder
     from sklearn.metrics.pairwise import euclidean_distances
     from sklearn.preprocessing import normalize
     from sklearn.utils import check_random_state
@@ -443,14 +442,8 @@ class BaseSom(BaseEstimator, ABC):
             X = validate_data(self, X, reset=False)
         else:
             X, y = validate_data(self, X, y, reset=False)
-        transformer = SparseCoder(
-            dictionary=normalize(self.weights_),
-            n_jobs=self.n_jobs,
-            positive_code=True,
-            transform_alpha=0,
-            transform_algorithm="lasso_lars",
-        )
-        coefs = transformer.transform(normalize(X))
+        dictionary = self.weights_.T  # (n_features, n_prototypes)
+        coefs = np.array([nnls(dictionary, x)[0] for x in X])
         return coefs
 
     def plot(
