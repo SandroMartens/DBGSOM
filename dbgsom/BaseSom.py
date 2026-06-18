@@ -15,10 +15,10 @@ try:
     import numpy.typing as npt
     import pandas as pd
     import seaborn.objects as so
+    from scipy.optimize import nnls
     from scipy.sparse import csr_array, issparse
     from scipy.sparse.csgraph import shortest_path as csgraph_shortest_path
     from sklearn.base import BaseEstimator, clone
-    from sklearn.decomposition import SparseCoder
     from sklearn.metrics.pairwise import euclidean_distances
     from sklearn.preprocessing import normalize
     from sklearn.utils import check_random_state
@@ -63,7 +63,9 @@ class BaseSom(BaseEstimator, ABC):
 
     sigma_start : float or None, default=None
         Initial standard deviation of the neighborhood function at the start
-        of coarse training. Defaults to ``0.2 * sqrt(self.n_neurons)``
+        of coarse training. Defaults to a fixed ``1.0`` (graph hops),
+        independent of N — larger values blend the 4 starting neurons
+        together and can stall convergence (see ``_resolve_sigmas``).
 
     sigma_end : float or None, default=None
         Target standard deviation at the end of coarse training. Defaults to
@@ -443,14 +445,8 @@ class BaseSom(BaseEstimator, ABC):
             X = validate_data(self, X, reset=False)
         else:
             X, y = validate_data(self, X, y, reset=False)
-        transformer = SparseCoder(
-            dictionary=normalize(self.weights_),
-            n_jobs=self.n_jobs,
-            positive_code=True,
-            transform_alpha=0,
-            transform_algorithm="lasso_lars",
-        )
-        coefs = transformer.transform(normalize(X))
+        dictionary = self.weights_.T  # (n_features, n_prototypes)
+        coefs = np.array([nnls(dictionary, x)[0] for x in X])
         return coefs
 
     def plot(
@@ -1298,15 +1294,17 @@ class BaseSom(BaseEstimator, ABC):
     def _resolve_sigmas(self, n_neurons: int) -> tuple[float, float]:
         """Return effective (sigma_start, sigma_end) for the current map size.
 
-        Uses ``sqrt(n_neurons) - 1`` as the reference scale, which equals the
-        number of graph hops along one side of an approximately square map.
+        ``sigma_end`` uses ``sqrt(n_neurons) - 1`` as the reference scale,
+        the number of graph hops along one side of an approximately square
+        map. ``sigma_start`` is a fixed constant (not derived from map size):
+        tying it to ``n_neurons`` made it rise on every growth step, and
+        tying it to the eventual ``effective_max_neurons`` (~5*sqrt(n_samples))
+        blew up for large low-dimensional datasets — both let sigma exceed
+        the 4-neuron starting graph's diameter (2 hops), which blends all
+        starting neurons together and can stall convergence.
         """
         s = sqrt(n_neurons) - 1
-        sigma_start = (
-            self.sigma_start
-            if self.sigma_start is not None
-            else 0.2 * (np.sqrt(self._effective_max_neurons) - 1)
-        )
+        sigma_start = self.sigma_start if self.sigma_start is not None else 1.0
         sigma_end = self.sigma_end if self.sigma_end is not None else 0.05 * s
         return sigma_start, sigma_end
 
