@@ -31,36 +31,40 @@ SERIES = [
 def main() -> None:
     df = pd.read_csv(RESULTS_DIR / "scaling.csv", index_col="N")
 
-    fig, ax = plt.subplots(figsize=(7, 4.5), facecolor="white")
-    ax.set_facecolor("white")
+    # ponytail: resets rcParams regardless of host kernel's matplotlib state
+    # (e.g. VS Code's Jupyter dark-theme injection turns text white-on-white
+    # otherwise).
+    with plt.style.context("default"):
+        fig, ax = plt.subplots(figsize=(7, 4.5), facecolor="white")
+        ax.set_facecolor("white")
 
-    for col, label, color, ls, marker in SERIES:
-        if col not in df.columns:
-            continue
-        data = df[col].dropna()
-        ax.plot(
-            data.index,
-            data.values,
-            label=label,
-            color=color,
-            linestyle=ls,
-            marker=marker,
-            markersize=5,
-            linewidth=1.5,
-        )
+        for col, label, color, ls, marker in SERIES:
+            if col not in df.columns:
+                continue
+            data = df[col].dropna()
+            ax.plot(
+                data.index,
+                data.values,
+                label=label,
+                color=color,
+                linestyle=ls,
+                marker=marker,
+                markersize=5,
+                linewidth=1.5,
+            )
 
-    ax.set_xscale("log")
-    ax.set_yscale("log")
-    ax.set_xlabel("Dataset size N", fontsize=11)
-    ax.set_ylabel("Training time (s)", fontsize=11)
-    ax.set_title("Training time vs. dataset size", fontsize=12)
-    ax.legend(fontsize=9, framealpha=1.0, edgecolor="#cccccc")
-    ax.grid(True, which="both", linestyle=":", linewidth=0.5, color="#dddddd")
-    ax.spines[["top", "right"]].set_visible(False)
+        ax.set_xscale("log")
+        ax.set_yscale("log")
+        ax.set_xlabel("Dataset size N", fontsize=11)
+        ax.set_ylabel("Training time (s)", fontsize=11)
+        ax.set_title("Training time vs. dataset size", fontsize=12)
+        ax.legend(fontsize=9, framealpha=1.0, edgecolor="#cccccc")
+        ax.grid(True, which="both", linestyle=":", linewidth=0.5, color="#dddddd")
+        ax.spines[["top", "right"]].set_visible(False)
 
-    out = RESULTS_DIR / "scaling.png"
-    fig.savefig(out, dpi=150, bbox_inches="tight", facecolor="white")
-    plt.close(fig)
+        out = RESULTS_DIR / "scaling.png"
+        fig.savefig(out, dpi=150, bbox_inches="tight", facecolor="white")
+        plt.close(fig)
     print(f"Saved: {out}")
 
 
