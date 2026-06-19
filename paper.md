@@ -91,7 +91,7 @@ The package is distributed via PyPI (`pip install dbgsom`) and versioned accordi
 
 `dbgsom` is used as the SOM backend for the `dsl2som` clustering library by this author [@Martens2026].
 
-Benchmarks comparing `dbgsom` to `MiniSom`, `SuSi`, `KMeans`, and `AgglomerativeClustering` are provided in the repository as Jupyter notebooks (`examples/som_comparison.ipynb`, `examples/clustering_comparison.ipynb`, `examples/manifold_comparison.ipynb`). Evaluations use the `scikit-learn` Digits dataset (1797 samples, 64 features, 10 classes) and the Fashion-MNIST dataset [@Xiao2017].
+Benchmarks comparing `dbgsom` to `MiniSom`, `SuSi`, `KMeans`, and `AgglomerativeClustering` are provided in the repository as Jupyter notebooks (`examples/som_comparison.ipynb`, `examples/clustering_comparison.ipynb`, `examples/manifold_comparison.ipynb`). Evaluations use the `scikit-learn` digits dataset (1797 samples, 64 features, 10 classes), the Fashion-MNIST dataset [@Xiao2017] and syntetic datasets.
 
 **Quality Metrics**. On digits with automatically determined cluster count (via `dbgsom`'s growing mechanism, applied as cluster count for all algorithms):
 
@@ -105,7 +105,7 @@ Benchmarks comparing `dbgsom` to `MiniSom`, `SuSi`, `KMeans`, and `Agglomerative
 
 `KMeans` is included to give a lower bound for `Qe`.
 
-**Performance metrics**. On a synthetic dataset with 1k to 90k samples (AMD Ryzen 3700X, 16 GB RAM, Nvidia RTX 5060Ti), `dbgsom` performs faster than the reference libraries with better quantization error.
+**Performance metrics**. On a synthetic dataset with 1k to 90k samples, `dbgsom` performs faster than the reference libraries with better quantization error (Hardware: AMD Ryzen 3700X, 16 GB RAM, Nvidia RTX 5060Ti).
 
 ![Training time vs. dataset size N for all compared algorithms (log-log scale). `dbgsom` fast path uses pointer search and sparse neighborhood.](paper_benchmarks/results/scaling.png){width=80%}
 
@@ -117,8 +117,10 @@ Benchmarks comparing `dbgsom` to `MiniSom`, `SuSi`, `KMeans`, and `Agglomerative
 
 # AI usage disclosure
 
-No generative AI was used prior to release v1.2.0. Claude Code was used in Code: to create benchmarks, refactor code, improve performance, implement mathematical formulas, debugging. In documentation: Mainly for editing and keeping consistency between reference papers, documentation and actual implementation.
+No generative AI was used prior to release v1.2.0.
 
-All documentations, implementations and experimental results were verified to the best of the authors knowledge. Experiments can be reproduced in the `paper_benchmarks` folder.
+Claude Code was used in Code: to create benchmarks, refactor code, improve performance, implement mathematical formulas and debugging. In documentation: Mainly for copy editing and keeping consistency between reference papers, documentation and actual implementation. Parts of this manuscript were copy edited with the help of Claude.
+
+All core decisions were made by the author. All documentations, implementations and experimental results were verified to the best of the authors knowledge. Experiments can be reproduced in the `paper_benchmarks` folder.
 
 # References
