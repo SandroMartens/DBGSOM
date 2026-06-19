@@ -57,13 +57,13 @@ Both GSOM packages were not included because of the lack of documentation, tests
 
 All three implement fixed-grid SOMs that require the user to specify the grid dimensions before training.
 
-Any growing SOM has a dynamically changing grid. Therefore it cannot easiely be implemented into an existing library that uses a static grid without rewriting much of the core logic. DBGSOM especially doesn't have a rectangular layout that can be represented as a two dimensional standard array.
+Any growing SOM has a dynamically changing grid. Therefore it cannot easily be implemented into an existing library that uses a static grid without rewriting much of the core logic. DBGSOM especially doesn't have a rectangular layout that can be represented as a two dimensional standard array.
 
 # Software design
 
-`dbgsom` is implemented in Python and uses NumPy [@Harris2020] for array operations and Numba [@Lam2015] for JIT-compiled distance computations. Sparse matrix operations are performed using SciPy [@Virtanen2020]. The map topology is represented as a NetworkX [@Hagberg2008] graph. Visualization is provided via seaborn [@Waskom2021]. General API behaviour like input validation, error messages, output formats etc. are either directly interhited from `scikit-learn` or are tested against `scikit-learn` standards.
+`dbgsom` is implemented in Python and uses NumPy [@Harris2020] for array operations and Numba [@Lam2015] for JIT-compiled distance computations. Sparse matrix operations are performed using SciPy [@Virtanen2020]. The map topology is represented as a NetworkX [@Hagberg2008] graph. Visualization is provided via seaborn [@Waskom2021]. General API behavior like input validation, error messages, output formats etc. are either directly inherited from `scikit-learn` or are tested against `scikit-learn` standards.
 
-Numpy is the default library for linear algebra and array operations in Pyton. Numba allows developers to speed up Python, and specifically Numpy, code by just-in-time compilation. It needs minimal change of the original code and only a small warm up time at program start. NetworkX as graph backend simplifies the implementation of neighborhood queries and the growth mechanism that happen in a growing SOM. Seaborn supports continuous and categorical color encoding of prototype attributes, making it well suited for graph visualizations. All dependencies integrate well with each other.
+Numpy is the default library for linear algebra and array operations in Python. Numba allows developers to speed up Python, and specifically Numpy, code by just-in-time compilation. It needs minimal change of the original code and only a small warm up time at program start. NetworkX as graph backend simplifies the implementation of neighborhood queries and the growth mechanism that happen in a growing SOM. Seaborn supports continuous and categorical color encoding of prototype attributes, making it well suited for graph visualizations. All dependencies integrate well with each other.
 
 The core feature of the `dbgsom` algorithm is the threshold parameter which defines how many neurons are added. The growing threshold `GT` is defined as: $GT = \lambda \cdot \lVert \text{std}(X) \rVert$. This means it is independent from data scaling and comparable across different datasets.
 
@@ -72,12 +72,12 @@ The `dbgsom` training procedure is as follows:
 1. **Initialization.** Four neurons are initialized with weights sampled from the input data. Their respective indices are arranged on a rectangular grid so that they form a square.
 2. **Coarse Phase**: Multiple convergence cycles.
    1. **Assignment.** Each training sample is assigned to its nearest neuron (Best Matching Unit, BMU) by Euclidean distance or Cosine distance.
-   2. **Weight update.** Neuron weights are updated toward the mean of the samples assigned to them. A neighorhood function with dynamic bandwidth $\sigma$ lets neurons influence their grid neighbors weight update.
+   2. **Weight update.** Neuron weights are updated toward the mean of the samples assigned to them. A neighborhood function with dynamic bandwidth $\sigma$ lets neurons influence their grid neighbors weight update.
    3. **Growth.** If converged: Boundary neurons whose accumulated quantization error exceeds the growing threshold ($Qe_i > GT$) spawn new neighboring neurons. Repeat from Assignment.
    4. **Termination.** The Coarse Phase ends after a given number of epochs or if the map converged and no new neurons were added.
 3. **Fine Phase.** Same as Coarse Phase, only that no new neurons are added and the neighborhood radius $\sigma$ stays constant. Training ends when `n_iter` epochs are completed or the map converged.
 
-Convergence criterium is change of weights between epochs. The neighborhood width $\sigma$ decays over training epochs, transitioning the map from global to local organization.
+Convergence criterion is change of weights between epochs. The neighborhood width $\sigma$ decays over training epochs, transitioning the map from global to local organization.
 
 Topology preservation is measured by the topographic error `Te` or topographic function `Tf` [@Villmann1997].
 
