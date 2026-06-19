@@ -15,7 +15,7 @@ authors:
 affiliations:
   - name: Independent Researcher
     index: 1
-date: 2025-16-06 # TODO: Einreichungsdatum anpassen
+date: 2026-06-19
 bibliography: paper.bib
 ---
 
@@ -48,12 +48,12 @@ The most used package, `MiniSom`, implements its own custom API. `SuSi` and `tor
 
 Both GSOM packages were not included because of the lack of documentation, tests, recent updates and non-standard API.
 
-| Library  | API                       | GPU            | Framework     | Docs              |
-| -------- | ------------------------- | -------------- | ------------- | ----------------- |
-| `dbgsom` | **sklearn-compatible**    | No             | Numpy + Numba | **Comprehensive** |
-| MiniSom  | Custom (`train`/`winner`) | No             | Numpy         | Notebooks only    |
-| SuSi     | sklearn-style             | No             | Numpy         | **Comprehensive** |
-| torchsom | sklearn-style             | **Yes (CUDA)** | **PyTorch**   | **Comprehensive** |
+| Library    | API                       | GPU            | Framework         | Docs              |
+| ---------- | ------------------------- | -------------- | ----------------- | ----------------- |
+| `dbgsom`   | **sklearn-compatible**    | No             | Numpy + **Numba** | **Comprehensive** |
+| `MiniSom`  | Custom (`train`/`winner`) | No             | Numpy             | Notebooks only    |
+| `SuSi`     | sklearn-style             | No             | Numpy             | **Comprehensive** |
+| `torchsom` | sklearn-style             | **Yes (CUDA)** | **PyTorch**       | **Comprehensive** |
 
 All three implement fixed-grid SOMs that require the user to specify the grid dimensions before training.
 
@@ -65,21 +65,21 @@ Any growing SOM has a dynamically changing grid. Therefore it cannot easiely be 
 
 Numpy is the default library for linear algebra and array operations in Pyton. Numba allows developers to speed up Python, and specifically Numpy, code by just-in-time compilation. It needs minimal change of the original code and only a small warm up time at program start. NetworkX as graph backend simplifies the implementation of neighborhood queries and the growth mechanism that happen in a growing SOM. Seaborn supports continuous and categorical color encoding of prototype attributes, making it well suited for graph visualizations. All dependencies integrate well with each other.
 
-The core feature of the `dbgsom` algorithm is the threshold parameter which defines how many neurons are added. The growing threshold `GT` is defined as: $GT = \lambda \cdot \lVert \text{std}(X) \rVert$
+The core feature of the `dbgsom` algorithm is the threshold parameter which defines how many neurons are added. The growing threshold `GT` is defined as: $GT = \lambda \cdot \lVert \text{std}(X) \rVert$. This means it is independent from data scaling and comparable across different datasets.
 
 The `dbgsom` training procedure is as follows:
 
 1. **Initialization.** Four neurons are initialized with weights sampled from the input data. Their respective indices are arranged on a rectangular grid so that they form a square.
-2. **Coarse Phase**: Multiple cycles of learning and growing.
+2. **Coarse Phase**: Multiple convergence cycles.
    1. **Assignment.** Each training sample is assigned to its nearest neuron (Best Matching Unit, BMU) by Euclidean distance or Cosine distance.
    2. **Weight update.** Neuron weights are updated toward the mean of the samples assigned to them. A neighorhood function with dynamic bandwidth $\sigma$ lets neurons influence their grid neighbors weight update.
-   3. **Growth.** Boundary neurons whose accumulated quantization error exceeds the growing threshold ($Qe_i > GT$) spawn new neighboring neurons.
+   3. **Growth.** If converged: Boundary neurons whose accumulated quantization error exceeds the growing threshold ($Qe_i > GT$) spawn new neighboring neurons. Repeat from Assignment.
    4. **Termination.** The Coarse Phase ends after a given number of epochs or if the map converged and no new neurons were added.
 3. **Fine Phase.** Same as Coarse Phase, only that no new neurons are added and the neighborhood radius $\sigma$ stays constant. Training ends when `n_iter` epochs are completed or the map converged.
 
 Convergence criterium is change of weights between epochs. The neighborhood width $\sigma$ decays over training epochs, transitioning the map from global to local organization.
 
-Topology preservation is measured by the topographic error `Te` or topographic function `Tf`[@Villmann1997].
+Topology preservation is measured by the topographic error `Te` or topographic function `Tf` [@Villmann1997].
 
 The `transform` method departs from conventional SOM practice: rather than returning the index of the best-matching unit, it computes a sparse non-negative linear combination of prototype weights, yielding a meaningful embedding of each sample in prototype space [@Kohonen2007]. This allows a better encoding than the direct n-to-1 mapping to a single winner neuron.
 
@@ -103,9 +103,9 @@ Benchmarks comparing `dbgsom` to `MiniSom`, `SuSi`, `KMeans`, and `Agglomerative
 | `torchsom` | 132        | 5.12               | 0.09              | 0.16                |
 | `KMeans`   | 127        | 4.38               | —                 | 0.17                |
 
-Kmeans is included to give a lower bound for `Qe`.
+`KMeans` is included to give a lower bound for `Qe`.
 
-**Performance metrics**. On a synthetic dataset with 1k to 90k samples (AMD Ryzen 3700X, 16 GB RAM, Nvidia RTX 5060Ti), `dbgsom` performs faster than the reference libraries.
+**Performance metrics**. On a synthetic dataset with 1k to 90k samples (AMD Ryzen 3700X, 16 GB RAM, Nvidia RTX 5060Ti), `dbgsom` performs faster than the reference libraries with better quantization error.
 
 ![Training time vs. dataset size N for all compared algorithms (log-log scale). `dbgsom` fast path uses pointer search and sparse neighborhood.](paper_benchmarks/results/scaling.png){width=80%}
 
