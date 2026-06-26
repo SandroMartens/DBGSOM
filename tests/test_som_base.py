@@ -187,6 +187,21 @@ def test_digits_training_regression():
     )
 
 
+@pytest.mark.slow
+def test_performance_path_matches_accuracy_path_quality():
+    """Default fast path (pointer_search/cutgauss_phase='fine') must not sacrifice
+    quantization quality vs. the textbook accuracy path ('none' for both)."""
+    X, _ = load_digits(return_X_y=True)
+    common = dict(random_state=42, n_iter=200, max_neurons=30, verbose=False)
+
+    fast = SomVQ(**common).fit(X)
+    accurate = SomVQ(pointer_search="none", cutgauss_phase="none", **common).fit(X)
+
+    assert fast.quantization_error_ == pytest.approx(
+        accurate.quantization_error_, rel=0.1
+    )
+
+
 def test_transform_output_shape(classifier_vq_pair):
     vq, _, X, _ = classifier_vq_pair
     result = vq.transform(X)
@@ -258,3 +273,16 @@ def test_max_neurons_limit_respected():
     limit = 8
     vq = SomVQ(random_state=0, n_iter=50, max_neurons=limit).fit(X)
     assert vq.som_.number_of_nodes() <= limit
+
+
+def test_state_sync_invariant_after_growth():
+    """neurons_, _node_to_idx and weights_ must stay in lockstep with som_ after growth."""
+    X, _ = load_digits(return_X_y=True)
+    som = SomVQ(random_state=42, n_iter=50, max_neurons=30, verbose=False).fit(X)
+
+    assert som.som_.number_of_nodes() > 1, "test requires growth to have happened"
+    assert len(som.neurons_) == len(som._node_to_idx) == som.weights_.shape[0]
+    assert len(som.neurons_) == som.som_.number_of_nodes()
+    assert set(som.neurons_) == set(som.som_.nodes())
+    for idx, node in enumerate(som.neurons_):
+        assert som._node_to_idx[node] == idx

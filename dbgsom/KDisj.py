@@ -4,6 +4,9 @@ Reference: Cottrell et al., "Analyzing a contingency table with Kohonen maps:
 a Factorial Correspondence Analysis", ICANN, 1993.
 
 Basis algorithm from: G. Cabanes et al., Neural Networks 32 (2012) 186-195.
+
+Experimental: not part of the stable public API (SomVQ/SomClassifier).
+No backwards-compatibility guarantees.
 """
 
 from __future__ import annotations
