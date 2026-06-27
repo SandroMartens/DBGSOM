@@ -23,11 +23,25 @@ keine Laufzeitkopplung zu Python.
 ## Ziel
 
 Property-Based-Test, der für beliebige (Hypothesis-generierte) Datensätze
-und Seeds nach **jedem** Knoten-Insertion-Event während `fit()` prüft:
+und Seeds prüft:
 
-1. `len(neurons_) == weights_.shape[0]`
+Nach **jedem** Knoten-Insertion-Event während `fit()` (Schreibstelle
+`_add_node_to_graph`, BaseSom.py:1248-1255 — `som_.add_node`,
+`_node_to_idx[node]` und `neurons_.append(node)` laufen dort synchron):
+
+1. `len(neurons_) == len(_node_to_idx)`
 2. `∀ i: _node_to_idx[neurons_[i]] == i`
 3. `set(neurons_) == set(som_.nodes())`
+
+Nach Ende von `fit()` zusätzlich (entspricht bestehendem Test `7e8cca9`,
+jetzt über viele Datensätze/Seeds statt einem Beispiel):
+
+1. `weights_.shape[0] == len(neurons_)`
+
+`weights_` wird laut `_grow_som`/CLAUDE.md erst **am nächsten Epochenstart**
+aus dem Graphen neu extrahiert, nicht synchron in `_add_node_to_graph` —
+Prüfung 4 darf deshalb nur nach abgeschlossenem `fit()` laufen, nicht nach
+jedem Insertion-Event (sonst False Positives durch den absichtlichen Lag).
 
 Lean-Spec dokumentiert dieselbe Eigenschaft unzweideutig + beweist sie für
 ein abstraktes, atomares Insertions-Modell.
@@ -128,7 +142,7 @@ from hypothesis import given, settings
 
 from dbgsom import SomVQ
 from dbgsom.BaseSom import BaseSom
-from tests.strategies import growable_dataset
+from strategies import growable_dataset
 
 
 @given(growable_dataset())
@@ -139,28 +153,31 @@ def test_state_sync_holds_after_every_growth_event(data):
     original = BaseSom._add_node_to_graph
 
     def wrapped(self, *args, **kwargs):
-        result = original(self, *args, **kwargs)
+        original(self, *args, **kwargs)
         idx_ok = all(
             self._node_to_idx[node] == i
             for i, node in enumerate(self.neurons_)
         )
         if (
-            len(self.neurons_) != self.weights_.shape[0]
+            len(self.neurons_) != len(self._node_to_idx)
             or not idx_ok
             or set(self.neurons_) != set(self.som_.nodes())
         ):
             violations.append(self.som_.number_of_nodes())
-        return result
 
     with patch.object(BaseSom, "_add_node_to_graph", wrapped):
-        SomVQ(random_state=seed).fit(X)
+        som = SomVQ(random_state=seed).fit(X)
 
-    assert not violations
+    assert not violations, f"state desync at node counts {violations}"
+    assert som.weights_.shape[0] == len(som.neurons_)
 ```
 
 Hypothesis shrinkt fehlschlagende Fälle automatisch auf minimales
 `(X, seed)`. `max_examples=20`, `deadline=None` (Numba-JIT-Warmup pro
-Beispiel) — bleibt innerhalb `pytest -m "not slow"`-Budget.
+Beispiel) — bleibt innerhalb `pytest -m "not slow"`-Budget. Import
+`from strategies import growable_dataset` (kein `tests.`-Präfix): `tests/`
+hat kein `__init__.py`, pytest fügt im Rootless-Modus das Testverzeichnis
+selbst zu `sys.path` hinzu.
 
 ## Dependencies
 
