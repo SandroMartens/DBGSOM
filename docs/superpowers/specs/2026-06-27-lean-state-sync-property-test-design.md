@@ -184,10 +184,14 @@ selbst zu `sys.path` hinzu.
 `lambda_=2.0` ist notwendig, kein Stilwunsch: Default `lambda_=115.0` setzt
 `GT = lambda_ * ||std(X)||` für 20-60-Zeilen-Datensätze so hoch, dass nie
 über das initiale 4-Neuronen-Grid hinaus gewachsen wird — empirisch
-geprüft, 0/30 Wachstumsfälle bei `lambda_=115`, 30/30 bei `lambda_=2.0`
-über zufällige Konfigurationen im Hypothesis-Wertebereich. Ohne diesen
-Override würde der Test grün durchlaufen, aber nichts prüfen (Hook feuert
-nie).
+geprüft mit numpy-RNG-uniformen Stichproben: 0/30 Wachstumsfälle bei
+`lambda_=115`, 30/30 bei `lambda_=2.0`. Hypothesis' Float-Strategie ist
+aber nicht RNG-uniform (gewichtet Grenzfälle stärker) — gegen den echten
+`@given(growable_dataset())`-Test instrumentiert ergeben sich nur ~10-11/20
+wachsende Beispiele (zweimal verifiziert), nicht 30/30. Immer noch klar
+nicht-vacuous (~26 Insertion-Events über einen 20-Beispiel-Lauf), aber die
+30/30-Zahl gilt nur für den RNG-uniformen Vorab-Check, nicht für
+`growable_dataset()` selbst — nicht verwechseln.
 
 ## Dependencies
 

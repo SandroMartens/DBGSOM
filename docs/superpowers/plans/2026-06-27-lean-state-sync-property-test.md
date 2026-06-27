@@ -131,10 +131,17 @@ def test_state_sync_holds_after_every_growth_event(data):
 `lambda_=2.0` is required: the default `lambda_=115.0` sets the growing
 threshold `GT = lambda_ * ||std(X)||` so high that these small (20-60 row)
 datasets essentially never grow past the initial 4-neuron grid (verified
-empirically: 0/30 growth events across random configs at `lambda_=115`,
-30/30 at `lambda_=2.0`, all sub-second). Without this override the test
-would still pass but would be checking nothing — the per-event hook would
-never fire.
+empirically: 0/30 growth events at `lambda_=115` across configs sampled
+with plain `numpy` RNG uniform draws). `lambda_=2.0` grows reliably on
+*those* RNG-uniform samples (30/30), but Hypothesis's float strategy is
+not RNG-uniform — it deliberately weights boundary/edge-case values more
+heavily, so the actual hit rate against the real `@given(growable_dataset())`
+examples is lower: instrumenting the literal test gave 10-11/20 examples
+growing (verified twice). That is still well clear of vacuous — each
+growing example fires the per-event hook multiple times (~26 insertions
+across a 20-example run) — but do not requote "30/30" as the hit rate
+against the actual strategy; that number only describes the RNG-uniform
+pre-check, not `growable_dataset()` itself.
 
 - [ ] **Step 3: Run the test, verify it passes**
 
