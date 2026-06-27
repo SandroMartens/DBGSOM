@@ -83,6 +83,7 @@ max-complexity = 10  # Alles über Komplexität 10 blockiert den Build
 [dependency-groups]
 dev = [
     "coverage>=7.14.0",
+    "hypothesis>=6.155.7",
     "ipykernel>=7.2.0",
     "line-profiler>=4.0.0",
     "pre-commit>=4.6.0",
