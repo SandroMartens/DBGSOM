@@ -145,10 +145,13 @@ Expected: `1 passed`.
 
 This step proves the property test is not vacuous — it must catch a real
 desync, not just pass by construction. Run this ad hoc via
-`uv run python -c "..."` (do not commit it):
+`uv run python -c "..."` (do not commit it). Note the `PYTHONPATH=tests`
+prefix — unlike pytest, plain `python -c` does not add `tests/` to
+`sys.path` on its own, so `from strategies import ...` would otherwise
+fail with `ModuleNotFoundError` (verified):
 
 ```bash
-uv run python -c "
+PYTHONPATH=tests uv run python -c "
 from unittest.mock import patch
 from dbgsom.BaseSom import BaseSom
 from dbgsom.SomVQ import SomVQ
