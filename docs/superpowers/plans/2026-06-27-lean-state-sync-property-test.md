@@ -120,11 +120,21 @@ def test_state_sync_holds_after_every_growth_event(data):
             violations.append(self.som_.number_of_nodes())
 
     with patch.object(BaseSom, "_add_node_to_graph", wrapped):
-        som = SomVQ(random_state=seed).fit(X)
+        som = SomVQ(
+            random_state=seed, n_iter=50, max_neurons=20, lambda_=2.0
+        ).fit(X)
 
     assert not violations, f"state desync at node counts {violations}"
     assert som.weights_.shape[0] == len(som.neurons_)
 ```
+
+`lambda_=2.0` is required: the default `lambda_=115.0` sets the growing
+threshold `GT = lambda_ * ||std(X)||` so high that these small (20-60 row)
+datasets essentially never grow past the initial 4-neuron grid (verified
+empirically: 0/30 growth events across random configs at `lambda_=115`,
+30/30 at `lambda_=2.0`, all sub-second). Without this override the test
+would still pass but would be checking nothing — the per-event hook would
+never fire.
 
 - [ ] **Step 3: Run the test, verify it passes**
 
@@ -160,7 +170,7 @@ def wrapped(self, *args, **kwargs):
         violations.append(self.som_.number_of_nodes())
 
 with patch.object(BaseSom, '_add_node_to_graph', wrapped):
-    SomVQ(random_state=seed).fit(X)
+    SomVQ(random_state=seed, n_iter=50, max_neurons=20, lambda_=2.0).fit(X)
 
 assert violations, 'mutation went undetected — property test would be vacuous'
 print('mutation detected at node counts:', violations)

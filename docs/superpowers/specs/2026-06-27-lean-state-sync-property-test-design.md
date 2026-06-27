@@ -166,7 +166,9 @@ def test_state_sync_holds_after_every_growth_event(data):
             violations.append(self.som_.number_of_nodes())
 
     with patch.object(BaseSom, "_add_node_to_graph", wrapped):
-        som = SomVQ(random_state=seed).fit(X)
+        som = SomVQ(
+            random_state=seed, n_iter=50, max_neurons=20, lambda_=2.0
+        ).fit(X)
 
     assert not violations, f"state desync at node counts {violations}"
     assert som.weights_.shape[0] == len(som.neurons_)
@@ -178,6 +180,14 @@ Beispiel) — bleibt innerhalb `pytest -m "not slow"`-Budget. Import
 `from strategies import growable_dataset` (kein `tests.`-Präfix): `tests/`
 hat kein `__init__.py`, pytest fügt im Rootless-Modus das Testverzeichnis
 selbst zu `sys.path` hinzu.
+
+`lambda_=2.0` ist notwendig, kein Stilwunsch: Default `lambda_=115.0` setzt
+`GT = lambda_ * ||std(X)||` für 20-60-Zeilen-Datensätze so hoch, dass nie
+über das initiale 4-Neuronen-Grid hinaus gewachsen wird — empirisch
+geprüft, 0/30 Wachstumsfälle bei `lambda_=115`, 30/30 bei `lambda_=2.0`
+über zufällige Konfigurationen im Hypothesis-Wertebereich. Ohne diesen
+Override würde der Test grün durchlaufen, aber nichts prüfen (Hook feuert
+nie).
 
 ## Dependencies
 
