@@ -172,19 +172,28 @@ def wrapped(self, *args, **kwargs):
     if not idx_ok or len(self.neurons_) != len(self._node_to_idx):
         violations.append(self.som_.number_of_nodes())
 
-with patch.object(BaseSom, '_add_node_to_graph', wrapped):
-    SomVQ(random_state=seed, n_iter=50, max_neurons=20, lambda_=2.0).fit(X)
+try:
+    with patch.object(BaseSom, '_add_node_to_graph', wrapped):
+        SomVQ(random_state=seed, n_iter=50, max_neurons=20, lambda_=2.0).fit(X)
+except KeyError:
+    # corrupting _node_to_idx can crash the *next* epoch's neighbor-matrix
+    # rebuild before fit() returns — violations was already populated by
+    # wrapped() before that happened, so the mutation is still detected.
+    pass
 
 assert violations, 'mutation went undetected — property test would be vacuous'
 print('mutation detected at node counts:', violations)
 "
 ```
 
-Expected: prints `mutation detected at node counts: [...]` and exits 0. If
-this assertion fails instead (no violation recorded), the chosen dataset
-size in `growable_dataset` never triggers growth for that example — rerun
-the command (it draws a fresh random example each time) before concluding
-there's a real problem.
+Expected: prints `mutation detected at node counts: [...]` and exits 0.
+Two outcomes mean the check is inconclusive for this particular draw, not
+broken — rerun the command (it draws a fresh random example each time):
+either the `AssertionError` (no violation recorded — that draw never
+triggered growth at all) or, without the `try/except KeyError` above, an
+unhandled `KeyError` from `_build_neighbor_matrix` (`dbgsom/BaseSom.py:821`)
+on the next epoch after a severe enough corruption — caught above so the
+script can still reach its own assertion.
 
 - [ ] **Step 5: Run the full fast test suite to confirm no regressions**
 
