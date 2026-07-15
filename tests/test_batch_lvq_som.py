@@ -124,3 +124,35 @@ def test_fit_raises_on_feature_mismatch():
     clf = BatchLvqSom()
     with pytest.raises(ValueError, match="features"):
         clf.fit(np.zeros((3, 2)), np.array([0, 1, 0]), som)
+
+
+def test_public_import():
+    from dbgsom import BatchLvqSom as PublicBatchLvqSom
+
+    assert PublicBatchLvqSom is BatchLvqSom
+
+
+def test_batch_lvq_som_matches_or_beats_nearest_neighbor_baseline():
+    from statistics import mode as stats_mode
+
+    from sklearn.datasets import make_blobs
+
+    from dbgsom.SomVQ import SomVQ
+
+    X, y = make_blobs(
+        n_samples=300, centers=5, n_features=4, cluster_std=0.3, random_state=42
+    )
+    som = SomVQ(random_state=42, n_iter=30, max_neurons=15, verbose=False).fit(X)
+
+    vq_labels = som.predict(X)
+    baseline_predictions = np.empty_like(y)
+    for cluster in np.unique(vq_labels):
+        mask = vq_labels == cluster
+        baseline_predictions[mask] = stats_mode(y[mask].tolist())
+    baseline_accuracy = np.mean(baseline_predictions == y)
+    assert baseline_accuracy >= 0.75  # achievable with these SomVQ params
+
+    clf = BatchLvqSom(n_iter=10).fit(X, y, som)
+    lvq_accuracy = np.mean(clf.predict(X) == y)
+
+    assert lvq_accuracy >= baseline_accuracy - 0.05
