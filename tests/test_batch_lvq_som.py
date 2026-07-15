@@ -142,7 +142,13 @@ def test_batch_lvq_som_matches_or_beats_nearest_neighbor_baseline():
     X, y = make_blobs(
         n_samples=300, centers=5, n_features=4, cluster_std=0.3, random_state=42
     )
-    som = SomVQ(random_state=42, n_iter=30, max_neurons=15, verbose=False).fit(X)
+    som = SomVQ(
+        random_state=42,
+        n_iter=30,
+        max_neurons=15,
+        lambda_=50.0,
+        verbose=False,
+    ).fit(X)
 
     vq_labels = som.predict(X)
     baseline_predictions = np.empty_like(y)
@@ -150,7 +156,7 @@ def test_batch_lvq_som_matches_or_beats_nearest_neighbor_baseline():
         mask = vq_labels == cluster
         baseline_predictions[mask] = stats_mode(y[mask].tolist())
     baseline_accuracy = np.mean(baseline_predictions == y)
-    assert baseline_accuracy >= 0.75  # achievable with these SomVQ params
+    assert baseline_accuracy >= 0.9  # lambda_=50.0 enables growth past seed grid
 
     clf = BatchLvqSom(n_iter=10).fit(X, y, som)
     lvq_accuracy = np.mean(clf.predict(X) == y)
