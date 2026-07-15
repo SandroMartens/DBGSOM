@@ -6,7 +6,6 @@ full derivation.
 """
 
 from numbers import Integral, Real
-from typing import Any
 
 import numpy as np
 import numpy.typing as npt
@@ -61,7 +60,7 @@ class BatchLvqSom(ClassifierMixin, BaseEstimator):
         self.n_iter = n_iter
         self.sigma = sigma
 
-    def fit(self, X: npt.ArrayLike, y: npt.ArrayLike, som: Any) -> "BatchLvqSom":
+    def fit(self, X: npt.ArrayLike, y: npt.ArrayLike, som) -> "BatchLvqSom":  # noqa: ANN001
         """Refine ``som``'s prototypes with labelled data.
 
         Parameters
@@ -82,7 +81,7 @@ class BatchLvqSom(ClassifierMixin, BaseEstimator):
         self._validate_params()
         try:
             check_is_fitted(som, attributes=["weights_"])
-        except (TypeError, AttributeError):
+        except TypeError:
             if not hasattr(som, "weights_"):
                 raise NotFittedError(
                     "som does not have weights_ attribute. "
