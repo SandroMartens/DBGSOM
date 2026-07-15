@@ -91,6 +91,22 @@ def test_fit_matches_brute_force_lvq_som_formula():
     np.testing.assert_array_equal(clf.node_labels_, classes[expected_labels])
 
 
+def test_fit_is_deterministic():
+    rng = np.random.default_rng(2)
+    X = rng.normal(size=(30, 3))
+    y = rng.integers(0, 2, size=30)
+    weights = rng.normal(size=(4, 3)) * 0.1
+
+    som_a = _FakeSom(weights.copy(), _GRID_DM, sigma=1.0)
+    som_b = _FakeSom(weights.copy(), _GRID_DM, sigma=1.0)
+
+    clf_a = BatchLvqSom(n_iter=5, sigma=1.0).fit(X, y, som_a)
+    clf_b = BatchLvqSom(n_iter=5, sigma=1.0).fit(X, y, som_b)
+
+    np.testing.assert_array_equal(clf_a.weights_, clf_b.weights_)
+    np.testing.assert_array_equal(clf_a.node_labels_, clf_b.node_labels_)
+
+
 def test_predict_returns_own_label_for_each_prototype():
     rng = np.random.default_rng(1)
     X = rng.normal(size=(30, 3))

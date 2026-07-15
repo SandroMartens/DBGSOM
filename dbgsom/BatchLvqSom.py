@@ -60,7 +60,7 @@ class BatchLvqSom(ClassifierMixin, BaseEstimator):
         self.n_iter = n_iter
         self.sigma = sigma
 
-    def fit(self, X: npt.ArrayLike, y: npt.ArrayLike, som) -> "BatchLvqSom":  # noqa: ANN001
+    def fit(self, X: npt.ArrayLike, y: npt.ArrayLike, som) -> "BatchLvqSom":  # noqa: ANN001 -- som is duck-typed (SomVQ-like); no Protocol precedent in this codebase
         """Refine ``som``'s prototypes with labelled data.
 
         Parameters
@@ -86,12 +86,8 @@ class BatchLvqSom(ClassifierMixin, BaseEstimator):
                 raise NotFittedError(
                     "som does not have weights_ attribute. "
                     "Make sure to fit the SOM before passing it here."
-                )
+                ) from None
         X, y = validate_data(self, X, y, dtype="numeric")
-        check_classification_targets(y)
-        classes, y_idx = np.unique(y, return_inverse=True)
-        self.classes_ = classes
-        n_classes = len(classes)
 
         weights = som.weights_.copy()
         n_neurons, n_features = weights.shape
@@ -99,6 +95,11 @@ class BatchLvqSom(ClassifierMixin, BaseEstimator):
             raise ValueError(
                 f"X has {X.shape[1]} features, but som.weights_ has {n_features}."
             )
+
+        check_classification_targets(y)
+        classes, y_idx = np.unique(y, return_inverse=True)
+        self.classes_ = classes
+        n_classes = len(classes)
 
         sigma = self.sigma if self.sigma is not None else som._calculate_current_sigma()
         dm = som._distance_matrix.astype(np.float64)
