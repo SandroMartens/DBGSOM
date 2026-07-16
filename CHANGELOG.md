@@ -1,5 +1,21 @@
 # Changelog
 
+## Unreleased
+
+### Breaking Changes
+- Removed unused `n_jobs` parameter (was stored but never read)
+- `pandas` and `seaborn` are now an optional extra — only needed for `plot()`:
+  `pip install dbgsom[viz]`
+- Removed broken `labels` parameter from `KDisj.plot()`
+
+### Internal
+- Dead-code cleanup: import guard with `sys.exit()`, `numba_quantization_error`
+  wrapper (inlined as `np.bincount`), duplicated dense/sparse branch in the
+  weight update, stale `CLAUDE.original.md`
+- Renamed `benchmarks/convergenz,py` → `benchmarks/convergenz.py`
+
+---
+
 ## v1.2.5 — 2026-06-07
 
 ### New Features

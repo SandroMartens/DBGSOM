@@ -148,15 +148,8 @@ class KDisj:
             [self._find_bmu(T[i], self.weights_[:, :A]) for i in range(len(T))]
         )
 
-    def plot(self, labels: npt.ArrayLike | None = None) -> None:
-        """Visualize neurons projected to 2D via PCA of the first A dimensions.
-
-        Parameters
-        ----------
-        labels : array-like of shape (n_samples,), optional
-            Sample labels. When provided, scatter-plots samples colored by label.
-
-        """
+    def plot(self) -> None:
+        """Visualize neurons projected to 2D via PCA of the first A dimensions."""
         import matplotlib.pyplot as plt
         from sklearn.decomposition import PCA
 
@@ -180,26 +173,6 @@ class KDisj:
             ax.annotate(
                 f"({row},{col})", (xs[k], ys[k]), fontsize=6, ha="center", va="bottom"
             )
-
-        if labels is not None:
-            bmus = self.transform(
-                np.asarray(self._last_T_)
-                if hasattr(self, "_last_T_")
-                else np.zeros((len(labels), A))
-            )
-            scatter_x = xs[bmus]
-            scatter_y = ys[bmus]
-            labels = np.asarray(labels)
-            for lbl in np.unique(labels):
-                mask = labels == lbl
-                ax.scatter(
-                    scatter_x[mask],
-                    scatter_y[mask],
-                    s=20,
-                    alpha=0.5,
-                    label=str(lbl),
-                    zorder=2,
-                )
 
         ax.set_title("KDisj — neuron positions (PCA of modality dims)")
         ax.legend(fontsize=7)

@@ -96,7 +96,7 @@ Returns dense `ndarray` or `csr_array` by sparsity:
 - `gaussian`: threshold at h < 1e-6; same sparsity check
 - `cutgauss_phase` (default `"fine"`) auto-switches to cutgauss in fine phase regardless of `neighborhood_function`; at σ≤1 and K≥200 yields ~98% sparsity, activates CSR where gaussian stays dense
 
-Weight update in `_update_weights()` dispatches on `issparse()`.
+Weight update in `_update_weights()` uses a single code path for dense and sparse kernels.
 
 ### Accuracy vs. performance paths
 

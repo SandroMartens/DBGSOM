@@ -1,34 +1,26 @@
 """Handles the core SOM functionality."""
 
-import sys
 import warnings
 from abc import ABC, abstractmethod
 from math import log, sqrt
 from numbers import Integral, Real
-from typing import Any, Self
+from types import ModuleType
+from typing import TYPE_CHECKING, Self
 
-from sklearn.utils.validation import validate_data
-
-try:
-    import networkx as nx
-    import numpy as np
-    import numpy.typing as npt
-    import pandas as pd
-    import seaborn.objects as so
-    from scipy.optimize import nnls
-    from scipy.sparse import csr_array, issparse
-    from scipy.sparse.csgraph import shortest_path as csgraph_shortest_path
-    from sklearn.base import BaseEstimator, clone
-    from sklearn.metrics.pairwise import euclidean_distances
-    from sklearn.preprocessing import normalize
-    from sklearn.utils import check_random_state
-    from sklearn.utils._param_validation import Interval, StrOptions
-    from sklearn.utils.multiclass import check_classification_targets
-    from sklearn.utils.validation import check_is_fitted
-    from tqdm import tqdm
-except ImportError as e:
-    print(e)
-    sys.exit()
+import networkx as nx
+import numpy as np
+import numpy.typing as npt
+from scipy.optimize import nnls
+from scipy.sparse import csr_array
+from scipy.sparse.csgraph import shortest_path as csgraph_shortest_path
+from sklearn.base import BaseEstimator, clone
+from sklearn.metrics.pairwise import euclidean_distances
+from sklearn.preprocessing import normalize
+from sklearn.utils import check_random_state
+from sklearn.utils._param_validation import Interval, StrOptions
+from sklearn.utils.multiclass import check_classification_targets
+from sklearn.utils.validation import check_is_fitted, validate_data
+from tqdm import tqdm
 
 from ._kernels import (
     _DECAY_FUNCTIONS,
@@ -36,9 +28,25 @@ from ._kernels import (
     numba_find_winners_euclidean,
     numba_find_winners_pointer,
     numba_find_winners_pointer_cosine,
-    numba_quantization_error,
     numba_voronoi_set_centers,
 )
+
+if TYPE_CHECKING:
+    import pandas as pd
+    import seaborn.objects as so
+
+
+def _import_viz() -> tuple[ModuleType, ModuleType]:
+    """Import the optional plotting dependencies (``viz`` extra)."""
+    try:
+        import pandas as pd
+        import seaborn.objects as so
+    except ImportError as e:
+        raise ImportError(
+            "plot() requires pandas and seaborn. "
+            "Install them with: pip install dbgsom[viz]"
+        ) from e
+    return pd, so
 
 
 class BaseSom(BaseEstimator, ABC):
@@ -116,9 +124,6 @@ class BaseSom(BaseEstimator, ABC):
         A unit is expanded into a new child SOM when its quantization error exceeds
         ``tau_2 * qe_0``, where ``qe_0`` is the quantization error of a single unit
         whose weight equals the mean of all training data.
-
-    n_jobs : int, default=1
-        Number of parallel jobs for computation.
 
     neighborhood_function : str, default="gaussian"
         Kernel function for the neighborhood update. Options: ``"gaussian"``,
@@ -222,7 +227,6 @@ class BaseSom(BaseEstimator, ABC):
         growth_criterion: str = "quantization_error",
         min_samples_vertical_growth: int = 100,
         tau_2: float = 0.5,
-        n_jobs: int = 1,
         winner_stability_threshold: float | None = 0.01,
         pointer_search: str = "fine",
         cutgauss_phase: str = "fine",
@@ -248,7 +252,6 @@ class BaseSom(BaseEstimator, ABC):
         self.min_samples_vertical_growth = min_samples_vertical_growth
         self.tau_2 = tau_2
         self.vertical_growth = vertical_growth
-        self.n_jobs = n_jobs
         self.winner_stability_threshold = winner_stability_threshold
         self.pointer_search = pointer_search
         self.cutgauss_phase = cutgauss_phase
@@ -265,7 +268,6 @@ class BaseSom(BaseEstimator, ABC):
         "sigma_start": [Interval(Real, 0, None, closed="neither"), None],
         "sigma_end": [Interval(Real, 0, None, closed="neither"), None],
         "sigma_fine": [Interval(Real, 0, None, closed="neither"), None],
-        # "sigma_fine": [Interval(Real, 0, self.sigma_end, closed="neither"), None],
         "decay_function": [StrOptions({"exponential", "linear"})],
         "neighborhood_function": [StrOptions({"gaussian", "cutgauss"})],
         "neighborhood_cutoff": [Interval(Real, 1, None, closed="left")],
@@ -329,8 +331,6 @@ class BaseSom(BaseEstimator, ABC):
         # Horizontal growing phase
         self._grow_som(X, y)
         if len(self.neurons_) == 4:
-            import warnings
-
             warnings.warn(
                 "No growth occurred during training. The map stayed at 4 neurons. "
                 "Consider lowering convergence_threshold or increasing lambda_.",
@@ -456,7 +456,7 @@ class BaseSom(BaseEstimator, ABC):
         layout: str = "grid",
         palette: str = "magma_r",
         X: np.ndarray | None = None,
-    ) -> so.Plot:
+    ) -> "so.Plot":
         """Plot the SOM neurons and their neighbourhood edges using seaborn objects.
 
         Edges are drawn first as grey lines; nodes are drawn on top and can be
@@ -496,6 +496,7 @@ class BaseSom(BaseEstimator, ABC):
 
         """
         check_is_fitted(self, attributes=["weights_"])
+        pd, so = _import_viz()
 
         nodes = list(self.som_.nodes)
         pos = self._compute_graph_layout(layout, nodes, X=X)
@@ -566,7 +567,7 @@ class BaseSom(BaseEstimator, ABC):
                 data=edges_df,
             )
 
-        p = p.add(so.Dot(), data=nodes_df, **node_aesthetics)  # ty:ignore[invalid-argument-type]
+        p = p.add(so.Dot(), data=nodes_df, **node_aesthetics)
 
         if color_scale is not None:
             p = p.scale(color=color_scale)
@@ -575,11 +576,12 @@ class BaseSom(BaseEstimator, ABC):
 
     def _resolve_color_aesthetic(
         self,
-        nodes_df: pd.DataFrame,
+        nodes_df: "pd.DataFrame",
         color: str | None,
         palette: str,
         X: np.ndarray | None = None,
     ) -> tuple[str | None, "so.Scale | None"]:
+        pd, so = _import_viz()
         if color is None:
             return None, None
         if color not in nodes_df.columns:
@@ -616,7 +618,7 @@ class BaseSom(BaseEstimator, ABC):
             return {n: coords[i] for i, n in enumerate(nodes)}
         raise ValueError(f"Unknown layout {layout!r}. Choose from 'grid', 'pca'.")
 
-    def _get_u_matrix(self) -> np.ndarray[Any, np.dtype[np.float64]]:
+    def _get_u_matrix(self) -> npt.NDArray[np.float64]:
         """Calculate the average distance from each neuron to its neighbors in the input space."""  # noqa: E501
         g = self.som_
         weights = self.weights_
@@ -923,15 +925,11 @@ class BaseSom(BaseEstimator, ABC):
         # Step 3
         gaussian_kernel = self._calculate_gaussian_neighborhood()
 
-        # Step 4 — weighted[i,j] = h[i,j] * n_j; contract over j via BLAS
-        if issparse(gaussian_kernel):
-            weighted = gaussian_kernel * neuron_activations
-            numerator = weighted @ voronoi_set_centers
-            denominator = np.asarray(weighted.sum(axis=1)).reshape(-1, 1)
-        else:
-            weighted = gaussian_kernel * neuron_activations
-            numerator = weighted @ voronoi_set_centers
-            denominator = weighted.sum(axis=1, keepdims=True)
+        # Step 4 — weighted[i,j] = h[i,j] * n_j; contract over j via BLAS.
+        # Single path for dense ndarray and sparse csr_array.
+        weighted = gaussian_kernel * neuron_activations
+        numerator = weighted @ voronoi_set_centers
+        denominator = np.asarray(weighted.sum(axis=1)).reshape(-1, 1)
         zero_denom = (denominator == 0).ravel()
         safe_denom = np.where(denominator == 0, 1.0, denominator)
         new_weights = numerator / safe_denom
@@ -1029,10 +1027,8 @@ class BaseSom(BaseEstimator, ABC):
                 self.som_.nodes[neuron]["error"] = _scipy_entropy(counts, base=2)
 
         else:
-            errors = numba_quantization_error(
-                winners,
-                length=self.weights_.shape[0],
-                distances=distances,
+            errors = np.bincount(
+                winners, weights=distances, minlength=self.weights_.shape[0]
             )
             nx.set_node_attributes(
                 self.som_, dict(zip(self.neurons_, errors.tolist())), "error"
@@ -1448,7 +1444,7 @@ class BaseSom(BaseEstimator, ABC):
 
         """
         X = validate_data(self, X, reset=False)
-        self._delaunay_matrix = self._calculate_delaunay_triangulation(X)
+        delaunay_matrix = self._calculate_delaunay_triangulation(X)
 
         # self._distance_matrix is the all-pairs shortest-path distance on the SOM graph,
         # computed during fit(). It is the correct d_map for the topographic function.
@@ -1460,9 +1456,9 @@ class BaseSom(BaseEstimator, ABC):
 
         # Pre-filter to 1-D arrays to avoid repeated full-matrix scans in the loop.
         # For k > 0: map distances for pairs that are direct Delaunay neighbours.
-        valid_map_dists = map_dist_matrix[self._delaunay_matrix == 1]
+        valid_map_dists = map_dist_matrix[delaunay_matrix == 1]
         # For k < 0: Delaunay distances for pairs that are direct SOM graph neighbours.
-        valid_delaunay_dists = self._delaunay_matrix[map_dist_matrix == 1]
+        valid_delaunay_dists = delaunay_matrix[map_dist_matrix == 1]
 
         for idx, k in enumerate(k_values):
             if k > 0:

@@ -204,11 +204,3 @@ def numba_find_winners_pointer_cosine(
         winners[i] = best_idx
         distances[i] = 1.0 - best_sim
     return distances, winners
-
-
-@nb.njit(fastmath=True)
-def numba_quantization_error(
-    winners: npt.NDArray, length: int, distances: npt.NDArray
-) -> npt.NDArray:
-    """Berechnet den Quantisierungsfehler effizient mit np.bincount."""
-    return np.bincount(winners, weights=distances, minlength=length)
