@@ -31,11 +31,15 @@ dependencies = [
     "networkx>=3.0.0",
     "numba>=0.61.0",
     "numpy>=2.1.0",
-    "pandas>=3.0.0",
     "scikit-learn>=1.5.0",
     "scipy>=1.10.0",
-    "seaborn>=0.10.0",
     "tqdm>=4.0.0",
+]
+
+[project.optional-dependencies]
+viz = [
+    "pandas>=3.0.0",
+    "seaborn>=0.10.0",
 ]
 
 [project.urls]
@@ -85,10 +89,12 @@ dev = [
     "coverage>=7.14.0",
     "ipykernel>=7.2.0",
     "line-profiler>=4.0.0",
+    "pandas>=3.0.0",
     "pre-commit>=4.6.0",
     "pytest>=9.0.3",
     "pytest-cov>=6.0.0",
     "ruff>=0.15.14",
+    "seaborn>=0.10.0",
     "sympy>=1.14.0",
     "ty>=0.0.39",
     "uv>=0.11.16",
@@ -113,7 +119,9 @@ docs = [
     "furo>=2025.12.19",
     "matplotlib>=3.9.0",
     "numpydoc>=1.10.0",
+    "pandas>=3.0.0",
     "pillow>=11.0.0",
+    "seaborn>=0.10.0",
     "sphinx>=9.0.4",
     "sphinx-autodoc-typehints>=3.6.1",
     "sphinx-gallery>=0.18.0",

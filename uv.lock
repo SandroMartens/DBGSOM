@@ -487,11 +487,15 @@ dependencies = [
     { name = "networkx" },
     { name = "numba" },
     { name = "numpy" },
-    { name = "pandas" },
     { name = "scikit-learn" },
     { name = "scipy" },
-    { name = "seaborn" },
     { name = "tqdm" },
+]
+
+[package.optional-dependencies]
+viz = [
+    { name = "pandas" },
+    { name = "seaborn" },
 ]
 
 [package.dev-dependencies]
@@ -499,10 +503,12 @@ dev = [
     { name = "coverage" },
     { name = "ipykernel" },
     { name = "line-profiler" },
+    { name = "pandas" },
     { name = "pre-commit" },
     { name = "pytest" },
     { name = "pytest-cov" },
     { name = "ruff" },
+    { name = "seaborn" },
     { name = "sympy" },
     { name = "ty" },
     { name = "uv" },
@@ -512,7 +518,9 @@ docs = [
     { name = "furo" },
     { name = "matplotlib" },
     { name = "numpydoc" },
+    { name = "pandas" },
     { name = "pillow" },
+    { name = "seaborn" },
     { name = "sphinx" },
     { name = "sphinx-autodoc-typehints" },
     { name = "sphinx-gallery" },
@@ -538,22 +546,25 @@ requires-dist = [
     { name = "networkx", specifier = ">=3.0.0" },
     { name = "numba", specifier = ">=0.61.0" },
     { name = "numpy", specifier = ">=2.1.0" },
-    { name = "pandas", specifier = ">=3.0.0" },
+    { name = "pandas", marker = "extra == 'viz'", specifier = ">=3.0.0" },
     { name = "scikit-learn", specifier = ">=1.5.0" },
     { name = "scipy", specifier = ">=1.10.0" },
-    { name = "seaborn", specifier = ">=0.10.0" },
+    { name = "seaborn", marker = "extra == 'viz'", specifier = ">=0.10.0" },
     { name = "tqdm", specifier = ">=4.0.0" },
 ]
+provides-extras = ["viz"]
 
 [package.metadata.requires-dev]
 dev = [
     { name = "coverage", specifier = ">=7.14.0" },
     { name = "ipykernel", specifier = ">=7.2.0" },
     { name = "line-profiler", specifier = ">=4.0.0" },
+    { name = "pandas", specifier = ">=3.0.0" },
     { name = "pre-commit", specifier = ">=4.6.0" },
     { name = "pytest", specifier = ">=9.0.3" },
     { name = "pytest-cov", specifier = ">=6.0.0" },
     { name = "ruff", specifier = ">=0.15.14" },
+    { name = "seaborn", specifier = ">=0.10.0" },
     { name = "sympy", specifier = ">=1.14.0" },
     { name = "ty", specifier = ">=0.0.39" },
     { name = "uv", specifier = ">=0.11.16" },
@@ -563,7 +574,9 @@ docs = [
     { name = "furo", specifier = ">=2025.12.19" },
     { name = "matplotlib", specifier = ">=3.9.0" },
     { name = "numpydoc", specifier = ">=1.10.0" },
+    { name = "pandas", specifier = ">=3.0.0" },
     { name = "pillow", specifier = ">=11.0.0" },
+    { name = "seaborn", specifier = ">=0.10.0" },
     { name = "sphinx", specifier = ">=9.0.4" },
     { name = "sphinx-autodoc-typehints", specifier = ">=3.6.1" },
     { name = "sphinx-gallery", specifier = ">=0.18.0" },
