@@ -956,16 +956,6 @@ Key hyperparameters:
 
             <tr class="default">
                 <td><i class="copy-paste-icon"
-                     onclick="copyToClipboard('n_jobs',
-                              this.parentElement.nextElementSibling)"
-                ></i></td>
-                <td class="param">n_jobs</td>
-                <td class="value">1</td>
-            </tr>
-    
-
-            <tr class="default">
-                <td><i class="copy-paste-icon"
                      onclick="copyToClipboard('winner_stability_threshold',
                               this.parentElement.nextElementSibling)"
                 ></i></td>
@@ -1113,7 +1103,7 @@ Key hyperparameters:
            <tr class="default">
                <td class="param"><a class="param-doc-link" style="text-decoration:none;">random_state_</a></td>
                <td class="fitted-att-type">RandomState</td>
-               <td>RandomState(M...0x7FEE2ED47340</td>
+               <td>RandomState(M...0x7F05ED7D4540</td>
 
 
            </tr>
@@ -1122,7 +1112,7 @@ Key hyperparameters:
            <tr class="default">
                <td class="param"><a class="param-doc-link" style="text-decoration:none;">som_</a></td>
                <td class="fitted-att-type">Graph</td>
-               <td>&lt;networkx.cla...x7fee2edbbb90&gt;</td>
+               <td>&lt;networkx.cla...x7f05f10eaae0&gt;</td>
 
 
            </tr>
@@ -1465,7 +1455,7 @@ Lower values indicate better topology preservation.
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** (0 minutes 0.431 seconds)
+   **Total running time of the script:** (0 minutes 0.429 seconds)
 
 
 .. _sphx_glr_download_auto_examples_plot_2d_clustering.py:
