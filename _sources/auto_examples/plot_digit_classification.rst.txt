@@ -1757,7 +1757,7 @@ during both ``fit`` and ``predict``.
            <tr class="default">
                <td class="param"><a class="param-doc-link" style="text-decoration:none;">random_state_</a></td>
                <td class="fitted-att-type">RandomState</td>
-               <td>RandomState(M...0x7FBF53479C40</td>
+               <td>RandomState(M...0x7EFBCF34DA40</td>
 
 
            </tr>
@@ -1766,7 +1766,7 @@ during both ``fit`` and ``predict``.
            <tr class="default">
                <td class="param"><a class="param-doc-link" style="text-decoration:none;">som_</a></td>
                <td class="fitted-att-type">Graph</td>
-               <td>&lt;networkx.cla...x7fbf53545d00&gt;</td>
+               <td>&lt;networkx.cla...x7efbd9e3a780&gt;</td>
 
 
            </tr>
@@ -2067,7 +2067,7 @@ Reveals the structure of the learned representation in weight space.
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** (0 minutes 9.654 seconds)
+   **Total running time of the script:** (0 minutes 9.786 seconds)
 
 
 .. _sphx_glr_download_auto_examples_plot_digit_classification.py:
